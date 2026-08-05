@@ -1,0 +1,32 @@
+{
+  "name": "ocgo-price-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "scrape": "node scripts/scrape.mjs",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "solid-js": "^1.9.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/node": "^26.1.2",
+    "cheerio": "^1.0.0",
+    "daisyui": "^5.5.19",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.0",
+    "vite-plugin-solid": "^2.11.0",
+    "zod": "^4.4.3"
+  }
+}
