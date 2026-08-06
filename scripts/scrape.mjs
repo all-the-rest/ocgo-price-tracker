@@ -287,6 +287,14 @@ export const modelKey = (model) => (model.tier ? `${model.name} (${model.tier})`
 const near = (a, b) =>
   (a === null && b === null) || (a !== null && b !== null && Math.abs(a - b) < FLOAT_TOLERANCE);
 
+export const pricingOf = (model) => ({
+  input: model.input,
+  output: model.output,
+  cachedRead: model.cachedRead,
+  cachedWrite: model.cachedWrite,
+  usage: model.usage,
+});
+
 export function computeDiff(prevModels, nextModels) {
   const prev = new Map(prevModels.map((m) => [modelKey(m), m]));
   const next = new Map(nextModels.map((m) => [modelKey(m), m]));
@@ -294,63 +302,49 @@ export function computeDiff(prevModels, nextModels) {
   const added = [...next.keys()].filter((k) => !prev.has(k));
   const removed = [...prev.keys()].filter((k) => !next.has(k));
 
-  const usageChanges = [];
-  const priceChanges = [];
-
+  const changed = [];
   for (const key of next.keys()) {
     const before = prev.get(key);
     if (!before) continue;
     const after = next.get(key);
-
-    if (before.usage !== after.usage) {
-      usageChanges.push({ key, from: before.usage, to: after.usage });
-    }
-
-    const changed = [];
-    const fields = [
-      ["Input", "input"],
-      ["Output", "output"],
-      ["Cached Read", "cachedRead"],
-      ["Cached Write", "cachedWrite"],
-    ];
-    for (const [label, field] of fields) {
-      if (!near(before[field], after[field])) {
-        changed.push({ label, field, from: before[field], to: after[field] });
-      }
-    }
-    if (changed.length > 0) {
-      priceChanges.push({ key, fields: changed });
-    }
+    const from = pricingOf(before);
+    const to = pricingOf(after);
+    const same =
+      near(from.input, to.input) &&
+      near(from.output, to.output) &&
+      near(from.cachedRead, to.cachedRead) &&
+      near(from.cachedWrite, to.cachedWrite) &&
+      from.usage === to.usage;
+    if (!same) changed.push({ key, from, to });
   }
 
-  return { added, removed, usageChanges, priceChanges };
+  return { added, removed, changed };
 }
 
-export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [], today = "") {
-  if (prevModels === null) {
-    return [{ type: "baseline", modelCount: nextModels.length, freeModelCount: nextFree.length }];
-  }
+export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [], today = "", firstSeen = new Map()) {
+  if (prevModels === null) return [];
 
-  const { added, removed, usageChanges, priceChanges } = computeDiff(prevModels, nextModels);
+  const { added, removed, changed } = computeDiff(prevModels, nextModels);
+  const nextById = new Map(nextModels.map((m) => [modelKey(m), m]));
   const changes = [];
 
-  for (const key of added) changes.push({ type: "model_added", model: key });
-  for (const key of removed) changes.push({ type: "model_removed", model: key });
-
-  for (const { key, from, to } of usageChanges) {
-    changes.push({ type: "usage_changed", model: key, from, to });
+  for (const key of added) {
+    const model = nextById.get(key);
+    changes.push({ type: "model_added", model: key, pricing: model ? pricingOf(model) : null });
   }
-
-  for (const { key, fields } of priceChanges) {
-    for (const f of fields) {
-      changes.push({ type: "price_changed", model: key, field: f.field, from: f.from, to: f.to });
-    }
+  for (const key of removed) {
+    const first = firstSeen.get(key);
+    const days = first ? Math.max(0, Math.round((Date.parse(today) - Date.parse(first)) / 86_400_000)) : 0;
+    changes.push({ type: "model_removed", model: key, days });
+  }
+  for (const { key, from, to } of changed) {
+    changes.push({ type: "pricing_changed", model: key, from, to });
   }
 
   const prevIds = prevFree.map((f) => f.id);
   const nextIds = nextFree.map((f) => f.id);
   for (const f of nextFree.filter((f) => !prevIds.includes(f.id))) {
-    changes.push({ type: "free_added", model: f.id, availableFrom: f.availableFrom });
+    changes.push({ type: "free_added", model: f.id });
   }
   for (const f of prevFree.filter((f) => !nextIds.includes(f.id))) {
     changes.push({ type: "free_removed", model: f.id, availableFrom: f.availableFrom, until: today });
@@ -370,8 +364,12 @@ export function mergeFreeModels(prevFree, currentIds, today) {
 
 export function upsertChangelogJson(existing, date, changes) {
   const entries = Array.isArray(existing?.entries) ? existing.entries : [];
-  const filtered = entries.filter((e) => e.date !== date);
-  filtered.unshift({ date, changes });
+  const filtered = entries.filter(
+    (e) => e.date !== date && Array.isArray(e.changes) && e.changes.length > 0
+  );
+  if (Array.isArray(changes) && changes.length > 0) {
+    filtered.unshift({ date, changes });
+  }
   return { entries: filtered };
 }
 
@@ -412,6 +410,61 @@ const SnapshotSchema = z.object({
   freeModels: z.array(FreeModelSchema),
 });
 
+const PricingTypeSchema = z.object({
+  input: z.number().nullable(),
+  output: z.number().nullable(),
+  cachedRead: z.number().nullable(),
+  cachedWrite: z.number().nullable(),
+  usage: z.number().positive(),
+});
+
+const ChangeSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("text"),
+    lang: z.object({ en: z.string().min(1), de: z.string().min(1) }),
+  }),
+  z.object({
+    type: z.literal("model_added"),
+    model: z.string().min(1),
+    pricing: PricingTypeSchema,
+  }),
+  z.object({
+    type: z.literal("model_removed"),
+    model: z.string().min(1),
+    days: z.number().int().nonnegative(),
+  }),
+  z.object({
+    type: z.literal("pricing_changed"),
+    model: z.string().min(1),
+    from: PricingTypeSchema,
+    to: PricingTypeSchema,
+  }),
+  z.object({ type: z.literal("free_added"), model: z.string().min(1) }),
+  z.object({
+    type: z.literal("free_removed"),
+    model: z.string().min(1),
+    availableFrom: z.string(),
+    until: z.string(),
+  }),
+]);
+
+const ChangelogSchema = z.object({
+  entries: z.array(
+    z.object({
+      date: z.string(),
+      changes: z.array(ChangeSchema).min(1),
+    })
+  ),
+});
+
+/**
+ * Validiert den kompletten Changelog (zod). Leere Einträge (`changes: []`) und
+ * unbekannte Event-Typen brechen den Lauf rot ab.
+ */
+export function validateChangelog(changelog) {
+  return ChangelogSchema.parse(changelog);
+}
+
 /**
  * Validiert einen kompletten Snapshot (zod). Jedes Modell MUSS Token-Stats
  * (`pattern`) haben — ein fehlendes Muster bricht den Lauf rot ab.
@@ -442,6 +495,23 @@ async function main() {
     const currentIds = await fetchZenFreeModels(prevFree.map((f) => f.id));
     const freeModels = mergeFreeModels(prevFree, currentIds, date);
 
+    const historyPath = join(ROOT, "data", "history.json");
+    let history = { snapshots: [] };
+    if (existsSync(historyPath)) {
+      history = JSON.parse(readFileSync(historyPath, "utf8"));
+      if (!history || !Array.isArray(history.snapshots)) history = { snapshots: [] };
+    }
+
+    const firstSeen = new Map();
+    for (const snap of history.snapshots) {
+      const day = snap?.fetchedAt?.slice(0, 10);
+      if (!day) continue;
+      for (const m of snap.models ?? []) {
+        const key = modelKey(m);
+        if (!firstSeen.has(key)) firstSeen.set(key, day);
+      }
+    }
+
     const latest = {
       fetchedAt,
       sourceUrl: SOURCE_URL,
@@ -452,28 +522,24 @@ async function main() {
       freeModels,
     };
 
-    const changes = buildChanges(prevModels, models, prevFree, freeModels, date);
+    const changes = buildChanges(prevModels, models, prevFree, freeModels, date, firstSeen);
 
     validateSnapshot(latest);
 
     const changelogPath = join(ROOT, "CHANGELOG.json");
     const existingChangelog = existsSync(changelogPath) ? JSON.parse(readFileSync(changelogPath, "utf8")) : { entries: [] };
     const changelog = upsertChangelogJson(existingChangelog, date, changes);
+    validateChangelog(changelog);
     const changelogJson = JSON.stringify(changelog, null, 2) + "\n";
     writeFileSync(changelogPath, changelogJson);
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
 
-    const historyPath = join(ROOT, "data", "history.json");
-    let history = { snapshots: [] };
-    if (existsSync(historyPath)) {
-      history = JSON.parse(readFileSync(historyPath, "utf8"));
-      if (!history || !Array.isArray(history.snapshots)) history = { snapshots: [] };
+    if (changes.length > 0) {
+      history.snapshots.push(latest);
+      writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
+      writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
     }
-    history.snapshots.push(latest);
-    writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
-
-    writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
 
     console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}).`);
   } catch (err) {

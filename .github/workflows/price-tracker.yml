@@ -47,11 +47,15 @@ jobs:
 
       - name: Commit data changes
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add CHANGELOG.json data src/data
-          git commit -m "chore: update prices $(date -u +%Y-%m-%d)" || echo "nothing to commit"
-          git push
+          if git diff --quiet CHANGELOG.json data src/data; then
+            echo "no data changes, skipping commit"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add CHANGELOG.json data src/data
+            git commit -m "chore: update prices $(date -u +%Y-%m-%d)"
+            git push
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

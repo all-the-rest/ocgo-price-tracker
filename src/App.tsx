@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
-import type { Change, ChangelogData, Model, PriceData, PriceField } from "./types";
+import type { Change, ChangelogData, Model, PriceData, PricingType } from "./types";
 import { i18n, type Lang } from "./i18n";
 import { fmt, fmtDate, fmtDateOnly, formatModelName } from "./util";
 import { fieldPrice, formatTokens, requestCost } from "./weighted";
@@ -189,14 +189,8 @@ export default function App() {
       .replace("{output}", formatTokens(p.output, lang()));
   };
 
-  const fieldLabel = (f: PriceField) =>
-    f === "input"
-      ? t().colInput
-      : f === "output"
-        ? t().colOutput
-        : f === "cachedRead"
-          ? t().colCachedRead
-          : t().colCachedWrite;
+  const fmtPricing = (p: PricingType) =>
+    `${fmt(p.input)} / ${fmt(p.output)} / ${fmt(p.cachedRead)} / ${fmt(p.cachedWrite)} @ $${p.usage}`;
 
   const changeBadge = (c: Change) => {
     const baseCls = "badge badge-sm shrink-0";
@@ -207,45 +201,34 @@ export default function App() {
       case "model_removed":
       case "free_removed":
         return <span class={`${baseCls} badge-error`}>−</span>;
-      case "usage_changed":
-        return <span class={`${baseCls} badge-warning`}>↕</span>;
-      case "price_changed":
-        return <span class={`${baseCls} badge-info`}>¥</span>;
-      case "baseline":
+      case "pricing_changed":
+        return <span class={`${baseCls} badge-info`}>↕</span>;
+      case "text":
         return <span class={`${baseCls} badge-ghost`}>i</span>;
     }
   };
 
   const changeText = (c: Change) => {
     switch (c.type) {
-      case "baseline":
-        return (
-          <span>
-            {t()
-              .chgBaseline.replace("{models}", String(c.modelCount))
-              .replace("{free}", String(c.freeModelCount))}
-          </span>
-        );
+      case "text":
+        return <span>{c.lang[lang()]}</span>;
       case "model_added":
-        return <span>{t().chgModelAdded.replace("{model}", c.model)}</span>;
-      case "model_removed":
-        return <span>{t().chgModelRemoved.replace("{model}", c.model)}</span>;
-      case "usage_changed": {
-        const tpl = c.to > c.from ? t().chgUsageBetter : t().chgUsageWorse;
-        return (
-          <span>
-            {tpl.replace("{model}", c.model).replace("{from}", String(c.from)).replace("{to}", String(c.to))}
-          </span>
-        );
-      }
-      case "price_changed":
         return (
           <span>
             {t()
-              .chgPrice.replace("{model}", c.model)
-              .replace("{field}", fieldLabel(c.field))
-              .replace("{from}", fmt(c.from))
-              .replace("{to}", fmt(c.to))}
+              .chgModelAdded.replace("{model}", c.model)
+              .replace("{pricing}", fmtPricing(c.pricing))}
+          </span>
+        );
+      case "model_removed":
+        return <span>{t().chgModelRemoved.replace("{model}", c.model).replace("{days}", String(c.days))}</span>;
+      case "pricing_changed":
+        return (
+          <span>
+            {t()
+              .chgPricing.replace("{model}", c.model)
+              .replace("{from}", fmtPricing(c.from))
+              .replace("{to}", fmtPricing(c.to))}
           </span>
         );
       case "free_added":
@@ -486,6 +469,7 @@ export default function App() {
               </a>
             </div>
             <p class="mt-1 text-sm text-base-content/50">{t().freeModelsNote}</p>
+            <p class="mt-1 text-xs text-base-content/40">{t().freeAvailableNote}</p>
             <div class="mt-4 w-full overflow-x-auto">
               <table class="table table-sm table-zebra">
                 <thead>

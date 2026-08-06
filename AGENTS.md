@@ -31,8 +31,9 @@ pnpm preview          # dist/ lokal serven
 pnpm typecheck        # nur tsc --noEmit
 ```
 
-> **Changelog-Git-History:** `CHANGELOG.json` (strukturierte Änderungs-Events) wird bei jedem Lauf vom CI committet und gepusht
-> (`git add CHANGELOG.json data src/data`) → vollständige Git-History der Preisänderungen.
+> **Changelog-Git-History:** `CHANGELOG.json` (strukturierte Änderungs-Events) wird bei Änderungen vom CI committet und gepusht
+> (`git add CHANGELOG.json data src/data`) → vollständige Git-History der Preisänderungen. Ein Lauf **ohne** Änderungen erzeugt
+> **keinen Commit** (keine Daten-Diffs, `data/latest.json`/`data/history.json` bleiben unangetastet); die Website wird trotzdem täglich deployed.
 
 ## Datenmodell (`data/latest.json`)
 
@@ -68,8 +69,14 @@ pnpm typecheck        # nur tsc --noEmit
 - `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: 80% Input-Preis + 20% Cached-Write-Preis, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
 - `cachedWrite: null` (= `-` in der Doku) bedeutet: Cached-Write-Preis = **Input-Preis** (1:1, keine Schätzung). In `requestCost` fließt er als Cached-Write-Preis in die 80/20-Heuristik ein; in der Tabelle steht weiterhin `-` (Heuristik nur im Footer dokumentiert).
 - `freeModels` = kostenlose Zen-Modelle (ID enthält `free`) + `big-pickle` aus `https://opencode.ai/zen/v1/models`; `availableFrom` = erstes Beobachtungsdatum (bleibt über Läufe erhalten).
-- `data/history.json` = `{ "snapshots": [ … ] }` (Chronologie, append)
-- `CHANGELOG.json` = `{ "entries": [{ "date", "changes": [ … ] }] }`; Events: `baseline`, `model_added/removed`, `usage_changed`, `price_changed` (mit `from`/`to` = alter & neuer Preis), `free_added/removed` (mit `availableFrom`/`until`).
+- `data/history.json` = `{ "snapshots": [ … ] }` (Chronologie, append, nur bei Änderungen)
+- `CHANGELOG.json` = `{ "entries": [{ "date", "changes": [ … ] }] }`; Events (zod via `validateChangelog`):
+  - `text` (mit `lang` = `{ de, en }`-Übersetzungen, z. B. `{ de: "Initialversion", en: "Initial version" }`; keine freien Texte)
+  - `model_added` (mit `pricing` = `{ input, output, cachedRead, cachedWrite, usage }`, die Go-Tabellen-Zeile)
+  - `model_removed` (mit `days` = verfügbare Tage, `firstSeen` aus `history.json`-Chronologie)
+  - `pricing_changed` (mit `from`/`to` = komplette Pricing-Zeile; fasst Preis- **und** Nutzungsänderungen zusammen)
+  - `free_added`/`free_removed` (mit `availableFrom`/`until`)
+  - **Keine** `baseline`/`usage_changed`/`price_changed`-Events. Einträge haben IMMER `changes.length > 0`; ohne Änderungen wird kein Eintrag angelegt, leere Einträge werden entfernt (`upsertChangelogJson`).
 
 ## Scraper-Regeln (`scripts/scrape.mjs`)
 
@@ -79,8 +86,10 @@ pnpm typecheck        # nur tsc --noEmit
 - **Anfragemuster** (`Name — N Input-, M Cached-, K Output-Tokens pro Anfrage`) pro Modell extrahieren; Kurzschreibweisen (`GLM-5.2/5.1`, `Kimi K2.7/K2.6`) gegen die Modellnamen auflösen. Fehlende Muster über `PATTERN_FALLBACKS` (z. B. MiniMax M2.5 → M2.7) auffüllen.
 - **zod-Validierung** (`validateSnapshot`): jedes Modell MUSS `pattern` haben; ungültige Daten → `process.exit(1)` → CI rot.
 - Zen-Free-Models via `https://opencode.ai/zen/v1/models` (`extractFreeModels`), `availableFrom` aus dem vorherigen Lauf übernehmen (`mergeFreeModels`).
-- Diff gegen das vorherige `latest.json`: Modell hinzugefügt/entfernt, Nutzung verbessert/verschlechtert, Preisänderungen (Float-Toleranz 1e-9) mit **altem und neuem Preis** (`from`/`to`), Free-Model-Events.
-- CHANGELOG.json: neuer `{ date, changes }`-Eintrag oben, Datum UTC (`YYYY-MM-DD`), ein bestehender Eintrag mit demselben Datum wird ersetzt; Basis-Snapshot erzeugt **keine** Einzel-Events.
+- Diff gegen das vorherige `latest.json`: Modell hinzugefügt (mit Pricing-Zeile), Modell entfernt (mit `days` aus `firstSeen`), Nutzung verbessert/verschlechtert, Preisänderungen (Float-Toleranz 1e-9) → jeweils als **ein** `pricing_changed`-Event mit kompletten `from`/`to`-Zeilen, Free-Model-Events.
+- CHANGELOG.json: neuer `{ date, changes }`-Eintrag oben, Datum UTC (`YYYY-MM-DD`), ein bestehender Eintrag mit demselben Datum wird ersetzt; **leere** Einträge (`changes: []`) werden entfernt, bei `changes.length === 0` wird kein Eintrag angelegt (auch kein Basis-Snapshot beim ersten Lauf). `validateChangelog` (zod) bricht bei leeren Einträgen/unbekannten Typen rot ab.
+- `model_removed.days` = `heute − firstSeen`, `firstSeen` = frühester Snapshot in `data/history.json`, der das Modell enthält.
+- `data/latest.json`/`data/history.json` werden **nur bei Änderungen** geschrieben (`changes.length > 0`); sonst bleibt der Stand vom letzten Änderungstag erhalten (kein Commit, aber Deploy läuft weiter).
 - **Parsing-Fehler** (keine Preistabelle, unerwartete Spaltenstruktur, unparsebare Werte) → `process.exit(1)` → CI-Lauf wird rot.
 
 ## UI-Regeln (daisyUI 5 / Tailwind 4)

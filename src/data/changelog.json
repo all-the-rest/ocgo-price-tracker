@@ -1,12 +1,16 @@
 {
   "entries": [
     {
-      "date": "2026-08-06",
-      "changes": []
-    },
-    {
       "date": "2026-08-05",
-      "changes": []
+      "changes": [
+        {
+          "type": "text",
+          "lang": {
+            "de": "Initialversion",
+            "en": "Initial version"
+          }
+        }
+      ]
     }
   ]
 }

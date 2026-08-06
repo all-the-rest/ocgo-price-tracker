@@ -10,6 +10,7 @@ import {
   upsertChangelogJson,
   mergeFreeModels,
   validateSnapshot,
+  validateChangelog,
   modelKey,
   extractFreeModels,
   patternPartMatches,
@@ -120,30 +121,34 @@ test("computeDiff: erkennt hinzugefügte und entfernte Modelle", () => {
   assert.deepEqual(removed.removed, ["Gamma"]);
 });
 
-test("computeDiff: erkennt Nutzungsverbesserung", () => {
+test("computeDiff: erkennt Nutzungsverbesserung als komplette Pricing-Änderung", () => {
   const next = [{ ...base[0] }, { ...base[1], usage: 60 }];
   const diff = computeDiff(base, next);
-  assert.deepEqual(diff.usageChanges, [{ key: "Beta", from: 15, to: 60 }]);
+  assert.deepEqual(diff.changed, [
+    {
+      key: "Beta",
+      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+      to: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+    },
+  ]);
 });
 
 test("computeDiff: erkennt Preisänderung mit Float-Toleranz", () => {
   const next = [{ ...base[0], input: 1.0000000001 }, { ...base[1] }];
-  assert.equal(computeDiff(base, next).priceChanges.length, 0);
+  assert.equal(computeDiff(base, next).changed.length, 0);
   const changed = [{ ...base[0], input: 1.5 }, { ...base[1] }];
   const diff = computeDiff(base, changed);
-  assert.equal(diff.priceChanges.length, 1);
-  assert.equal(diff.priceChanges[0].key, "Alpha");
-  assert.equal(diff.priceChanges[0].fields[0].label, "Input");
-  assert.equal(diff.priceChanges[0].fields[0].field, "input");
+  assert.equal(diff.changed.length, 1);
+  assert.equal(diff.changed[0].key, "Alpha");
+  assert.equal(diff.changed[0].from.input, 1);
+  assert.equal(diff.changed[0].to.input, 1.5);
 });
 
-test("buildChanges: Baseline ohne Vorgänger", () => {
-  assert.deepEqual(buildChanges(null, base, [], []), [
-    { type: "baseline", modelCount: 2, freeModelCount: 0 },
-  ]);
+test("buildChanges: Baseline ohne Vorgänger erzeugt keinen Eintrag", () => {
+  assert.deepEqual(buildChanges(null, base, [], []), []);
 });
 
-test("buildChanges: Modell hinzugefügt und Nutzung verschlechtert", () => {
+test("buildChanges: Modell hinzugefügt (mit Pricing) und Nutzung verschlechtert", () => {
   const next = [
     { ...base[0], usage: 15 },
     { ...base[1] },
@@ -151,19 +156,41 @@ test("buildChanges: Modell hinzugefügt und Nutzung verschlechtert", () => {
   ];
   const changes = buildChanges(base, next, [], []);
   assert.deepEqual(changes, [
-    { type: "model_added", model: "Gamma" },
-    { type: "usage_changed", model: "Alpha", from: 60, to: 15 },
+    {
+      type: "model_added",
+      model: "Gamma",
+      pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+    },
+    {
+      type: "pricing_changed",
+      model: "Alpha",
+      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+      to: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+    },
   ]);
 });
 
-test("buildChanges: Preisänderung enthält alten und neuen Preis", () => {
+test("buildChanges: Preisänderung enthält alte und neue Pricing-Zeile", () => {
   const next = [{ ...base[0], input: 1.5 }, { ...base[1] }];
   const changes = buildChanges(base, next, [], []);
-  assert.deepEqual(changes, [{ type: "price_changed", model: "Alpha", field: "input", from: 1, to: 1.5 }]);
+  assert.deepEqual(changes, [
+    {
+      type: "pricing_changed",
+      model: "Alpha",
+      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+      to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+    },
+  ]);
 });
 
 test("buildChanges: keine Änderungen", () => {
   assert.deepEqual(buildChanges(base, base, [], []), []);
+});
+
+test("buildChanges: entferntes Modell mit Tagen aus firstSeen", () => {
+  const firstSeen = new Map([["Alpha", "2026-08-01"]]);
+  const changes = buildChanges(base, [base[1]], [], [], "2026-08-06", firstSeen);
+  assert.deepEqual(changes, [{ type: "model_removed", model: "Alpha", days: 5 }]);
 });
 
 test("buildChanges: kostenlose Modelle hinzugefügt/entfernt", () => {
@@ -173,7 +200,7 @@ test("buildChanges: kostenlose Modelle hinzugefügt/entfernt", () => {
     { id: "big-pickle", availableFrom: "2026-08-05" },
   ];
   const added = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
-  assert.deepEqual(added, [{ type: "free_added", model: "big-pickle", availableFrom: "2026-08-05" }]);
+  assert.deepEqual(added, [{ type: "free_added", model: "big-pickle" }]);
 
   const removed = buildChanges(base, base, prevFree, [], "2026-08-06");
   assert.deepEqual(removed, [
@@ -198,18 +225,80 @@ test("extractFreeModels: filtert free-Modelle und big-pickle", () => {
   assert.deepEqual(extractFreeModels(ids), ["big-pickle", "deepseek-v4-flash-free", "mimo-v2.5-free"]);
 });
 
-test("upsertChangelogJson: ersetzt Eintrag mit gleichem Datum und behält ältere", () => {
+test("upsertChangelogJson: ersetzt Eintrag mit gleichem Datum und entfernt leere Einträge", () => {
   const existing = {
     entries: [
-      { date: "2026-08-05", changes: [{ type: "model_added", model: "Alt" }] },
-      { date: "2026-08-04", changes: [{ type: "model_removed", model: "Uralt" }] },
+      { date: "2026-08-06", changes: [] },
+      { date: "2026-08-05", changes: [{ type: "text", lang: { de: "Alt", en: "Old" } }] },
+      { date: "2026-08-04", changes: [] },
+      { date: "2026-08-03", changes: [{ type: "text", lang: { de: "Uralt", en: "Ancient" } }] },
     ],
   };
-  const result = upsertChangelogJson(existing, "2026-08-05", [{ type: "model_added", model: "Neu" }]);
+  const result = upsertChangelogJson(existing, "2026-08-05", [{ type: "text", lang: { de: "Neu", en: "New" } }]);
   assert.equal(result.entries.length, 2);
   assert.equal(result.entries[0].date, "2026-08-05");
-  assert.deepEqual(result.entries[0].changes, [{ type: "model_added", model: "Neu" }]);
-  assert.equal(result.entries[1].date, "2026-08-04");
+  assert.deepEqual(result.entries[0].changes, [{ type: "text", lang: { de: "Neu", en: "New" } }]);
+  assert.equal(result.entries[1].date, "2026-08-03");
+});
+
+test("upsertChangelogJson: fügt bei leeren Änderungen keinen Eintrag hinzu", () => {
+  const existing = { entries: [{ date: "2026-08-05", changes: [{ type: "text", lang: { de: "x", en: "x" } }] }] };
+  const result = upsertChangelogJson(existing, "2026-08-06", []);
+  assert.equal(result.entries.length, 1);
+  assert.equal(result.entries[0].date, "2026-08-05");
+});
+
+test("validateChangelog: gültiger Changelog mit allen Event-Typen", () => {
+  const changelog = {
+    entries: [
+      {
+        date: "2026-08-05",
+        changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }],
+      },
+      {
+        date: "2026-08-06",
+        changes: [
+          {
+            type: "model_added",
+            model: "Gamma",
+            pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+          },
+          {
+            type: "model_removed",
+            model: "Alpha",
+            days: 5,
+          },
+          {
+            type: "pricing_changed",
+            model: "Beta",
+            from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+            to: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+          },
+          { type: "free_added", model: "big-pickle" },
+          { type: "free_removed", model: "a-free", availableFrom: "2026-08-01", until: "2026-08-06" },
+        ],
+      },
+    ],
+  };
+  assert.doesNotThrow(() => validateChangelog(changelog));
+});
+
+test("validateChangelog: leere Einträge, unbekannte Typen und fehlende Felder brechen", () => {
+  assert.throws(() => validateChangelog({ entries: [{ date: "2026-08-06", changes: [] }] }));
+  assert.throws(() =>
+    validateChangelog({ entries: [{ date: "2026-08-06", changes: [{ type: "baseline", modelCount: 1 }] }] })
+  );
+  assert.throws(() =>
+    validateChangelog({ entries: [{ date: "2026-08-06", changes: [{ type: "model_added", model: "X" }] }] })
+  );
+  assert.throws(() =>
+    validateChangelog({ entries: [{ date: "2026-08-06", changes: [{ type: "text", text: "no lang map" }] }] })
+  );
+  assert.throws(() =>
+    validateChangelog({
+      entries: [{ date: "2026-08-06", changes: [{ type: "model_removed", model: "X", days: -1 }] }],
+    })
+  );
 });
 
 test("patternPartMatches: härtet gegen Kollisionen", () => {
