@@ -2,7 +2,7 @@
 
 ## Projektüberblick
 
-OpenCode-Go-Preistracker. Ein täglicher GitHub-Actions-Lauf scrapet
+Preis-Tracking für OpenCode Go. Ein täglicher GitHub-Actions-Lauf scrapet
 `https://opencode.ai/docs/de/go/`, berechnet die Preise auf Basis des vollen
 `$60`/Monat-Guthabens (Effektivpreis = Listpreis × 60/Nutzung) und stellt eine
 statische SolidJS-Seite unter `https://ocgo-pricing.all-the.rest` bereit.

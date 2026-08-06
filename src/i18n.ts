@@ -2,8 +2,8 @@ export type Lang = "de" | "en";
 
 export const i18n = {
   de: {
-    title: "OpenCode Go – Preise",
-    subtitle: "Kostengünstiges Abonnement für offene Coding-Modelle.",
+    title: "Preis-Tracking für OpenCode Go",
+    subtitle: "Tägliche Preisübersicht für OpenCode Go, umgerechnet auf volle $60-Monatsguthaben.",
     intro:
       "Einmal täglich von der offiziellen OpenCode-Dokumentation abgerufen. Preise pro 1M Tokens; Effektivpreis bei vollem $60-Monatsguthaben = Listpreis × (60 / inkl. Nutzung). Die Kosten pro Anfrage nutzen das in der Doku dokumentierte Anfragemuster des jeweiligen Modells (Details im Tooltip).",
     headingPrices: "Preise",
@@ -53,11 +53,11 @@ export const i18n = {
     sourceZen: "Quelle (Zen)",
     impressum: "Impressum",
     datenschutz: "Datenschutz",
-    footer: "Automatisch täglich aktualisiert. Kein offizielles OpenCode-Angebot.",
+    footer: "Automatisch täglich aktualisiert. Kein offizielles OpenCode-Angebot. OpenCode ist eine Marke von anomalyco; diese Seite ist weder mit anomalyco verbunden noch von ihr gesponsert.",
   },
   en: {
-    title: "OpenCode Go – Pricing",
-    subtitle: "Budget subscription for open coding models.",
+    title: "Price Tracking for OpenCode Go",
+    subtitle: "Daily price overview for OpenCode Go, converted to the full $60 monthly credit.",
     intro:
       "Fetched daily from the official OpenCode documentation. Prices per 1M tokens; effective price at full $60 monthly credit = list price × (60 / included usage). Cost per request uses each model's documented request pattern (details in the tooltip).",
     headingPrices: "Prices",
@@ -107,7 +107,7 @@ export const i18n = {
     sourceZen: "Source (Zen)",
     impressum: "Impressum",
     datenschutz: "Privacy",
-    footer: "Updated automatically every day. Not an official OpenCode offering.",
+    footer: "Updated automatically every day. Not an official OpenCode offering. OpenCode is a trademark of anomalyco; this site is neither affiliated with nor sponsored by anomalyco.",
   },
 } as const;
 

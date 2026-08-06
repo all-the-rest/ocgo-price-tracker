@@ -1,4 +1,4 @@
-# OpenCode Go Price Tracker
+# Price Tracking for OpenCode Go
 
 Scrapet täglich die Preistabelle von `https://opencode.ai/docs/de/go/` und
 berechnet die Preise auf Basis des vollen $60/Monat-Guthabens

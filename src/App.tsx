@@ -274,7 +274,7 @@ export default function App() {
           <a
             href={window.location.pathname}
             class="inline-flex items-center"
-            aria-label="OpenCode Go — Home"
+            aria-label="Price Tracking for OpenCode Go — Home"
             onClick={(e) => {
               e.preventDefault();
               resetAll();
@@ -293,7 +293,7 @@ export default function App() {
               <path d="M22 7l-8.5 8.5-5-5L2 17" />
               <path d="M16 7h6v6" />
             </svg>
-            <span class="ml-2 text-lg font-bold">OpenCode Go</span>
+            <span class="ml-2 text-lg font-bold">{lang() === "de" ? "Preis-Tracking für OpenCode Go" : "Price Tracking for OpenCode Go"}</span>
           </a>
         </div>
         <div class="navbar-end gap-2">
