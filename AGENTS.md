@@ -65,7 +65,8 @@ pnpm typecheck        # nur tsc --noEmit
 
 - `multiplier = 60 / usage` (usage ∈ {15, 60})
 - `effective* = preis × multiplier`
-- `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: Input + Cached-Write, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
+- `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: 80% Input-Preis + 20% Cached-Write-Preis, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
+- `cachedWrite: null` (= `-` in der Doku) bedeutet: Cached-Write-Preis = **Input-Preis** (1:1, keine Schätzung). In `requestCost` fließt er als Cached-Write-Preis in die 80/20-Heuristik ein; in der Tabelle steht weiterhin `-` (Heuristik nur im Footer dokumentiert).
 - `freeModels` = kostenlose Zen-Modelle (ID enthält `free`) + `big-pickle` aus `https://opencode.ai/zen/v1/models`; `availableFrom` = erstes Beobachtungsdatum (bleibt über Läufe erhalten).
 - `data/history.json` = `{ "snapshots": [ … ] }` (Chronologie, append)
 - `CHANGELOG.json` = `{ "entries": [{ "date", "changes": [ … ] }] }`; Events: `baseline`, `model_added/removed`, `usage_changed`, `price_changed` (mit `from`/`to` = alter & neuer Preis), `free_added/removed` (mit `availableFrom`/`until`).

@@ -42,10 +42,10 @@ export const i18n = {
     colWeighted: "≈ $/Anfrage",
     perReq: "pro Anfrage",
     tooltipWeighted:
-      "Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input: Input + Cached-Write, Cached: Cached Read, Output: Output). Details im Tooltip der Zeile.",
+      "Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: 80% Input-Preis + 20% Cached-Write-Preis, Cached-Tokens: Cached-Read-Preis, Output-Tokens: Output-Preis — Heuristik). Fehlender Cached-Write („-“) zählt wie der Input-Preis. Details im Tooltip der Zeile.",
     patternTooltip: "Muster: {input} Input · {cached} Cached · {output} Output Tokens/Anfrage",
     metricNote:
-      "Preise auf Basis des vollen $60-Monatsguthabens: Effektivpreis = Listpreis × (60 / inkl. Nutzung). Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: Input + Cached-Write, Cached-Tokens: Cached Read, Output-Tokens: Output).",
+      "Preise auf Basis des vollen $60-Monatsguthabens: Effektivpreis = Listpreis × (60 / inkl. Nutzung). Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: 80% Input-Preis + 20% Cached-Write-Preis, Cached-Tokens: Cached-Read-Preis, Output-Tokens: Output-Preis — Heuristik). Fehlt ein Cached-Write-Preis („-“), zählt er wie der Input-Preis.",
     factorNote: "Bei vollem $60-Guthaben: Modelle mit $15 Nutzung ×{n}",
     noValue: "–",
     fetchedAt: "Stand",
@@ -96,10 +96,10 @@ export const i18n = {
     colWeighted: "≈ $/request",
     perReq: "per request",
     tooltipWeighted:
-      "Cost per request = model price × documented request pattern (input: input + cache write, cached: cached read, output: output). Details in the row tooltip.",
+      "Cost per request = model price × documented request pattern (input tokens: 80% input price + 20% cache write price, cached tokens: cached read price, output tokens: output price — heuristic). Missing cache write (\"-\") counts as the input price. Details in the row tooltip.",
     patternTooltip: "Pattern: {input} input · {cached} cached · {output} output tokens/request",
     metricNote:
-      "Prices based on the full $60 monthly credit: effective price = list price × (60 / included usage). Cost per request = model price × documented request pattern (input tokens: input + cache write, cached tokens: cached read, output tokens: output).",
+      "Prices based on the full $60 monthly credit: effective price = list price × (60 / included usage). Cost per request = model price × documented request pattern (input tokens: 80% input price + 20% cache write price, cached tokens: cached read price, output tokens: output price — heuristic). If no cache write price is listed (\"-\"), it counts as the input price.",
     factorNote: "At full $60 credit: $15-usage models ×{n}",
     noValue: "–",
     fetchedAt: "As of",
