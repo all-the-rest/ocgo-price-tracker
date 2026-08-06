@@ -7120,6 +7120,467 @@
           "availableFrom": "2026-08-05"
         }
       ]
+    },
+    {
+      "fetchedAt": "2026-08-06T05:43:52.148Z",
+      "sourceUrl": "https://opencode.ai/docs/de/go/",
+      "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
+      "sourceLang": "de",
+      "monthlyCredit": 60,
+      "models": [
+        {
+          "name": "Grok 4.5",
+          "tier": null,
+          "input": 2,
+          "output": 6,
+          "cachedRead": 0.3,
+          "cachedWrite": null,
+          "usage": 15,
+          "multiplier": 4,
+          "effectiveInput": 8,
+          "effectiveOutput": 24,
+          "effectiveCachedRead": 1.2,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 1100,
+            "cachedRead": 71500,
+            "output": 220
+          }
+        },
+        {
+          "name": "GPT 5.6 Luna",
+          "tier": "≤ 272K tokens",
+          "input": 0.2,
+          "output": 1.2,
+          "cachedRead": 0.02,
+          "cachedWrite": 0.25,
+          "usage": 15,
+          "multiplier": 4,
+          "effectiveInput": 0.8,
+          "effectiveOutput": 4.8,
+          "effectiveCachedRead": 0.08,
+          "effectiveCachedWrite": 1,
+          "pattern": {
+            "input": 1000,
+            "cachedRead": 50000,
+            "output": 220
+          }
+        },
+        {
+          "name": "GPT 5.6 Luna",
+          "tier": "> 272K tokens",
+          "input": 0.4,
+          "output": 1.8,
+          "cachedRead": 0.04,
+          "cachedWrite": 0.5,
+          "usage": 15,
+          "multiplier": 4,
+          "effectiveInput": 1.6,
+          "effectiveOutput": 7.2,
+          "effectiveCachedRead": 0.16,
+          "effectiveCachedWrite": 2,
+          "pattern": {
+            "input": 1000,
+            "cachedRead": 50000,
+            "output": 220
+          }
+        },
+        {
+          "name": "GLM-5.2",
+          "tier": null,
+          "input": 1.4,
+          "output": 4.4,
+          "cachedRead": 0.26,
+          "cachedWrite": null,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 1.4,
+          "effectiveOutput": 4.4,
+          "effectiveCachedRead": 0.26,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 700,
+            "cachedRead": 52000,
+            "output": 150
+          }
+        },
+        {
+          "name": "GLM-5.1",
+          "tier": null,
+          "input": 1.4,
+          "output": 4.4,
+          "cachedRead": 0.26,
+          "cachedWrite": null,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 1.4,
+          "effectiveOutput": 4.4,
+          "effectiveCachedRead": 0.26,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 700,
+            "cachedRead": 52000,
+            "output": 150
+          }
+        },
+        {
+          "name": "Kimi K3",
+          "tier": null,
+          "input": 3,
+          "output": 15,
+          "cachedRead": 0.3,
+          "cachedWrite": null,
+          "usage": 15,
+          "multiplier": 4,
+          "effectiveInput": 12,
+          "effectiveOutput": 60,
+          "effectiveCachedRead": 1.2,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 1050,
+            "cachedRead": 76500,
+            "output": 300
+          }
+        },
+        {
+          "name": "Kimi K2.7 Code",
+          "tier": null,
+          "input": 0.95,
+          "output": 4,
+          "cachedRead": 0.19,
+          "cachedWrite": null,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.95,
+          "effectiveOutput": 4,
+          "effectiveCachedRead": 0.19,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 870,
+            "cachedRead": 55000,
+            "output": 200
+          }
+        },
+        {
+          "name": "Kimi K2.6",
+          "tier": null,
+          "input": 0.95,
+          "output": 4,
+          "cachedRead": 0.16,
+          "cachedWrite": null,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.95,
+          "effectiveOutput": 4,
+          "effectiveCachedRead": 0.16,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 870,
+            "cachedRead": 55000,
+            "output": 200
+          }
+        },
+        {
+          "name": "MiMo V2.5",
+          "tier": null,
+          "input": 0.14,
+          "output": 0.28,
+          "cachedRead": 0.0028,
+          "cachedWrite": null,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.14,
+          "effectiveOutput": 0.28,
+          "effectiveCachedRead": 0.0028,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 830,
+            "cachedRead": 71500,
+            "output": 295
+          }
+        },
+        {
+          "name": "MiMo V2.5 Pro",
+          "tier": null,
+          "input": 0.435,
+          "output": 0.87,
+          "cachedRead": 0.003625,
+          "cachedWrite": null,
+          "usage": 15,
+          "multiplier": 4,
+          "effectiveInput": 1.74,
+          "effectiveOutput": 3.48,
+          "effectiveCachedRead": 0.0145,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 790,
+            "cachedRead": 86000,
+            "output": 305
+          }
+        },
+        {
+          "name": "MiniMax M3",
+          "tier": null,
+          "input": 0.3,
+          "output": 1.2,
+          "cachedRead": 0.06,
+          "cachedWrite": null,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.3,
+          "effectiveOutput": 1.2,
+          "effectiveCachedRead": 0.06,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 510,
+            "cachedRead": 56000,
+            "output": 190
+          }
+        },
+        {
+          "name": "MiniMax M2.7",
+          "tier": null,
+          "input": 0.3,
+          "output": 1.2,
+          "cachedRead": 0.06,
+          "cachedWrite": 0.375,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.3,
+          "effectiveOutput": 1.2,
+          "effectiveCachedRead": 0.06,
+          "effectiveCachedWrite": 0.375,
+          "pattern": {
+            "input": 300,
+            "cachedRead": 55000,
+            "output": 125
+          }
+        },
+        {
+          "name": "MiniMax M2.5",
+          "tier": null,
+          "input": 0.3,
+          "output": 1.2,
+          "cachedRead": 0.06,
+          "cachedWrite": 0.375,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.3,
+          "effectiveOutput": 1.2,
+          "effectiveCachedRead": 0.06,
+          "effectiveCachedWrite": 0.375,
+          "pattern": {
+            "input": 300,
+            "cachedRead": 55000,
+            "output": 125
+          }
+        },
+        {
+          "name": "Qwen3.8 Max",
+          "tier": null,
+          "input": 2,
+          "output": 6,
+          "cachedRead": 0.25,
+          "cachedWrite": 2.5,
+          "usage": 15,
+          "multiplier": 4,
+          "effectiveInput": 8,
+          "effectiveOutput": 24,
+          "effectiveCachedRead": 1,
+          "effectiveCachedWrite": 10,
+          "pattern": {
+            "input": 420,
+            "cachedRead": 66000,
+            "output": 200
+          }
+        },
+        {
+          "name": "Qwen3.7 Max",
+          "tier": null,
+          "input": 2.5,
+          "output": 7.5,
+          "cachedRead": 0.5,
+          "cachedWrite": 3.125,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 2.5,
+          "effectiveOutput": 7.5,
+          "effectiveCachedRead": 0.5,
+          "effectiveCachedWrite": 3.125,
+          "pattern": {
+            "input": 420,
+            "cachedRead": 66000,
+            "output": 200
+          }
+        },
+        {
+          "name": "Qwen3.7 Plus",
+          "tier": "≤ 256K tokens",
+          "input": 0.4,
+          "output": 1.6,
+          "cachedRead": 0.04,
+          "cachedWrite": 0.5,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.4,
+          "effectiveOutput": 1.6,
+          "effectiveCachedRead": 0.04,
+          "effectiveCachedWrite": 0.5,
+          "pattern": {
+            "input": 500,
+            "cachedRead": 57000,
+            "output": 190
+          }
+        },
+        {
+          "name": "Qwen3.7 Plus",
+          "tier": "> 256K tokens",
+          "input": 1.2,
+          "output": 4.8,
+          "cachedRead": 0.12,
+          "cachedWrite": 1.5,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 1.2,
+          "effectiveOutput": 4.8,
+          "effectiveCachedRead": 0.12,
+          "effectiveCachedWrite": 1.5,
+          "pattern": {
+            "input": 500,
+            "cachedRead": 57000,
+            "output": 190
+          }
+        },
+        {
+          "name": "Qwen3.6 Plus",
+          "tier": "≤ 256K tokens",
+          "input": 0.5,
+          "output": 3,
+          "cachedRead": 0.05,
+          "cachedWrite": 0.625,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.5,
+          "effectiveOutput": 3,
+          "effectiveCachedRead": 0.05,
+          "effectiveCachedWrite": 0.625,
+          "pattern": {
+            "input": 500,
+            "cachedRead": 57000,
+            "output": 190
+          }
+        },
+        {
+          "name": "Qwen3.6 Plus",
+          "tier": "> 256K tokens",
+          "input": 2,
+          "output": 6,
+          "cachedRead": 0.2,
+          "cachedWrite": 2.5,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 2,
+          "effectiveOutput": 6,
+          "effectiveCachedRead": 0.2,
+          "effectiveCachedWrite": 2.5,
+          "pattern": {
+            "input": 500,
+            "cachedRead": 57000,
+            "output": 190
+          }
+        },
+        {
+          "name": "DeepSeek V4 Pro",
+          "tier": null,
+          "input": 0.435,
+          "output": 0.87,
+          "cachedRead": 0.003625,
+          "cachedWrite": null,
+          "usage": 15,
+          "multiplier": 4,
+          "effectiveInput": 1.74,
+          "effectiveOutput": 3.48,
+          "effectiveCachedRead": 0.0145,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 750,
+            "cachedRead": 82000,
+            "output": 290
+          }
+        },
+        {
+          "name": "DeepSeek V4 Flash",
+          "tier": null,
+          "input": 0.14,
+          "output": 0.28,
+          "cachedRead": 0.0028,
+          "cachedWrite": null,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.14,
+          "effectiveOutput": 0.28,
+          "effectiveCachedRead": 0.0028,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 790,
+            "cachedRead": 68000,
+            "output": 280
+          }
+        },
+        {
+          "name": "Hy3",
+          "tier": null,
+          "input": 0.14,
+          "output": 0.58,
+          "cachedRead": 0.035,
+          "cachedWrite": null,
+          "usage": 60,
+          "multiplier": 1,
+          "effectiveInput": 0.14,
+          "effectiveOutput": 0.58,
+          "effectiveCachedRead": 0.035,
+          "effectiveCachedWrite": null,
+          "pattern": {
+            "input": 830,
+            "cachedRead": 71500,
+            "output": 295
+          }
+        }
+      ],
+      "freeModels": [
+        {
+          "id": "big-pickle",
+          "availableFrom": "2026-08-05"
+        },
+        {
+          "id": "deepseek-v4-flash-free",
+          "availableFrom": "2026-08-05"
+        },
+        {
+          "id": "laguna-s-2.1-free",
+          "availableFrom": "2026-08-05"
+        },
+        {
+          "id": "ling-3.0-flash-free",
+          "availableFrom": "2026-08-05"
+        },
+        {
+          "id": "longcat-2.0-free",
+          "availableFrom": "2026-08-05"
+        },
+        {
+          "id": "mimo-v2.5-free",
+          "availableFrom": "2026-08-05"
+        },
+        {
+          "id": "nemotron-3-ultra-free",
+          "availableFrom": "2026-08-05"
+        },
+        {
+          "id": "north-mini-code-free",
+          "availableFrom": "2026-08-05"
+        }
+      ]
     }
   ]
 }
