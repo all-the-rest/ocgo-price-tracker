@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/ocg-price Tracker.iml" filepath="$PROJECT_DIR$/.idea/ocg-price Tracker.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ocg-price-tracker.iml" filepath="$PROJECT_DIR$/.idea/ocg-price-tracker.iml" />
     </modules>
   </component>
 </project>
