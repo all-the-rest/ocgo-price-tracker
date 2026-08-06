@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
-import type { Change, ChangelogData, Model, PriceData, PricingType } from "./types";
+import type { Capabilities, Change, ChangelogData, Model, PriceData, PricingType } from "./types";
 import { i18n, type Lang } from "./i18n";
 import { fmt, fmtDate, fmtDateOnly, formatModelName } from "./util";
 import { fieldPrice, formatTokens, requestCost } from "./weighted";
@@ -13,8 +13,10 @@ type SortField = "name" | "input" | "output" | "cachedRead" | "cachedWrite" | "u
 type SortState = { field: SortField; dir: 1 | -1 };
 type FreeSortField = "model" | "availableFrom";
 type FreeSortState = { field: FreeSortField; dir: 1 | -1 };
+type CapId = "image" | "video" | "audio" | "pdf";
 
 const VALID_SORT: readonly SortField[] = ["name", "input", "output", "cachedRead", "cachedWrite", "usage", "cost"];
+const CAP_IDS: readonly CapId[] = ["image", "video", "audio", "pdf"];
 
 const storedLang = typeof localStorage !== "undefined" ? localStorage.getItem("lang") : null;
 const storedTheme = typeof localStorage !== "undefined" ? localStorage.getItem("theme") : null;
@@ -29,6 +31,8 @@ function readParams(): {
   fsort: FreeSortState | null;
   basis: "list" | "full" | null;
   lang: "de" | "en" | null;
+  cap: CapId[] | null;
+  fcap: CapId[] | null;
 } {
   const p =
     typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
@@ -46,7 +50,13 @@ function readParams(): {
   const basis: "list" | "full" | null = b === "list" || b === "full" ? b : null;
   const l = p.get("lang");
   const lang: "de" | "en" | null = l === "de" || l === "en" ? l : null;
-  return { sort, fsort, basis, lang };
+  const parseCaps = (raw: string | null): CapId[] | null =>
+    raw === null
+      ? null
+      : Array.from(new Set(raw.split(",").filter((x): x is CapId => (CAP_IDS as readonly string[]).includes(x))));
+  const cap = parseCaps(p.get("cap"));
+  const fcap = parseCaps(p.get("fcap"));
+  return { sort, fsort, basis, lang, cap, fcap };
 }
 const params = readParams();
 
@@ -65,8 +75,69 @@ export default function App() {
   const [freeSort, setFreeSort] = createSignal<FreeSortState>(
     params.fsort ?? { field: "availableFrom", dir: -1 }
   );
+  const [caps, setCaps] = createSignal<CapId[]>(params.cap ?? []);
+  const [freeCaps, setFreeCaps] = createSignal<CapId[]>(params.fcap ?? []);
 
   const t = () => i18n[lang()];
+
+  const capsOf = (m: { capabilities: Capabilities | null }): Set<CapId> => {
+    const c = m.capabilities;
+    if (!c) return new Set<CapId>();
+    return new Set(c.input.filter((mod): mod is CapId => mod !== "text"));
+  };
+
+  const capLabel = (id: CapId): string =>
+    id === "pdf" ? t().capDocs : id === "image" ? t().capImage : id === "video" ? t().capVideo : t().capAudio;
+
+  const capsBadges = (m: { capabilities: Capabilities | null }) => (
+    <Show when={capsOf(m).size > 0} fallback={<span>{t().noValue}</span>}>
+      <div class="flex flex-wrap gap-1">
+        <For each={CAP_IDS}>
+          {(id) => (
+            <Show when={capsOf(m).has(id)}>
+              <span class="badge badge-sm badge-ghost">{capLabel(id)}</span>
+            </Show>
+          )}
+        </For>
+      </div>
+    </Show>
+  );
+
+  const capsFilterRow = (value: () => CapId[], setter: (u: (prev: CapId[]) => CapId[]) => void) => (
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <span>{t().capsLabel}</span>
+      <For each={CAP_IDS}>
+        {(id) => (
+          <label class="label cursor-pointer gap-2">
+            <span class="label-text">{capLabel(id)}</span>
+            <input
+              type="checkbox"
+              class="toggle toggle-primary toggle-sm"
+              checked={value().includes(id)}
+              onChange={(e) =>
+                setter((prev) =>
+                  e.currentTarget.checked
+                    ? prev.includes(id)
+                      ? prev
+                      : [...prev, id]
+                    : prev.filter((x) => x !== id)
+                )
+              }
+            />
+          </label>
+        )}
+      </For>
+    </div>
+  );
+
+  const fmtCaps = (c: Capabilities | null): string => {
+    if (!c) return t().noValue;
+    const parts: string[] = [];
+    for (const id of CAP_IDS) {
+      if (c.input.includes(id)) parts.push(capLabel(id));
+    }
+    return parts.length > 0 ? parts.join(", ") : t().noValue;
+  };
 
   createEffect(() => {
     document.documentElement.lang = lang();
@@ -102,6 +173,10 @@ export default function App() {
     else p.set("basis", basis());
     if (lang() === defaultLang) p.delete("lang");
     else p.set("lang", lang());
+    if (caps().length === 0) p.delete("cap");
+    else p.set("cap", caps().join(","));
+    if (freeCaps().length === 0) p.delete("fcap");
+    else p.set("fcap", freeCaps().join(","));
     const qs = p.toString();
     const url = (qs ? window.location.pathname + "?" + qs : window.location.pathname) + window.location.hash;
     history.replaceState(null, "", url);
@@ -112,6 +187,8 @@ export default function App() {
     setFreeSort({ field: "availableFrom", dir: -1 });
     setBasis(defaultBasis);
     setLang(defaultLang);
+    setCaps([]);
+    setFreeCaps([]);
     history.replaceState(null, "", window.location.pathname);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -124,7 +201,15 @@ export default function App() {
 
   const sorted = createMemo(() => {
     const { field, dir } = sort();
-    return [...data.models].sort((a, b) => {
+    const selected = caps();
+    let models = data.models;
+    if (selected.length > 0) {
+      models = models.filter((m) => {
+        const s = capsOf(m);
+        return selected.some((cap) => s.has(cap));
+      });
+    }
+    return [...models].sort((a, b) => {
       const va = sortValue(a, field);
       const vb = sortValue(b, field);
       if (va === null && vb === null) return 0;
@@ -137,7 +222,15 @@ export default function App() {
 
   const sortedFree = createMemo(() => {
     const { field, dir } = freeSort();
-    return [...data.freeModels].sort((a, b) => {
+    const selected = freeCaps();
+    let models = data.freeModels;
+    if (selected.length > 0) {
+      models = models.filter((f) => {
+        const s = capsOf(f);
+        return selected.some((cap) => s.has(cap));
+      });
+    }
+    return [...models].sort((a, b) => {
       const cmp =
         field === "availableFrom" ? a.availableFrom.localeCompare(b.availableFrom) : a.id.localeCompare(b.id);
       return cmp !== 0 ? cmp * dir : a.id.localeCompare(b.id);
@@ -192,6 +285,15 @@ export default function App() {
   const fmtPricing = (p: PricingType) =>
     `${fmt(p.input)} / ${fmt(p.output)} / ${fmt(p.cachedRead)} / ${fmt(p.cachedWrite)} @ $${p.usage}`;
 
+  const priceEffective = (p: PricingType): number => {
+    const mult = data.monthlyCredit / p.usage;
+    const val = (x: number | null) => (x === null ? 0 : x * mult);
+    return val(p.input) + val(p.output) + val(p.cachedRead) + val(p.cachedWrite);
+  };
+
+  const capCount = (c: Capabilities | null): number =>
+    c ? c.input.length + c.output.length + (c.reasoning ? 1 : 0) + (c.toolCall ? 1 : 0) : 0;
+
   const changeBadge = (c: Change) => {
     const baseCls = "badge badge-sm shrink-0";
     switch (c.type) {
@@ -201,8 +303,18 @@ export default function App() {
       case "model_removed":
       case "free_removed":
         return <span class={`${baseCls} badge-error`}>−</span>;
-      case "pricing_changed":
-        return <span class={`${baseCls} badge-info`}>↕</span>;
+      case "pricing_changed": {
+        const diff = priceEffective(c.to) - priceEffective(c.from);
+        if (diff > 1e-9) return <span class={`${baseCls} badge-error`}>↑</span>;
+        if (diff < -1e-9) return <span class={`${baseCls} badge-success`}>↓</span>;
+        return <span class={`${baseCls} badge-ghost`}>≈</span>;
+      }
+      case "capabilities_changed": {
+        const diff = capCount(c.to) - capCount(c.from);
+        if (diff > 0) return <span class={`${baseCls} badge-success`}>+</span>;
+        if (diff < 0) return <span class={`${baseCls} badge-error`}>−</span>;
+        return <span class={`${baseCls} badge-ghost`}>≈</span>;
+      }
       case "text":
         return <span class={`${baseCls} badge-ghost`}>i</span>;
     }
@@ -229,6 +341,15 @@ export default function App() {
               .chgPricing.replace("{model}", c.model)
               .replace("{from}", fmtPricing(c.from))
               .replace("{to}", fmtPricing(c.to))}
+          </span>
+        );
+      case "capabilities_changed":
+        return (
+          <span>
+            {t()
+              .chgCaps.replace("{model}", c.model)
+              .replace("{from}", fmtCaps(c.from))
+              .replace("{to}", fmtCaps(c.to))}
           </span>
         );
       case "free_added":
@@ -395,11 +516,14 @@ export default function App() {
             </Show>
           </div>
 
+          {capsFilterRow(caps, setCaps)}
+
           <div class="mt-4 max-w-full overflow-x-auto">
             <table class="table table-zebra table-sm table-pin-rows">
               <thead>
                 <tr>
                   {thSort("name", t().colModel)}
+                  <th>{t().capsLabel}</th>
                   {thSort("input", t().colInput, true)}
                   {thSort("output", t().colOutput, true)}
                   {thSort("cachedRead", t().colCachedRead, true)}
@@ -408,6 +532,7 @@ export default function App() {
                   {thSort("cost", t().colWeighted, true, t().tooltipWeighted)}
                 </tr>
                 <tr>
+                  <th></th>
                   <th></th>
                   <th class="text-right font-normal text-base-content/40">{t().per1m}</th>
                   <th class="text-right font-normal text-base-content/40">{t().per1m}</th>
@@ -427,6 +552,7 @@ export default function App() {
                           <span class="block text-xs font-normal text-base-content/50">{m.tier}</span>
                         </Show>
                       </th>
+                      <td>{capsBadges(m)}</td>
                       <td class="text-right tabular-nums">{fmt(fieldPrice(m, "input", basis()))}</td>
                       <td class="text-right tabular-nums">{fmt(fieldPrice(m, "output", basis()))}</td>
                       <td class="text-right tabular-nums">{fmt(fieldPrice(m, "cachedRead", basis()))}</td>
@@ -462,19 +588,15 @@ export default function App() {
 
         <Show when={data.freeModels.length > 0}>
           <section class="mt-10">
-            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-              <h2 class="text-lg font-bold tracking-tight">{t().headingFree}</h2>
-              <a href={data.freeModelsSourceUrl} target="_blank" rel="noopener noreferrer" class="text-sm underline">
-                {t().sourceZen}
-              </a>
-            </div>
+            <h2 class="text-lg font-bold tracking-tight">{t().headingFree}</h2>
             <p class="mt-1 text-sm text-base-content/50">{t().freeModelsNote}</p>
-            <p class="mt-1 text-xs text-base-content/40">{t().freeAvailableNote}</p>
+            {capsFilterRow(freeCaps, setFreeCaps)}
             <div class="mt-4 w-full overflow-x-auto">
               <table class="table table-sm table-zebra">
                 <thead>
                   <tr>
                     {thFreeSort("model", t().colModel)}
+                    <th>{t().capsLabel}</th>
                     {thFreeSort("availableFrom", t().colAvailableFrom, true)}
                   </tr>
                 </thead>
@@ -483,6 +605,7 @@ export default function App() {
                     {(f) => (
                       <tr>
                         <td class="font-medium">{formatModelName(f.id)}</td>
+                        <td>{capsBadges(f)}</td>
                         <td class="text-right tabular-nums">
                           {fmtDateOnly(`${f.availableFrom}T00:00:00.000Z`, lang())}
                         </td>
@@ -559,6 +682,7 @@ export default function App() {
       <footer class="mx-auto max-w-5xl px-4 pb-10">
         <div class="flex flex-col gap-2 border-t border-base-300 pt-4 text-xs text-base-content/40">
           <p class="max-w-3xl">{t().metricNote}</p>
+          <p class="max-w-3xl">{t().freeAvailableNote}</p>
           <span>
             {t().fetchedAt}: {fmtDate(data.fetchedAt, lang())}
           </span>
@@ -568,6 +692,9 @@ export default function App() {
             </a>
             <a href={data.freeModelsSourceUrl} target="_blank" rel="noopener noreferrer" class="underline">
               {t().sourceZen}
+            </a>
+            <a href={data.capabilitiesSourceUrl} target="_blank" rel="noopener noreferrer" class="underline">
+              {t().sourceCaps}
             </a>
             <a href="#impressum" class="underline" onClick={(e) => scrollToSection("impressum", e)}>
               {t().impressum}

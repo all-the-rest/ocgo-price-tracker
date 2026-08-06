@@ -1,5 +1,14 @@
 export type PriceField = "input" | "output" | "cachedRead" | "cachedWrite";
 
+export type Modality = "text" | "audio" | "image" | "video" | "pdf";
+
+export interface Capabilities {
+  input: Modality[];
+  output: Modality[];
+  reasoning: boolean;
+  toolCall: boolean;
+}
+
 export interface PricingType {
   input: number | null;
   output: number | null;
@@ -17,6 +26,7 @@ export interface RequestPattern {
 export interface FreeModel {
   id: string;
   availableFrom: string;
+  capabilities: Capabilities | null;
 }
 
 export interface Model {
@@ -33,12 +43,14 @@ export interface Model {
   effectiveCachedRead: number | null;
   effectiveCachedWrite: number | null;
   pattern: RequestPattern | null;
+  capabilities: Capabilities | null;
 }
 
 export interface PriceData {
   fetchedAt: string;
   sourceUrl: string;
   freeModelsSourceUrl: string;
+  capabilitiesSourceUrl: string;
   sourceLang: string;
   monthlyCredit: number;
   models: Model[];
@@ -52,6 +64,7 @@ export type Change =
   | { type: "model_added"; model: string; pricing: PricingType }
   | { type: "model_removed"; model: string; days: number }
   | { type: "pricing_changed"; model: string; from: PricingType; to: PricingType }
+  | { type: "capabilities_changed"; model: string; from: Capabilities | null; to: Capabilities | null }
   | { type: "free_added"; model: string }
   | { type: "free_removed"; model: string; availableFrom: string; until: string };
 

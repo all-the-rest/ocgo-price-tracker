@@ -14,6 +14,9 @@ import {
   modelKey,
   extractFreeModels,
   patternPartMatches,
+  enrichCapabilities,
+  computeCapabilityDiff,
+  enrichFreeModels,
 } from "../scripts/scrape.mjs";
 
 const fixture = readFileSync(
@@ -274,6 +277,12 @@ test("validateChangelog: gültiger Changelog mit allen Event-Typen", () => {
             from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
             to: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
           },
+          {
+            type: "capabilities_changed",
+            model: "Grok 4.5",
+            from: null,
+            to: { input: ["text", "image"], output: ["text"], reasoning: true, toolCall: true },
+          },
           { type: "free_added", model: "big-pickle" },
           { type: "free_removed", model: "a-free", availableFrom: "2026-08-01", until: "2026-08-06" },
         ],
@@ -299,6 +308,18 @@ test("validateChangelog: leere Einträge, unbekannte Typen und fehlende Felder b
       entries: [{ date: "2026-08-06", changes: [{ type: "model_removed", model: "X", days: -1 }] }],
     })
   );
+  assert.throws(() =>
+    validateChangelog({
+      entries: [
+        {
+          date: "2026-08-06",
+          changes: [
+            { type: "capabilities_changed", model: "X", from: null, to: { input: ["text"] } },
+          ],
+        },
+      ],
+    })
+  );
 });
 
 test("patternPartMatches: härtet gegen Kollisionen", () => {
@@ -313,10 +334,11 @@ test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () =
     fetchedAt: "2026-08-05T00:00:00.000Z",
     sourceUrl: "https://opencode.ai/docs/de/go/",
     freeModelsSourceUrl: "https://opencode.ai/zen/v1/models",
+    capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     monthlyCredit: 60,
     models: parseHtml(fixture),
-    freeModels: [{ id: "big-pickle", availableFrom: "2026-08-05" }],
+    freeModels: [{ id: "big-pickle", availableFrom: "2026-08-05", capabilities: null }],
   };
   assert.doesNotThrow(() => validateSnapshot(snapshot));
 });
@@ -328,10 +350,123 @@ test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung",
     fetchedAt: "2026-08-05T00:00:00.000Z",
     sourceUrl: "https://opencode.ai/docs/de/go/",
     freeModelsSourceUrl: "https://opencode.ai/zen/v1/models",
+    capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     monthlyCredit: 60,
     models: [withoutPattern],
     freeModels: [],
   };
   assert.throws(() => validateSnapshot(snapshot));
+});
+
+test("enrichCapabilities: löst über den opencode-Provider auf", () => {
+  const models = [{ name: "Grok 4.5", tier: null }];
+  const opencodeModels = {
+    "grok-4.5": {
+      id: "grok-4.5",
+      name: "Grok 4.5",
+      reasoning: true,
+      tool_call: true,
+      modalities: { input: ["text", "image"], output: ["text"] },
+    },
+  };
+  const enriched = enrichCapabilities(models, opencodeModels, {});
+  assert.deepEqual(enriched[0].capabilities, {
+    input: ["text", "image"],
+    output: ["text"],
+    reasoning: true,
+    toolCall: true,
+  });
+});
+
+test("enrichCapabilities: fällt auf kanonische Metadaten zurück", () => {
+  const models = [{ name: "MiMo V2.5", tier: null }];
+  const metadataModels = {
+    "xiaomi/mimo-v2.5": {
+      id: "xiaomi/mimo-v2.5",
+      name: "MiMo-V2.5",
+      modalities: { input: ["text", "image", "audio", "video"], output: ["text"] },
+    },
+  };
+  const enriched = enrichCapabilities(models, {}, metadataModels);
+  assert.deepEqual(enriched[0].capabilities, {
+    input: ["text", "image", "audio", "video"],
+    output: ["text"],
+    reasoning: false,
+    toolCall: false,
+  });
+});
+
+test("enrichCapabilities: lässt capabilities null bei unbekanntem Modell", () => {
+  const models = [{ name: "Völlig Unbekannt", tier: null }];
+  const enriched = enrichCapabilities(models, {}, {});
+  assert.equal(enriched[0].capabilities, null);
+});
+
+test("computeCapabilityDiff: erkennt Änderung und ignoriert gleiche Werte", () => {
+  const cap = { input: ["text"], output: ["text"], reasoning: false, toolCall: false };
+  const prev = [{ name: "Alpha", tier: null, capabilities: null }];
+  const next = [{ name: "Alpha", tier: null, capabilities: cap }];
+  assert.deepEqual(computeCapabilityDiff(prev, next), [{ key: "Alpha", from: null, to: cap }]);
+  assert.deepEqual(computeCapabilityDiff(next, next), []);
+  assert.deepEqual(
+    computeCapabilityDiff([{ name: "Alpha" }], [{ name: "Alpha", capabilities: null }]),
+    []
+  );
+});
+
+test("buildChanges: capabilities_changed bei geänderten Fähigkeiten", () => {
+  const cap = { input: ["text"], output: ["text"], reasoning: true, toolCall: true };
+  const prev = [{ ...base[0], capabilities: null }];
+  const next = [{ ...base[0], capabilities: cap }];
+  const changes = buildChanges(prev, next, [], []);
+  assert.deepEqual(changes, [{ type: "capabilities_changed", model: "Alpha", from: null, to: cap }]);
+});
+
+test("buildChanges: keine capabilities_changed bei gleichen Fähigkeiten", () => {
+  const cap = { input: ["text"], output: ["text"], reasoning: false, toolCall: false };
+  const prev = [{ ...base[0], capabilities: cap }];
+  const next = [{ ...base[0], capabilities: { ...cap } }];
+  const changes = buildChanges(prev, next, [], []);
+  assert.deepEqual(changes, []);
+});
+
+test("enrichFreeModels: reichert Zen-Modelle über die opencode-ID an", () => {
+  const free = [{ id: "mimo-v2.5-free", availableFrom: "2026-08-05" }];
+  const opencodeModels = {
+    "mimo-v2.5-free": {
+      id: "mimo-v2.5-free",
+      name: "MiMo V2.5 Free",
+      modalities: { input: ["text", "image", "audio", "video"], output: ["text"] },
+    },
+  };
+  const enriched = enrichFreeModels(free, opencodeModels, {});
+  assert.deepEqual(enriched[0].capabilities, {
+    input: ["text", "image", "audio", "video"],
+    output: ["text"],
+    reasoning: false,
+    toolCall: false,
+  });
+});
+
+test("enrichFreeModels: lässt capabilities null bei unbekannter ID", () => {
+  const free = [{ id: "does-not-exist-free", availableFrom: "2026-08-05" }];
+  const enriched = enrichFreeModels(free, {}, {});
+  assert.equal(enriched[0].capabilities, null);
+});
+
+test("buildChanges: capabilities_changed für kostenlose Zen-Modelle", () => {
+  const cap = { input: ["text", "image"], output: ["text"], reasoning: true, toolCall: true };
+  const prevFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: null }];
+  const nextFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: cap }];
+  const changes = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
+  assert.deepEqual(changes, [{ type: "capabilities_changed", model: "a-free", from: null, to: cap }]);
+});
+
+test("buildChanges: keine capabilities_changed für unveränderte Zen-Modelle", () => {
+  const cap = { input: ["text"], output: ["text"], reasoning: false, toolCall: false };
+  const prevFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: cap }];
+  const nextFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: { ...cap } }];
+  const changes = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
+  assert.deepEqual(changes, []);
 });

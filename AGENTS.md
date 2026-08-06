@@ -15,7 +15,7 @@ statische SolidJS-Seite unter `https://ocgo-pricing.all-the.rest` bereit.
 
 - SolidJS 1.9 + Vite 8 (`vite-plugin-solid`), TypeScript 7 (`tsc --noEmit`)
 - Tailwind CSS 4 + daisyUI 5 — lokal gebündelt, **keine externen Fonts/Libs via URL**
-- Scraper: Node ≥22, `scripts/scrape.mjs` mit cheerio (nur devDependency)
+- Scraper: Node ≥22, `scripts/scrape.mjs` mit cheerio + `@opencode-ai/models` (nur devDependencies)
 - Paketmanager: pnpm — die `packageManager`-Version in `package.json` ist maßgeblich (CI liest sie)
 - Deployment: GitHub Pages (`upload-pages-artifact` + `deploy-pages`), CNAME im `public/`
 
@@ -41,6 +41,7 @@ pnpm typecheck        # nur tsc --noEmit
 {
   "fetchedAt": "2026-08-05T22:00:00.000Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
+  "capabilitiesSourceUrl": "https://models.dev",
   "sourceLang": "de",
   "monthlyCredit": 60,
   "freeModels": [{ "id": "big-pickle", "availableFrom": "2026-08-05" }],
@@ -58,7 +59,8 @@ pnpm typecheck        # nur tsc --noEmit
       "effectiveOutput": 24.0,
       "effectiveCachedRead": 1.2,
       "effectiveCachedWrite": null,
-      "pattern": { "input": 1100, "cachedRead": 71500, "output": 220 }
+      "pattern": { "input": 1100, "cachedRead": 71500, "output": 220 },
+      "capabilities": { "input": ["text", "image"], "output": ["text"], "reasoning": true, "toolCall": true }
     }
   ]
 }
@@ -67,14 +69,17 @@ pnpm typecheck        # nur tsc --noEmit
 - `multiplier = 60 / usage` (usage ∈ {15, 60})
 - `effective* = preis × multiplier`
 - `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: 80% Input-Preis + 20% Cached-Write-Preis, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
+- `capabilities` = Fähigkeiten aus models.dev (via `@opencode-ai/models`): `input`/`output`-Modalitäten (`text`, `audio`, `image`, `video`, `pdf`), `reasoning`, `toolCall`. `null` = kein models.dev-Eintrag. **Nur Fähigkeiten — die Preise bleiben aus dem Go-Scrape (models.dev-Preise weichen ab und werden ignoriert).**
+- `capabilitiesSourceUrl` = `https://models.dev` (Fähigkeiten-Quelle).
 - `cachedWrite: null` (= `-` in der Doku) bedeutet: Cached-Write-Preis = **Input-Preis** (1:1, keine Schätzung). In `requestCost` fließt er als Cached-Write-Preis in die 80/20-Heuristik ein; in der Tabelle steht weiterhin `-` (Heuristik nur im Footer dokumentiert).
 - `freeModels` = kostenlose Zen-Modelle (ID enthält `free`) + `big-pickle` aus `https://opencode.ai/zen/v1/models`; `availableFrom` = erstes Beobachtungsdatum (bleibt über Läufe erhalten).
 - `data/history.json` = `{ "snapshots": [ … ] }` (Chronologie, append, nur bei Änderungen)
-- `CHANGELOG.json` = `{ "entries": [{ "date", "changes": [ … ] }] }`; Events (zod via `validateChangelog`):
+- `CHANGELOG.json` = `{ "entries": [{ "date", "changes": [ … ] }] }`; wird bewusst **minified** (`JSON.stringify`, eine Zeile) geschrieben — nie hübsch formatiert, damit Git-Diffs minimal bleiben. Events (zod via `validateChangelog`):
   - `text` (mit `lang` = `{ de, en }`-Übersetzungen, z. B. `{ de: "Initialversion", en: "Initial version" }`; keine freien Texte)
   - `model_added` (mit `pricing` = `{ input, output, cachedRead, cachedWrite, usage }`, die Go-Tabellen-Zeile)
   - `model_removed` (mit `days` = verfügbare Tage, `firstSeen` aus `history.json`-Chronologie)
   - `pricing_changed` (mit `from`/`to` = komplette Pricing-Zeile; fasst Preis- **und** Nutzungsänderungen zusammen)
+  - `capabilities_changed` (mit `from`/`to` = capabilities-Objekt oder `null`; löst auch bei Nur-Fähigkeiten-Änderungen einen Daten-Commit aus)
   - `free_added`/`free_removed` (mit `availableFrom`/`until`)
   - **Keine** `baseline`/`usage_changed`/`price_changed`-Events. Einträge haben IMMER `changes.length > 0`; ohne Änderungen wird kein Eintrag angelegt, leere Einträge werden entfernt (`upsertChangelogJson`).
 
@@ -86,8 +91,9 @@ pnpm typecheck        # nur tsc --noEmit
 - **Anfragemuster** (`Name — N Input-, M Cached-, K Output-Tokens pro Anfrage`) pro Modell extrahieren; Kurzschreibweisen (`GLM-5.2/5.1`, `Kimi K2.7/K2.6`) gegen die Modellnamen auflösen. Fehlende Muster über `PATTERN_FALLBACKS` (z. B. MiniMax M2.5 → M2.7) auffüllen.
 - **zod-Validierung** (`validateSnapshot`): jedes Modell MUSS `pattern` haben; ungültige Daten → `process.exit(1)` → CI rot.
 - Zen-Free-Models via `https://opencode.ai/zen/v1/models` (`extractFreeModels`), `availableFrom` aus dem vorherigen Lauf übernehmen (`mergeFreeModels`).
-- Diff gegen das vorherige `latest.json`: Modell hinzugefügt (mit Pricing-Zeile), Modell entfernt (mit `days` aus `firstSeen`), Nutzung verbessert/verschlechtert, Preisänderungen (Float-Toleranz 1e-9) → jeweils als **ein** `pricing_changed`-Event mit kompletten `from`/`to`-Zeilen, Free-Model-Events.
-- CHANGELOG.json: neuer `{ date, changes }`-Eintrag oben, Datum UTC (`YYYY-MM-DD`), ein bestehender Eintrag mit demselben Datum wird ersetzt; **leere** Einträge (`changes: []`) werden entfernt, bei `changes.length === 0` wird kein Eintrag angelegt (auch kein Basis-Snapshot beim ersten Lauf). `validateChangelog` (zod) bricht bei leeren Einträgen/unbekannten Typen rot ab.
+- Diff gegen das vorherige `latest.json`: Modell hinzugefügt (mit Pricing-Zeile), Modell entfernt (mit `days` aus `firstSeen`), Nutzung verbessert/verschlechtert, Preisänderungen (Float-Toleranz 1e-9) → jeweils als **ein** `pricing_changed`-Event mit kompletten `from`/`to`-Zeilen, Fähigkeitsänderungen → `capabilities_changed` (undefiniert und `null` gelten als gleich), Free-Model-Events.
+- **Fähigkeiten** aus models.dev via `@opencode-ai/models`: Live-API (`client.catalog()`, Timeout 10 s) mit Fallback auf den gebündelten Snapshot (`@opencode-ai/models/snapshot`, `source` = `live`/`snapshot`). Zuordnung über normalisierte Namen (`normalizeName`): zuerst `providers.opencode.models` (per ID/Name), dann kanonische `models`-Metadaten (bei Kollisionen exakter Normalized-ID-Treffer, sonst erste nach ID sortiert), Ausnahmen via `CAPABILITY_OVERRIDES`. Modelle ohne Treffer → `capabilities: null`. Die models.dev-Preise werden ignoriert.
+- CHANGELOG.json: neuer `{ date, changes }`-Eintrag oben, Datum UTC (`YYYY-MM-DD`), ein bestehender Eintrag mit demselben Datum wird ersetzt; **leere** Einträge (`changes: []`) werden entfernt, bei `changes.length === 0` wird kein Eintrag angelegt (auch kein Basis-Snapshot beim ersten Lauf). `validateChangelog` (zod) bricht bei leeren Einträgen/unbekannten Typen rot ab. **Minified schreiben** (`JSON.stringify(changelog)` — eine Zeile), niemals hübsch formatiert, damit Changelog-Diffs nur die tatsächlichen Änderungen zeigen.
 - `model_removed.days` = `heute − firstSeen`, `firstSeen` = frühester Snapshot in `data/history.json`, der das Modell enthält.
 - `data/latest.json`/`data/history.json` werden **nur bei Änderungen** geschrieben (`changes.length > 0`); sonst bleibt der Stand vom letzten Änderungstag erhalten (kein Commit, aber Deploy läuft weiter).
 - **Parsing-Fehler** (keine Preistabelle, unerwartete Spaltenstruktur, unparsebare Werte) → `process.exit(1)` → CI-Lauf wird rot.
@@ -97,8 +103,9 @@ pnpm typecheck        # nur tsc --noEmit
 - Nur daisyUI- und Tailwind-Klassen verwenden; Default-Varianten bevorzugen; daisyUI-Semantic-Colors (`base-*`, `primary`, `badge-success/-error/-warning/-info`), kein `dark:`-Präfix.
 - Kein `tailwind.config.js` — Tailwind 4 braucht nur `@import "tailwindcss";` + `@plugin "daisyui";` in `src/index.css`.
 - Sprache: localStorage `lang`, sonst Browser-Locale (automatisch `de` bei `navigator.language`-Präfix `de`); Default `en`. Theme via `theme-controller`-Checkbox (`value="dark"`), `basis` in localStorage.
-- **Query-Params** (shareable URLs): `sort=field:asc|desc`, `fsort=…` (Free-Tabelle), `basis=list|full`, `lang=de|en` — beim Laden URL > localStorage, Änderungen via `history.replaceState`.
-- Seitenstruktur: Kurzerklärung → Preistabelle (Sortierung je Spalte, `table-pin-cols` für horizontales Scrollen) → Free-Models-Tabelle (neuestes oben) → Changelog (JSON-Events, i18n-Texte, Badges) → Impressum/Datenschutz.
+- **Query-Params** (shareable URLs): `sort=field:asc|desc`, `fsort=…` (Free-Tabelle), `basis=list|full`, `lang=de|en`, `cap=image,video,audio,pdf` (Fähigkeiten-Filter Preistabelle, OR-Semantik), `fcap=…` (Fähigkeiten-Filter Free-Tabelle, unabhängig von `cap`) — beim Laden URL > localStorage, Änderungen via `history.replaceState`.
+- Seitenstruktur: Kurzerklärung → Preistabelle (Sortierung je Spalte, `table-pin-cols` für horizontales Scrollen, Fähigkeiten-Badges-Spalte, Fähigkeiten-Filter-Toggles) → Free-Models-Tabelle (neuestes oben, eigene unabhängige Fähigkeiten-Filter-Toggles) → Changelog (JSON-Events, i18n-Texte, Badges) → Impressum/Datenschutz.
+- Quellen-Links (Go, Zen, models.dev) und der „Verfügbar seit“-Hinweis stehen ausschließlich im Footer (kein Quellen-Link im Free-Models-Header). Changelog-Badges sind richtungsabhängig: `badge-error` ↑/− = teurer/weniger, `badge-success` ↓/+ = billiger/mehr, neutral ≈ = `badge-ghost`.
 - Analytics-Skript (`stats.all-the.rest/x7k2p.js`, `defer`) gehört in `<head>` von `index.html`.
 
 ## CI/CD (`.github/workflows/price-tracker.yml`)

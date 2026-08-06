@@ -19,6 +19,7 @@
     "solid-js": "^1.9.5"
   },
   "devDependencies": {
+    "@opencode-ai/models": "^0.0.35",
     "@tailwindcss/vite": "^4.1.0",
     "@types/node": "^26.1.2",
     "cheerio": "^1.0.0",

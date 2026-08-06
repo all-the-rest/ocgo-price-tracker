@@ -4,5 +4,8 @@ packages:
 allowBuilds:
   esbuild: true
 
+minimumReleaseAgeExclude:
+  - '@opencode-ai/models@0.0.35'
+
 onlyBuiltDependencies:
   - esbuild

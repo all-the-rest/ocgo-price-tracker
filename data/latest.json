@@ -1,7 +1,8 @@
 {
-  "fetchedAt": "2026-08-06T07:29:58.986Z",
+  "fetchedAt": "2026-08-06T15:48:24.398Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
+  "capabilitiesSourceUrl": "https://models.dev",
   "sourceLang": "de",
   "monthlyCredit": 60,
   "models": [
@@ -22,6 +23,17 @@
         "input": 1100,
         "cachedRead": 71500,
         "output": 220
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -41,6 +53,18 @@
         "input": 1000,
         "cachedRead": 50000,
         "output": 220
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -60,6 +84,18 @@
         "input": 1000,
         "cachedRead": 50000,
         "output": 220
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -79,6 +115,16 @@
         "input": 700,
         "cachedRead": 52000,
         "output": 150
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -98,6 +144,16 @@
         "input": 700,
         "cachedRead": 52000,
         "output": 150
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -117,6 +173,18 @@
         "input": 1050,
         "cachedRead": 76500,
         "output": 300
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -136,6 +204,18 @@
         "input": 870,
         "cachedRead": 55000,
         "output": 200
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -155,6 +235,18 @@
         "input": 870,
         "cachedRead": 55000,
         "output": 200
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -174,6 +266,19 @@
         "input": 830,
         "cachedRead": 71500,
         "output": 295
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "audio",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -193,6 +298,16 @@
         "input": 790,
         "cachedRead": 86000,
         "output": 305
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -212,6 +327,18 @@
         "input": 510,
         "cachedRead": 56000,
         "output": 190
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -231,6 +358,16 @@
         "input": 300,
         "cachedRead": 55000,
         "output": 125
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -250,6 +387,16 @@
         "input": 300,
         "cachedRead": 55000,
         "output": 125
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -269,6 +416,19 @@
         "input": 420,
         "cachedRead": 66000,
         "output": 200
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -288,6 +448,16 @@
         "input": 420,
         "cachedRead": 66000,
         "output": 200
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -307,6 +477,18 @@
         "input": 500,
         "cachedRead": 57000,
         "output": 190
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -326,6 +508,18 @@
         "input": 500,
         "cachedRead": 57000,
         "output": 190
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -345,6 +539,18 @@
         "input": 500,
         "cachedRead": 57000,
         "output": 190
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -364,6 +570,18 @@
         "input": 500,
         "cachedRead": 57000,
         "output": 190
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -383,6 +601,16 @@
         "input": 750,
         "cachedRead": 82000,
         "output": 290
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -402,6 +630,16 @@
         "input": 790,
         "cachedRead": 68000,
         "output": 280
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     },
     {
@@ -421,41 +659,134 @@
         "input": 830,
         "cachedRead": 71500,
         "output": 295
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
       }
     }
   ],
   "freeModels": [
     {
       "id": "big-pickle",
-      "availableFrom": "2026-08-05"
+      "availableFrom": "2026-08-05",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      }
     },
     {
       "id": "deepseek-v4-flash-free",
-      "availableFrom": "2026-08-05"
+      "availableFrom": "2026-08-05",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      }
     },
     {
       "id": "laguna-s-2.1-free",
-      "availableFrom": "2026-08-05"
+      "availableFrom": "2026-08-05",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      }
     },
     {
       "id": "ling-3.0-flash-free",
-      "availableFrom": "2026-08-05"
+      "availableFrom": "2026-08-05",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      }
     },
     {
       "id": "longcat-2.0-free",
-      "availableFrom": "2026-08-05"
+      "availableFrom": "2026-08-05",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      }
     },
     {
       "id": "mimo-v2.5-free",
-      "availableFrom": "2026-08-05"
+      "availableFrom": "2026-08-05",
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "audio",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      }
     },
     {
       "id": "nemotron-3-ultra-free",
-      "availableFrom": "2026-08-05"
+      "availableFrom": "2026-08-05",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      }
     },
     {
       "id": "north-mini-code-free",
-      "availableFrom": "2026-08-05"
+      "availableFrom": "2026-08-05",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      }
     }
   ]
 }

@@ -4,10 +4,16 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import * as cheerio from "cheerio";
 import { z } from "zod";
+import { Models } from "@opencode-ai/models";
+import {
+  providers as snapshotProviders,
+  models as snapshotModels,
+} from "@opencode-ai/models/snapshot";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE_URL = "https://opencode.ai/docs/de/go/";
 const ZEN_URL = "https://opencode.ai/zen/v1/models";
+const MODELS_DEV_URL = "https://models.dev";
 const SOURCE_LANG = "de";
 const MONTHLY_CREDIT = 60;
 const FLOAT_TOLERANCE = 1e-9;
@@ -15,6 +21,49 @@ const USER_AGENT =
   "ocgo-price-tracker/0.1.0 (+https://github.com/reisi007/ocgo-price-tracker)";
 
 class ScrapeError extends Error {}
+
+/**
+ * Lädt den models.dev-Katalog (Live-API) und fällt bei Fehlern auf den
+ * gebündelten Snapshot zurück.
+ */
+async function loadModelsDev() {
+  try {
+    const catalog = await Models.make({
+      baseUrl: MODELS_DEV_URL,
+      headers: { "User-Agent": USER_AGENT },
+    }).catalog({ signal: AbortSignal.timeout(10_000) });
+    return { providers: catalog.providers, models: catalog.models, source: "live" };
+  } catch (err) {
+    console.error(
+      `[scrape] Warnung: models.dev API nicht erreichbar (${err instanceof Error ? err.message : String(err)}); nutze den gebündelten Snapshot.`
+    );
+    return { providers: snapshotProviders, models: snapshotModels, source: "snapshot" };
+  }
+}
+
+const CAPABILITY_VALUES = ["text", "audio", "image", "video", "pdf"];
+
+/**
+ * Baut aus einem models.dev-Modell das capabilities-Objekt. Liefert null,
+ * wenn das Modell fehlt oder keine Input-Modalitäten hat. Modalitäten werden
+ * auf die 5 gültigen Werte gefiltert.
+ */
+function toCapabilities(md) {
+  if (!md || !Array.isArray(md.modalities?.input)) return null;
+  const valid = (arr) => (Array.isArray(arr) ? arr.filter((v) => CAPABILITY_VALUES.includes(v)) : []);
+  return {
+    input: valid(md.modalities.input),
+    output: valid(md.modalities.output),
+    reasoning: md.reasoning === true,
+    toolCall: md.tool_call === true,
+  };
+}
+
+/**
+ * Ausnahmen für die Fähigkeiten-Zuordnung (normalisierter Modellname →
+ * kanonische models.dev-ID). Für künftige Edge Cases; aktuell leer.
+ */
+const CAPABILITY_OVERRIDES = {};
 
 function parsePrice(text) {
   const t = (text ?? "").trim();
@@ -241,6 +290,7 @@ function parseModel(cells, colMap) {
     effectiveCachedRead: effective(cachedRead),
     effectiveCachedWrite: effective(cachedWrite),
     pattern: null,
+    capabilities: null,
   };
 }
 
@@ -283,6 +333,102 @@ export function parseHtml(html) {
 }
 
 export const modelKey = (model) => (model.tier ? `${model.name} (${model.tier})` : model.name);
+
+/**
+ * Tiefen-Vergleich zweier capabilities-Werte; undefined und null werden
+ * identisch behandelt (fehlendes Feld vs. explizites null).
+ */
+export const capabilitiesEqual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/**
+ * Baut die Lookups für die models.dev-Zuordnung auf: opencode-Provider
+ * (normalisierte ID und Name) plus kanonische Metadaten (normalisierter Name,
+ * bei Kollisionen exakter Normalized-ID-Treffer, sonst erste nach ID sortiert).
+ * `resolve(id, name)` liefert das passende models.dev-Modell oder null.
+ */
+function buildModelsDevLookup(opencodeModels, metadataModels) {
+  const opencodeById = new Map();
+  const opencodeByName = new Map();
+  for (const m of Object.values(opencodeModels)) {
+    opencodeById.set(normalizeName(m.id), m);
+    opencodeByName.set(normalizeName(m.name), m);
+  }
+
+  const canonByName = new Map();
+  for (const meta of Object.values(metadataModels)) {
+    const norm = normalizeName(meta.name);
+    const list = canonByName.get(norm) ?? [];
+    list.push(meta);
+    canonByName.set(norm, list);
+  }
+  for (const list of canonByName.values()) {
+    list.sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  const resolveCanon = (name) => {
+    const norm = normalizeName(name);
+    const canonical = canonByName.get(norm);
+    if (!canonical?.length) return null;
+    return canonical.find((c) => normalizeName(c.id) === norm) ?? canonical[0];
+  };
+
+  const resolve = (id, name) => {
+    const norm = normalizeName(id);
+    return opencodeById.get(norm) ?? opencodeByName.get(norm) ?? (name ? resolveCanon(name) : null);
+  };
+
+  return { resolve };
+}
+
+/**
+ * Reichert jedes Modell mit einem `capabilities`-Objekt aus den models.dev-Daten
+ * an (opencode-Provider zuerst, dann kanonische Metadaten, sonst null).
+ */
+export function enrichCapabilities(models, opencodeModels, metadataModels) {
+  const { resolve } = buildModelsDevLookup(opencodeModels, metadataModels);
+  for (const m of models) {
+    const norm = normalizeName(m.name);
+    let md = null;
+
+    if (CAPABILITY_OVERRIDES[norm]) {
+      md = metadataModels[CAPABILITY_OVERRIDES[norm]] ?? resolve(CAPABILITY_OVERRIDES[norm]);
+    }
+    if (!md) md = resolve(m.name, m.name);
+
+    m.capabilities = toCapabilities(md);
+  }
+  return models;
+}
+
+/**
+ * Reichert die kostenlosen Zen-Modelle mit `capabilities` an. Zuordnung über die
+ * models.dev-ID des opencode-Providers (normalisiert), Fallback auf die
+ * kanonischen Metadaten über den normalisierten ID-Slug.
+ */
+export function enrichFreeModels(freeModels, opencodeModels, metadataModels) {
+  const { resolve } = buildModelsDevLookup(opencodeModels, metadataModels);
+  for (const f of freeModels) {
+    f.capabilities = toCapabilities(resolve(f.id, f.id));
+  }
+  return freeModels;
+}
+
+/**
+ * Vergleicht die capabilities von vorherigem und aktuellem Lauf und liefert
+ * Diffs im Stil der Pricing-Änderungen (undefined und null gelten als gleich).
+ */
+export function computeCapabilityDiff(prevModels, nextModels) {
+  const prev = new Map(prevModels.map((m) => [modelKey(m), m]));
+  const diffs = [];
+  for (const m of nextModels) {
+    const before = prev.get(modelKey(m));
+    if (!before) continue;
+    if (!capabilitiesEqual(before.capabilities, m.capabilities)) {
+      diffs.push({ key: modelKey(m), from: before.capabilities ?? null, to: m.capabilities ?? null });
+    }
+  }
+  return diffs;
+}
 
 const near = (a, b) =>
   (a === null && b === null) || (a !== null && b !== null && Math.abs(a - b) < FLOAT_TOLERANCE);
@@ -341,6 +487,10 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
     changes.push({ type: "pricing_changed", model: key, from, to });
   }
 
+  for (const { key, from, to } of computeCapabilityDiff(prevModels, nextModels)) {
+    changes.push({ type: "capabilities_changed", model: key, from, to });
+  }
+
   const prevIds = prevFree.map((f) => f.id);
   const nextIds = nextFree.map((f) => f.id);
   for (const f of nextFree.filter((f) => !prevIds.includes(f.id))) {
@@ -348,6 +498,19 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
   }
   for (const f of prevFree.filter((f) => !nextIds.includes(f.id))) {
     changes.push({ type: "free_removed", model: f.id, availableFrom: f.availableFrom, until: today });
+  }
+
+  for (const f of nextFree) {
+    const before = (Array.isArray(prevFree) ? prevFree : []).find((p) => p.id === f.id);
+    if (!before) continue;
+    if (!capabilitiesEqual(before.capabilities, f.capabilities)) {
+      changes.push({
+        type: "capabilities_changed",
+        model: f.id,
+        from: before.capabilities ?? null,
+        to: f.capabilities ?? null,
+      });
+    }
   }
 
   return changes;
@@ -379,6 +542,13 @@ const RequestPatternSchema = z.object({
   output: z.number(),
 });
 
+const CapabilitiesSchema = z.object({
+  input: z.array(z.enum(["text", "audio", "image", "video", "pdf"])),
+  output: z.array(z.enum(["text", "audio", "image", "video", "pdf"])),
+  reasoning: z.boolean(),
+  toolCall: z.boolean(),
+});
+
 const ModelSchema = z.object({
   name: z.string().min(1),
   tier: z.string().nullable(),
@@ -393,17 +563,20 @@ const ModelSchema = z.object({
   effectiveCachedRead: z.number().nullable(),
   effectiveCachedWrite: z.number().nullable(),
   pattern: RequestPatternSchema,
+  capabilities: CapabilitiesSchema.nullable(),
 });
 
 const FreeModelSchema = z.object({
   id: z.string().min(1),
   availableFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  capabilities: CapabilitiesSchema.nullable(),
 });
 
 const SnapshotSchema = z.object({
   fetchedAt: z.string(),
   sourceUrl: z.string().url(),
   freeModelsSourceUrl: z.string().url(),
+  capabilitiesSourceUrl: z.string().url(),
   sourceLang: z.string(),
   monthlyCredit: z.number(),
   models: z.array(ModelSchema).min(1),
@@ -438,6 +611,12 @@ const ChangeSchema = z.discriminatedUnion("type", [
     model: z.string().min(1),
     from: PricingTypeSchema,
     to: PricingTypeSchema,
+  }),
+  z.object({
+    type: z.literal("capabilities_changed"),
+    model: z.string().min(1),
+    from: CapabilitiesSchema.nullable(),
+    to: CapabilitiesSchema.nullable(),
   }),
   z.object({ type: z.literal("free_added"), model: z.string().min(1) }),
   z.object({
@@ -485,6 +664,9 @@ async function main() {
     const html = await response.text();
     const models = parseHtml(html);
 
+    const { providers: mdProviders, models: mdModels, source: mdSource } = await loadModelsDev();
+    enrichCapabilities(models, mdProviders.opencode?.models ?? {}, mdModels);
+
     const fetchedAt = new Date().toISOString();
     const date = fetchedAt.slice(0, 10);
 
@@ -493,7 +675,11 @@ async function main() {
     const prevModels = prev && Array.isArray(prev.models) ? prev.models : null;
     const prevFree = prev && Array.isArray(prev.freeModels) ? prev.freeModels : [];
     const currentIds = await fetchZenFreeModels(prevFree.map((f) => f.id));
-    const freeModels = mergeFreeModels(prevFree, currentIds, date);
+    const freeModels = enrichFreeModels(
+      mergeFreeModels(prevFree, currentIds, date),
+      mdProviders.opencode?.models ?? {},
+      mdModels
+    );
 
     const historyPath = join(ROOT, "data", "history.json");
     let history = { snapshots: [] };
@@ -516,6 +702,7 @@ async function main() {
       fetchedAt,
       sourceUrl: SOURCE_URL,
       freeModelsSourceUrl: ZEN_URL,
+      capabilitiesSourceUrl: MODELS_DEV_URL,
       sourceLang: SOURCE_LANG,
       monthlyCredit: MONTHLY_CREDIT,
       models,
@@ -530,7 +717,7 @@ async function main() {
     const existingChangelog = existsSync(changelogPath) ? JSON.parse(readFileSync(changelogPath, "utf8")) : { entries: [] };
     const changelog = upsertChangelogJson(existingChangelog, date, changes);
     validateChangelog(changelog);
-    const changelogJson = JSON.stringify(changelog, null, 2) + "\n";
+    const changelogJson = JSON.stringify(changelog) + "\n";
     writeFileSync(changelogPath, changelogJson);
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
@@ -541,7 +728,9 @@ async function main() {
       writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
     }
 
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}).`);
+    const enriched = models.filter((m) => m.capabilities !== null).length;
+    const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
