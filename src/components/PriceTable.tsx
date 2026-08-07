@@ -4,6 +4,7 @@ import type { Model } from "../types";
 import { fmt } from "../util";
 import { fieldPrice, formatTokens, requestCost } from "../weighted";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
+import Tooltip from "./Tooltip";
 import type { SortField, SortState } from "../sort";
 
 interface PriceTableProps {
@@ -54,10 +55,29 @@ export default function PriceTable(props: PriceTableProps) {
           class="inline-flex items-center gap-1 whitespace-nowrap"
           classList={{ "text-primary": active }}
           aria-label={`${label} (${active ? (props.sort.dir === 1 ? "desc" : "asc") : "sort"})`}
-          title={tooltip}
           onClick={() => props.setSort((s) => ({ field, dir: s.field === field ? (s.dir === 1 ? -1 : 1) : 1 }))}
         >
-          {label}
+          <span>{label}</span>
+          <Show when={tooltip}>
+            {(tip) => (
+              <Tooltip tip={tip()} class="inline-flex">
+                <svg
+                  class="h-3.5 w-3.5 text-base-content/50"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 16v-4" />
+                  <path d="M12 8h.01" />
+                </svg>
+              </Tooltip>
+            )}
+          </Show>
           {active ? <span aria-hidden="true">{props.sort.dir === 1 ? "▲" : "▼"}</span> : null}
         </button>
       </th>
@@ -80,6 +100,17 @@ export default function PriceTable(props: PriceTableProps) {
   };
 
   const usagePct = (usage: number) => Math.round((usage / props.monthlyCredit) * 100);
+
+  const priceCell = (n: number | null | undefined) => {
+    const s = fmt(n);
+    const isNull = s === "–";
+    return (
+      <span class="grid w-full grid-cols-[1.5rem_1fr]">
+        <span class="text-right">{isNull ? "" : "$"}</span>
+        <span class="text-right tabular-nums">{isNull ? "–" : s.slice(1)}</span>
+      </span>
+    );
+  };
 
   return (
     <section class="mt-10">
@@ -149,25 +180,35 @@ export default function PriceTable(props: PriceTableProps) {
                   <td>
                     <CapabilityBadges m={m} t={props.t} />
                   </td>
-                  <td class="text-right tabular-nums">{fmt(fieldPrice(m, "input", props.basis))}</td>
-                  <td class="text-right tabular-nums">{fmt(fieldPrice(m, "output", props.basis))}</td>
-                  <td class="text-right tabular-nums">{fmt(fieldPrice(m, "cachedRead", props.basis))}</td>
-                  <td class="text-right tabular-nums">{fmt(fieldPrice(m, "cachedWrite", props.basis))}</td>
+                  <td>{priceCell(fieldPrice(m, "input", props.basis))}</td>
+                  <td>{priceCell(fieldPrice(m, "output", props.basis))}</td>
+                  <td>{priceCell(fieldPrice(m, "cachedRead", props.basis))}</td>
+                  <td>{priceCell(fieldPrice(m, "cachedWrite", props.basis))}</td>
                   <td class="text-right whitespace-nowrap">
-                    <span
-                      class={`badge badge-sm ${usageBadge(m.usage)}`}
-                      classList={{ "font-bold": m.usage > props.monthlyCredit }}
-                      title={props.t.usageTooltip
-                        .replace("{usage}", String(m.usage))
-                        .replace("{credit}", String(props.monthlyCredit))}
-                    >
-                      ${m.usage}
+                    <span class="inline-grid grid-cols-[4.5rem_3.5rem] gap-1">
+                      <Tooltip
+                        tip={props.t.usageTooltip
+                          .replace("{usage}", String(m.usage))
+                          .replace("{credit}", String(props.monthlyCredit))}
+                        class="w-full"
+                      >
+                        <span
+                          class={`badge badge-sm w-full justify-center ${usageBadge(m.usage)}`}
+                          classList={{ "font-bold": m.usage > props.monthlyCredit }}
+                        >
+                          ${m.usage}
+                        </span>
+                      </Tooltip>
+                      <span class="badge badge-ghost badge-sm w-full justify-center">
+                        {usagePct(m.usage)}%
+                      </span>
                     </span>
-                    <span class="badge badge-ghost badge-sm ml-1">{usagePct(m.usage)}%</span>
                   </td>
-                  <td class="text-right tabular-nums">
-                    <Show when={m.pattern} fallback={props.t.noValue}>
-                      <span title={patternTooltip(m)}>{fmt(requestCost(m, props.basis))}</span>
+                  <td>
+                    <Show when={m.pattern} fallback={priceCell(null)}>
+                      <Tooltip tip={patternTooltip(m)} class="block">
+                        {priceCell(requestCost(m, props.basis))}
+                      </Tooltip>
                     </Show>
                   </td>
                 </tr>
