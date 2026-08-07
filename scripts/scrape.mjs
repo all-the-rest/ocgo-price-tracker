@@ -586,13 +586,12 @@ export function mergeFreeModels(prevFree, currentIds, today) {
 
 export function upsertChangelogJson(existing, date, changes) {
   const entries = Array.isArray(existing?.entries) ? existing.entries : [];
-  const filtered = entries.filter(
-    (e) => e.date !== date && Array.isArray(e.changes) && e.changes.length > 0
-  );
-  if (Array.isArray(changes) && changes.length > 0) {
-    filtered.unshift({ date, changes });
-  }
-  return { entries: filtered };
+  const keep = entries.filter((e) => Array.isArray(e.changes) && e.changes.length > 0);
+  const hasChanges = Array.isArray(changes) && changes.length > 0;
+  if (!hasChanges) return { entries: keep };
+  const rest = keep.filter((e) => e.date !== date);
+  rest.unshift({ date, changes });
+  return { entries: rest };
 }
 
 const RequestPatternSchema = z.object({

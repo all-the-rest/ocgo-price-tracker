@@ -311,6 +311,29 @@ test("upsertChangelogJson: fügt bei leeren Änderungen keinen Eintrag hinzu", (
   assert.equal(result.entries[0].date, "2026-08-05");
 });
 
+test("upsertChangelogJson: leere Änderungen löschen den Eintrag des gleichen Datums nicht", () => {
+  const existing = {
+    entries: [
+      {
+        date: "2026-08-07",
+        changes: [
+          {
+            type: "pricing_changed",
+            model: "DeepSeek V4 Flash",
+            from: { input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: 60 },
+            to: { input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: 120 },
+          },
+        ],
+      },
+      { date: "2026-08-05", changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }] },
+    ],
+  };
+  const result = upsertChangelogJson(existing, "2026-08-07", []);
+  assert.equal(result.entries.length, 2);
+  assert.equal(result.entries[0].date, "2026-08-07");
+  assert.equal(result.entries[0].changes[0].model, "DeepSeek V4 Flash");
+});
+
 test("validateChangelog: gültiger Changelog mit allen Event-Typen", () => {
   const changelog = {
     entries: [
