@@ -73,6 +73,14 @@ export default function PriceTable(props: PriceTableProps) {
       .replace("{output}", formatTokens(p.output, props.lang));
   };
 
+  const usageBadge = (usage: number) => {
+    if (usage > props.monthlyCredit) return "bg-green-800 border-green-800 text-green-100";
+    if (usage < props.monthlyCredit) return usage < props.monthlyCredit / 2 ? "badge-error" : "badge-warning";
+    return "badge-success";
+  };
+
+  const usagePct = (usage: number) => Math.round((usage / props.monthlyCredit) * 100);
+
   return (
     <section class="mt-10">
       <h2 class="text-lg font-bold tracking-tight">{props.t.headingPrices}</h2>
@@ -147,17 +155,15 @@ export default function PriceTable(props: PriceTableProps) {
                   <td class="text-right tabular-nums">{fmt(fieldPrice(m, "cachedWrite", props.basis))}</td>
                   <td class="text-right whitespace-nowrap">
                     <span
-                      classList={{
-                        "badge badge-sm": true,
-                        "badge-success": m.usage >= 60,
-                        "badge-warning": m.usage < 60,
-                      }}
+                      class={`badge badge-sm ${usageBadge(m.usage)}`}
+                      classList={{ "font-bold": m.usage > props.monthlyCredit }}
+                      title={props.t.usageTooltip
+                        .replace("{usage}", String(m.usage))
+                        .replace("{credit}", String(props.monthlyCredit))}
                     >
-                      {m.usage}
+                      ${m.usage}
                     </span>
-                    <Show when={props.basis === "full" && m.multiplier > 1}>
-                      <span class="badge badge-ghost badge-sm ml-1">×{m.multiplier}</span>
-                    </Show>
+                    <span class="badge badge-ghost badge-sm ml-1">{usagePct(m.usage)}%</span>
                   </td>
                   <td class="text-right tabular-nums">
                     <Show when={m.pattern} fallback={props.t.noValue}>

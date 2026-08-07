@@ -12,8 +12,11 @@ interface ChangelogProps {
 }
 
 export default function Changelog(props: ChangelogProps) {
-  const fmtPricing = (p: PricingType) =>
-    `${fmt(p.input)} / ${fmt(p.output)} / ${fmt(p.cachedRead)} / ${fmt(p.cachedWrite)} @ $${p.usage}`;
+  const fmtPricing = (p: PricingType) => {
+    const parts = [fmt(p.input), fmt(p.output), fmt(p.cachedRead)];
+    if (p.cachedWrite !== null) parts.push(fmt(p.cachedWrite));
+    return `${parts.join(" / ")} @ $${p.usage}`;
+  };
 
   const priceEffective = (p: PricingType): number => {
     const mult = props.monthlyCredit / p.usage;
