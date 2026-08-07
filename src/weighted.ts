@@ -11,10 +11,10 @@ const EFFECTIVE_FIELD: Record<PriceField, keyof Model> = {
 
 /**
  * Preis je Modellfeld für die gewählte Preisbasis:
- * - "list" → Listpreis (aus der Doku)
- * - "full" → Effektivpreis bei vollem $60-Monatsguthaben (Listpreis × 60/Nutzung)
+ * - "list" → Listenpreis (aus der Doku)
+ * - "full" → Effektivpreis bei vollem $60-Monatsguthaben (Listenpreis × 60/Nutzung)
  * - "paid" → Effektivpreis auf Basis dessen, was man tatsächlich zahlt
- *            (Listpreis × Monatspreis/Nutzung, z. B. $10 → 1,5× bei $15-Nutzung)
+ *            (Listenpreis × Monatspreis/Nutzung, z. B. $10 → 1,5× bei $15-Nutzung)
  */
 export function fieldPrice(m: Model, f: PriceField, basis: Basis, monthlyCost: number): number | null {
   const raw = m[f];

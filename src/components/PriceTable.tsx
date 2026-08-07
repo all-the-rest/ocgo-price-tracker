@@ -24,6 +24,16 @@ interface PriceTableProps {
 const formatMult = (n: number, lang: "de" | "en") =>
   new Intl.NumberFormat(lang === "de" ? "de-DE" : "en-US", { maximumFractionDigits: 2 }).format(n);
 
+const factorPhrase = (mult: number, lang: "de" | "en", kind: "price" | "value"): string => {
+  const n = formatMult(mult, lang);
+  if (kind === "price") {
+    if (mult === 1) return lang === "de" ? "Listenpreis" : "list price";
+    if (mult === 0.5) return lang === "de" ? "halber Preis" : "half price";
+    return lang === "de" ? `${n}-facher Preis` : `${n}× the price`;
+  }
+  return lang === "de" ? `${n}-facher Wert` : `${n}× the value`;
+};
+
 export default function PriceTable(props: PriceTableProps) {
   const sortValue = (m: Model, f: SortField): number | string | null => {
     if (f === "cost") return requestCost(m, props.basis, props.monthlyCost);
@@ -113,16 +123,17 @@ export default function PriceTable(props: PriceTableProps) {
     const usages = [...new Set(props.models.map((m) => m.usage))].sort((a, b) => a - b);
     if (props.basis === "paid") {
       const rows = usages
-        .map((u) => `$${u} → ${formatMult(u / props.monthlyCost, props.lang)}×`)
+        .map((u) => `$${u} → ${factorPhrase(u / props.monthlyCost, props.lang, "value")}`)
         .join(" · ");
       return props.t.paidNote.replace("{paid}", String(props.monthlyCost)).replace("{rows}", rows);
     }
     const rows = usages
       .map(
         (u) =>
-          `${Math.round((u / props.monthlyCredit) * 100)} % → ×${formatMult(
+          `${Math.round((u / props.monthlyCredit) * 100)} % → ${factorPhrase(
             props.monthlyCredit / u,
-            props.lang
+            props.lang,
+            "price"
           )}`
       )
       .join(" · ");

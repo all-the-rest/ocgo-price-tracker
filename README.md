@@ -2,8 +2,8 @@
 
 Scrapet täglich die Preistabelle von `https://opencode.ai/docs/de/go/` und
 berechnet die Preise wahlweise auf Basis des vollen $60/Monat-Guthabens
-(Effektivpreis = Listpreis × 60/Nutzung) oder dessen, was man tatsächlich
-zahlst ($10/Monat, Effektivpreis = Listpreis × 10/Nutzung). Die Ergebnisse
+(Effektivpreis = Listenpreis × 60/Nutzung) oder dessen, was man tatsächlich
+zahlst ($10/Monat, Effektivpreis = Listenpreis × 10/Nutzung). Die Ergebnisse
 werden als statische SolidJS-Seite unter `https://ocgo-pricing.all-the.rest`
 bereitgestellt.
 

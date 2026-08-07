@@ -5,7 +5,7 @@ export const i18n = {
     title: "Preis-Tracking für OpenCode Go",
     subtitle: "Tägliche Preisübersicht für OpenCode Go — umgerechnet aufs volle $60-Monatsguthaben oder auf das, was du wirklich zahlst ($10/Monat).",
     intro:
-      "Einmal täglich von der offiziellen OpenCode-Dokumentation abgerufen. Preise pro 1M Tokens. Effektivpreise: volles Guthaben = Listpreis × (60 / inkl. Nutzung), was du zahlst = Listpreis × (10 / inkl. Nutzung). Die Kosten pro Anfrage nutzen das in der Doku dokumentierte Anfragemuster des jeweiligen Modells (Details im Tooltip).",
+      "Einmal täglich von der offiziellen OpenCode-Dokumentation abgerufen. Preise pro 1M Tokens. Effektivpreise: volles Guthaben = Listenpreis × (60 / inkl. Nutzung), was du zahlst = Listenpreis × (10 / inkl. Nutzung). Die Kosten pro Anfrage nutzen das in der Doku dokumentierte Anfragemuster des jeweiligen Modells (Details im Tooltip).",
     headingPrices: "Preise",
     headingChangelog: "Changelog",
     headingFree: "Kostenlose Modelle",
@@ -52,9 +52,9 @@ export const i18n = {
       "Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: 80% Input-Preis + 20% Cached-Write-Preis, Cached-Tokens: Cached-Read-Preis, Output-Tokens: Output-Preis — Heuristik). Fehlender Cached-Write („-“) zählt wie der Input-Preis. Details im Tooltip der Zeile.",
     patternTooltip: "Muster: {input} Input · {cached} Cached · {output} Output Tokens/Anfrage",
     metricNote:
-      "Preise wahlweise auf Basis des vollen $60-Monatsguthabens (Effektivpreis = Listpreis × 60/Nutzung) oder dessen, was du zahlst ($10/Monat, Effektivpreis = Listpreis × 10/Nutzung). Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: 80% Input-Preis + 20% Cached-Write-Preis, Cached-Tokens: Cached-Read-Preis, Output-Tokens: Output-Preis — Heuristik). Fehlt ein Cached-Write-Preis („-“), zählt er wie der Input-Preis.",
-    factorNote: "Effektivpreis = Listpreis × {credit}/Nutzung: {rows}",
-    paidNote: "Du zahlst ${paid}/Monat und bekommst dafür die inkl. Nutzung: {rows} (bei voller Ausnutzung, nichts verfällt).",
+      "Preise wahlweise auf Basis des vollen $60-Monatsguthabens (Effektivpreis = Listenpreis × 60/Nutzung) oder dessen, was du zahlst ($10/Monat, Effektivpreis = Listenpreis × 10/Nutzung). Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: 80% Input-Preis + 20% Cached-Write-Preis, Cached-Tokens: Cached-Read-Preis, Output-Tokens: Output-Preis — Heuristik). Fehlt ein Cached-Write-Preis („-“), zählt er wie der Input-Preis.",
+    factorNote: "Effektivpreis = Listenpreis × {credit}/Nutzung: {rows}",
+    paidNote: "Du zahlst ${paid}/Monat und bekommst dafür die inkl. Nutzung: {rows} (wenn das gesamte Guthaben aufgebraucht wird).",
     noValue: "–",
     fetchedAt: "Stand",
     sourceLink: "Quelle",
