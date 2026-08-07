@@ -6,6 +6,8 @@ Preis-Tracking für OpenCode Go. Ein täglicher GitHub-Actions-Lauf scrapet
 `https://opencode.ai/docs/de/go/`, berechnet die Preise auf Basis des vollen
 `$60`/Monat-Guthabens (Effektivpreis = Listpreis × 60/Nutzung) und stellt eine
 statische SolidJS-Seite unter `https://ocgo-pricing.all-the.rest` bereit.
+Temporäre Nutzungs-Boni (`<span data-bonus>2x usage</span>`) kommen von der
+Go-Landingpage `https://opencode.ai/de/go` und verdoppeln das Nutzungslimit.
 
 - Repo (remote): `reisi007/ocgo-price-tracker`
 - GitHub Pages Custom Domain: `ocgo-pricing.all-the.rest` (CNAME)
@@ -66,7 +68,7 @@ pnpm typecheck        # nur tsc --noEmit
 }
 ```
 
-- `multiplier = 60 / usage` (usage ∈ {15, 60})
+- `multiplier = 60 / usage`; `usage` = Basis-Nutzung aus der Preistabelle (`$15`/`$60`) **× Bonus-Faktor** (z. B. `2x usage` → `usage` = `30`/`120`). Ein Bonus-Anstieg senkt `multiplier` und damit die Effektivpreise.
 - `effective* = preis × multiplier`
 - `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: 80% Input-Preis + 20% Cached-Write-Preis, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
 - `capabilities` = Fähigkeiten aus models.dev (via `@opencode-ai/models`): `input`/`output`-Modalitäten (`text`, `audio`, `image`, `video`, `pdf`), `reasoning`, `toolCall`. `null` = kein models.dev-Eintrag. **Nur Fähigkeiten — die Preise bleiben aus dem Go-Scrape (models.dev-Preise weichen ab und werden ignoriert).**
@@ -88,6 +90,7 @@ pnpm typecheck        # nur tsc --noEmit
 - Preistabelle über die **Header-Zeile** identifizieren (Zellen enthalten `Input` UND `Output`) — NICHT über `nth-child`-Selektoren.
 - Preise: `$1.40` → `1.4`; `-` → `null`.
 - `Nutzung` ist `$15` oder `$60`; Modellname mit `(… tokens)`-Suffix → `tier`-Feld.
+- **Nutzungs-Boni** von der Go-Landingpage `https://opencode.ai/de/go` (`fetchUsageBonuses`): `<span data-bonus>2x usage</span>` im `[data-item]`-Element verdoppelt das Nutzungslimit (`applyUsageBonuses`, Faktor aus `(\d+)x`). Zuordnung über `data-model`-Slug ↔ `normalizeName` (Luna hat zwei Tier-Zeilen — beide bekommen den Bonus). `usage` wird multipliziert, `multiplier`/`effective*` werden neu berechnet. HTTP-Fehler auf der Bonus-Seite → `process.exit(1)`; fehlende Bonus-Elemente → keine Boni.
 - **Anfragemuster** (`Name — N Input-, M Cached-, K Output-Tokens pro Anfrage`) pro Modell extrahieren; Kurzschreibweisen (`GLM-5.2/5.1`, `Kimi K2.7/K2.6`) gegen die Modellnamen auflösen. Fehlende Muster über `PATTERN_FALLBACKS` (z. B. MiniMax M2.5 → M2.7) auffüllen.
 - **zod-Validierung** (`validateSnapshot`): jedes Modell MUSS `pattern` haben; ungültige Daten → `process.exit(1)` → CI rot.
 - Zen-Free-Models via `https://opencode.ai/zen/v1/models` (`extractFreeModels`), `availableFrom` aus dem vorherigen Lauf übernehmen (`mergeFreeModels`).

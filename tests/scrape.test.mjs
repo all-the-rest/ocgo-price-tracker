@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import * as cheerio from "cheerio";
 import {
   parseHtml,
   computeDiff,
@@ -17,12 +18,21 @@ import {
   enrichCapabilities,
   computeCapabilityDiff,
   enrichFreeModels,
+  parseUsageBonuses,
+  applyUsageBonuses,
 } from "../scripts/scrape.mjs";
 
 const fixture = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "fixtures", "go-de.html"),
   "utf8"
 );
+
+const bonusFixture = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "fixtures", "go-de-bonus.html"),
+  "utf8"
+);
+
+const loadBonusFixture = () => cheerio.load(bonusFixture);
 
 test("parseHtml: extrahiert 22 Modelle aus dem HTML-Dump", () => {
   const models = parseHtml(fixture);
@@ -105,6 +115,56 @@ test("parseHtml: wirft bei unparsebarem Preis", () => {
       </table>
     </main></body></html>`;
   assert.throws(() => parseHtml(broken));
+});
+
+test("parseUsageBonuses: extrahiert 2x-usage-Boni aus der Landingpage", () => {
+  const $ = loadBonusFixture();
+  const bonuses = parseUsageBonuses($);
+  assert.equal(bonuses.get("gpt5.6luna"), 2);
+  assert.equal(bonuses.get("deepseekv4flash"), 2);
+  assert.equal(bonuses.size, 2);
+});
+
+test("parseUsageBonuses: leere Map bei fehlenden Bonus-Elementen", () => {
+  const $ = cheerio.load("<div><span data-item data-model='grok-4.5'><span data-value>1</span></span></div>");
+  assert.deepEqual([...parseUsageBonuses($).entries()], []);
+});
+
+test("applyUsageBonuses: verdoppelt usage und berechnet Effektivpreise neu", () => {
+  const models = parseHtml(fixture);
+  const bonuses = new Map([
+    ["gpt5.6luna", 2],
+    ["deepseekv4flash", 2],
+  ]);
+  applyUsageBonuses(models, bonuses);
+
+  const luna = models.filter((m) => m.name === "GPT 5.6 Luna");
+  assert.equal(luna.length, 2);
+  for (const l of luna) {
+    assert.equal(l.usage, 30);
+    assert.equal(l.multiplier, 2);
+  }
+  assert.equal(luna.find((m) => m.tier === "≤ 272K tokens").effectiveInput, 0.4);
+  assert.equal(luna.find((m) => m.tier === "≤ 272K tokens").effectiveOutput, 2.4);
+  assert.equal(luna.find((m) => m.tier === "≤ 272K tokens").effectiveCachedWrite, 0.5);
+  assert.equal(luna.find((m) => m.tier === "> 272K tokens").effectiveInput, 0.8);
+  assert.equal(luna.find((m) => m.tier === "> 272K tokens").effectiveCachedWrite, 1);
+
+  const flash = models.find((m) => m.name === "DeepSeek V4 Flash");
+  assert.equal(flash.usage, 120);
+  assert.equal(flash.multiplier, 0.5);
+  assert.equal(flash.effectiveInput, 0.07);
+  assert.equal(flash.effectiveOutput, 0.14);
+  assert.equal(flash.effectiveCachedRead, 0.0014);
+});
+
+test("applyUsageBonuses: lässt Modelle ohne Bonus unverändert", () => {
+  const models = parseHtml(fixture);
+  applyUsageBonuses(models, new Map([["gpt5.6luna", 2]]));
+  const grok = models.find((m) => m.name === "Grok 4.5");
+  assert.equal(grok.usage, 15);
+  assert.equal(grok.multiplier, 4);
+  assert.equal(models.find((m) => m.name === "DeepSeek V4 Flash").usage, 60);
 });
 
 const base = [

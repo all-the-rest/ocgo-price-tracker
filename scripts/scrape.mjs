@@ -12,6 +12,7 @@ import {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE_URL = "https://opencode.ai/docs/de/go/";
+const BONUS_URL = "https://opencode.ai/de/go";
 const ZEN_URL = "https://opencode.ai/zen/v1/models";
 const MODELS_DEV_URL = "https://models.dev";
 const SOURCE_LANG = "de";
@@ -170,6 +171,18 @@ async function fetchZenFreeModels(previousFree) {
   }
 }
 
+/**
+ * Holt die temporären Nutzungs-Boni von der Go-Landingpage. Ein HTTP-Fehler
+ * bricht rot ab, weil die Boni den Effektivpreis direkt verändern (verlässliche
+ * Preise sind Pflicht); ein strukturierter Zustand ohne `[data-bonus]` liefert
+ * einfach eine leere Map.
+ */
+async function fetchUsageBonuses() {
+  const res = await fetch(BONUS_URL, { headers: { "User-Agent": USER_AGENT } });
+  if (!res.ok) throw new ScrapeError(`HTTP ${res.status} beim Abrufen von ${BONUS_URL}`);
+  return parseUsageBonuses(cheerio.load(await res.text()));
+}
+
 function parsePatternNum(text) {
   const cleaned = (text ?? "").replace(/[\s$]/g, "").replace(/\./g, "").replace(/,/g, ".");
   const value = Number(cleaned);
@@ -271,27 +284,34 @@ function parseModel(cells, colMap) {
   const output = parsePrice(at(colMap.output));
   const cachedRead = parsePrice(at(colMap.cachedRead));
   const cachedWrite = parsePrice(at(colMap.cachedWrite));
-  const usage = parseUsage(at(colMap.usage));
 
-  const multiplier = MONTHLY_CREDIT / usage;
-  const effective = (price) => (price === null ? null : price * multiplier);
-
-  return {
+  const model = {
     name,
     tier,
     input,
     output,
     cachedRead,
     cachedWrite,
-    usage,
-    multiplier,
-    effectiveInput: effective(input),
-    effectiveOutput: effective(output),
-    effectiveCachedRead: effective(cachedRead),
-    effectiveCachedWrite: effective(cachedWrite),
+    usage: parseUsage(at(colMap.usage)),
     pattern: null,
     capabilities: null,
   };
+  recomputeUsageDerived(model);
+  return model;
+}
+
+/**
+ * Setzt `multiplier` und die `effective*`-Preise aus dem aktuellen `usage` neu.
+ * Wird nach einer Bonus-Anpassung des Nutzungslimits erneut aufgerufen.
+ */
+function recomputeUsageDerived(model) {
+  const multiplier = MONTHLY_CREDIT / model.usage;
+  const effective = (price) => (price === null ? null : price * multiplier);
+  model.multiplier = multiplier;
+  model.effectiveInput = effective(model.input);
+  model.effectiveOutput = effective(model.output);
+  model.effectiveCachedRead = effective(model.cachedRead);
+  model.effectiveCachedWrite = effective(model.cachedWrite);
 }
 
 function parseModels($, table, colMap) {
@@ -333,6 +353,45 @@ export function parseHtml(html) {
 }
 
 export const modelKey = (model) => (model.tier ? `${model.name} (${model.tier})` : model.name);
+
+/**
+ * Liest temporäre Nutzungs-Boni aus der Go-Landingpage. Die Preistabelle zeigt
+ * dort pro Modell ein `[data-item]`-Element mit `data-model` (Slug) und optional
+ * einem verschachtelten `<span data-bonus>…x usage</span>`. Liefert eine Map
+ * normalisierter Modellnamen → Faktor (z. B. 2 bei "2x usage").
+ */
+export function parseUsageBonuses($) {
+  const bonuses = new Map();
+  $("[data-item]").each((_, el) => {
+    const model = $(el).attr("data-model");
+    if (!model) return;
+    const text = $(el)
+      .find("[data-bonus]")
+      .first()
+      .text()
+      .trim();
+    const m = text.match(/^(\d+)x\b/i);
+    const factor = m ? Number(m[1]) : null;
+    if (factor && factor > 1) bonuses.set(normalizeName(model), factor);
+  });
+  return bonuses;
+}
+
+/**
+ * Wendet Nutzungs-Boni (Map normalisierter Modellname → Faktor) auf die
+ * gescrapten Modelle an: `usage` wird multipliziert, `multiplier` und die
+ * `effective*`-Preise werden neu berechnet.
+ */
+export function applyUsageBonuses(models, bonuses) {
+  if (!bonuses || bonuses.size === 0) return models;
+  for (const m of models) {
+    const factor = bonuses.get(normalizeName(m.name));
+    if (!factor || factor <= 0) continue;
+    m.usage = m.usage * factor;
+    recomputeUsageDerived(m);
+  }
+  return models;
+}
 
 /**
  * Tiefen-Vergleich zweier capabilities-Werte; undefined und null werden
@@ -663,6 +722,9 @@ async function main() {
     if (!response.ok) throw new ScrapeError(`HTTP ${response.status} beim Abrufen von ${SOURCE_URL}`);
     const html = await response.text();
     const models = parseHtml(html);
+    const usageBonuses = await fetchUsageBonuses();
+    applyUsageBonuses(models, usageBonuses);
+    const bonusLabels = [...usageBonuses.entries()].map(([n, f]) => `${n}×${f}`).join(", ");
 
     const { providers: mdProviders, models: mdModels, source: mdSource } = await loadModelsDev();
     enrichCapabilities(models, mdProviders.opencode?.models ?? {}, mdModels);
@@ -730,7 +792,7 @@ async function main() {
 
     const enriched = models.filter((m) => m.capabilities !== null).length;
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle.`);
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
