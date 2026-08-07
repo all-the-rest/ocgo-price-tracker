@@ -123,4 +123,4 @@ export const i18n = {
   },
 } as const;
 
-export type Translation = (typeof i18n)["de"];
+export type Translation = { [K in keyof (typeof i18n)["de"]]: string };
