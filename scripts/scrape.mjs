@@ -492,6 +492,25 @@ export function computeCapabilityDiff(prevModels, nextModels) {
 const near = (a, b) =>
   (a === null && b === null) || (a !== null && b !== null && Math.abs(a - b) < FLOAT_TOLERANCE);
 
+const PRICE_FIELDS = ["input", "output", "cachedRead", "cachedWrite"];
+
+/**
+ * Zerlegt eine Pricing-Änderung in getrennte Events: `price_changed` (mit den
+ * geänderten Preisfeldern in `fields`) und `usage_changed` (nur Nutzung).
+ * Ändern sich Preis UND Nutzung, entstehen zwei Events.
+ */
+export function splitChange({ key, from, to }) {
+  const fields = PRICE_FIELDS.filter((f) => !near(from[f], to[f]));
+  const events = [];
+  if (fields.length > 0) {
+    events.push({ type: "price_changed", model: key, from, to, fields });
+  }
+  if (from.usage !== to.usage) {
+    events.push({ type: "usage_changed", model: key, from: from.usage, to: to.usage });
+  }
+  return events;
+}
+
 export const pricingOf = (model) => ({
   input: model.input,
   output: model.output,
@@ -543,7 +562,7 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
     changes.push({ type: "model_removed", model: key, days });
   }
   for (const { key, from, to } of changed) {
-    changes.push({ type: "pricing_changed", model: key, from, to });
+    changes.push(...splitChange({ key, from, to }));
   }
 
   for (const { key, from, to } of computeCapabilityDiff(prevModels, nextModels)) {
@@ -584,13 +603,29 @@ export function mergeFreeModels(prevFree, currentIds, today) {
   return currentIds.map((id) => ({ id, availableFrom: prev.get(id) ?? today }));
 }
 
+/**
+ * Mergt Events desselben Tages (2 Läufe/Tag): neu hinzukommende Events werden
+ * angehängt, Events mit gleichem `type` + `model` werden durch das neueste
+ * ersetzt (Dedupe, neuestes gewinnt). Für `text`-Events gilt `type` als Schlüssel.
+ */
+export function mergeChanges(existing, incoming) {
+  const key = (c) => `${c.type}:${c.model ?? ""}`;
+  const map = new Map();
+  for (const c of [...existing, ...incoming]) {
+    map.set(key(c), c);
+  }
+  return [...map.values()];
+}
+
 export function upsertChangelogJson(existing, date, changes) {
   const entries = Array.isArray(existing?.entries) ? existing.entries : [];
   const keep = entries.filter((e) => Array.isArray(e.changes) && e.changes.length > 0);
   const hasChanges = Array.isArray(changes) && changes.length > 0;
   if (!hasChanges) return { entries: keep };
   const rest = keep.filter((e) => e.date !== date);
-  rest.unshift({ date, changes });
+  const sameDate = keep.find((e) => e.date === date);
+  const merged = sameDate ? mergeChanges(sameDate.changes, changes) : changes;
+  rest.unshift({ date, changes: merged });
   return { entries: rest };
 }
 
@@ -665,10 +700,17 @@ const ChangeSchema = z.discriminatedUnion("type", [
     days: z.number().int().nonnegative(),
   }),
   z.object({
-    type: z.literal("pricing_changed"),
+    type: z.literal("price_changed"),
     model: z.string().min(1),
     from: PricingTypeSchema,
     to: PricingTypeSchema,
+    fields: z.array(z.enum(["input", "output", "cachedRead", "cachedWrite"])).min(1),
+  }),
+  z.object({
+    type: z.literal("usage_changed"),
+    model: z.string().min(1),
+    from: z.number().positive(),
+    to: z.number().positive(),
   }),
   z.object({
     type: z.literal("capabilities_changed"),

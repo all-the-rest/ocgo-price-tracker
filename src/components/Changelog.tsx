@@ -1,6 +1,6 @@
 import { For, Show } from "solid-js";
 import type { Lang, Translation } from "../i18n";
-import type { Change, ChangelogEntry, PricingType } from "../types";
+import type { Change, ChangelogEntry, PriceField, PricingType } from "../types";
 import { fmt, formatModelName } from "../util";
 import { capCount, fmtCaps } from "../capabilities";
 
@@ -12,7 +12,23 @@ interface ChangelogProps {
 }
 
 export default function Changelog(props: ChangelogProps) {
-  const fmtPricing = (p: PricingType) => {
+  const fmtPricing = (p: PricingType, fields: PriceField[]) => {
+    const order: PriceField[] = ["input", "output", "cachedRead"];
+    if (p.cachedWrite !== null) order.push("cachedWrite");
+    return (
+      <>
+        {order.map((f, i) => (
+          <>
+            {i > 0 && " / "}
+            {fields.includes(f) ? <strong class="font-bold">{fmt(p[f])}</strong> : <span>{fmt(p[f])}</span>}
+          </>
+        ))}{" "}
+        @ ${p.usage}
+      </>
+    );
+  };
+
+  const fmtPricingString = (p: PricingType) => {
     const parts = [fmt(p.input), fmt(p.output), fmt(p.cachedRead)];
     if (p.cachedWrite !== null) parts.push(fmt(p.cachedWrite));
     return `${parts.join(" / ")} @ $${p.usage}`;
@@ -33,10 +49,15 @@ export default function Changelog(props: ChangelogProps) {
       case "model_removed":
       case "free_removed":
         return <span class={`${baseCls} badge-error`}>−</span>;
-      case "pricing_changed": {
+      case "price_changed": {
         const diff = priceEffective(c.to) - priceEffective(c.from);
         if (diff > 1e-9) return <span class={`${baseCls} badge-error`}>↑</span>;
         if (diff < -1e-9) return <span class={`${baseCls} badge-success`}>↓</span>;
+        return <span class={`${baseCls} badge-ghost`}>≈</span>;
+      }
+      case "usage_changed": {
+        if (c.to > c.from) return <span class={`${baseCls} badge-success`}>↓</span>;
+        if (c.to < c.from) return <span class={`${baseCls} badge-error`}>↑</span>;
         return <span class={`${baseCls} badge-ghost`}>≈</span>;
       }
       case "capabilities_changed": {
@@ -57,20 +78,26 @@ export default function Changelog(props: ChangelogProps) {
       case "model_added":
         return (
           <span>
-            {props.t.chgModelAdded.replace("{model}", c.model).replace("{pricing}", fmtPricing(c.pricing))}
+            {props.t.chgModelAdded.replace("{model}", c.model).replace("{pricing}", fmtPricingString(c.pricing))}
           </span>
         );
       case "model_removed":
         return (
           <span>{props.t.chgModelRemoved.replace("{model}", c.model).replace("{days}", String(c.days))}</span>
         );
-      case "pricing_changed":
+      case "price_changed":
         return (
           <span>
-            {props.t.chgPricing
+            {c.model}: {fmtPricing(c.from, c.fields)} → {fmtPricing(c.to, c.fields)}
+          </span>
+        );
+      case "usage_changed":
+        return (
+          <span>
+            {props.t.chgUsage
               .replace("{model}", c.model)
-              .replace("{from}", fmtPricing(c.from))
-              .replace("{to}", fmtPricing(c.to))}
+              .replace("{from}", fmt(c.from))
+              .replace("{to}", fmt(c.to))}
           </span>
         );
       case "capabilities_changed":

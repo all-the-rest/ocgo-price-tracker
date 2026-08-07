@@ -32,6 +32,14 @@ export default function Footer(props: FooterProps) {
           <a href={props.data.capabilitiesSourceUrl} target="_blank" rel="noopener noreferrer" class="underline">
             {props.t.sourceCaps}
           </a>
+          <a
+            href="https://github.com/reisi007/ocgo-price-tracker/releases.atom"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline"
+          >
+            {props.t.rssFeed}
+          </a>
           <a href="#impressum" class="underline" onClick={(e) => scrollToSection("impressum", e)}>
             {props.t.impressum}
           </a>
@@ -39,6 +47,7 @@ export default function Footer(props: FooterProps) {
             {props.t.datenschutz}
           </a>
         </div>
+        <span>{props.t.watchHint}</span>
         <span>{props.t.footer}</span>
       </div>
     </footer>

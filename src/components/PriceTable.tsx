@@ -188,6 +188,7 @@ export default function PriceTable(props: PriceTableProps) {
                     <span class="inline-grid grid-cols-[4.5rem_3.5rem] gap-1">
                       <Tooltip
                         tip={props.t.usageTooltip
+                          .replace("{pct}", String(usagePct(m.usage)))
                           .replace("{usage}", String(m.usage))
                           .replace("{credit}", String(props.monthlyCredit))}
                         class="w-full"

@@ -2,7 +2,8 @@ name: Price Tracker
 
 on:
   schedule:
-    - cron: "0 5 * * *"
+    - cron: "0 8 * * 1-5"
+    - cron: "0 20 * * *"
   workflow_dispatch:
   push:
     branches:
@@ -46,15 +47,31 @@ jobs:
         run: pnpm build
 
       - name: Commit data changes
+        id: commit
         run: |
           if git diff --quiet CHANGELOG.json data src/data; then
             echo "no data changes, skipping commit"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add CHANGELOG.json data src/data
             git commit -m "chore: update prices $(date -u +%Y-%m-%d)"
             git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create/update release
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="$(node -e 'const c=require("fs").readFileSync("CHANGELOG.json","utf8");const e=JSON.parse(c).entries[0];process.stdout.write(e.date)')"
+          NOTES="$(node scripts/release-notes.mjs)"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "Price Update $TAG" --notes "$NOTES"
+          else
+            gh release create "$TAG" --title "Price Update $TAG" --notes "$NOTES"
           fi
 
       - name: Setup Pages

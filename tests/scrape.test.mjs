@@ -9,6 +9,8 @@ import {
   computeDiff,
   buildChanges,
   upsertChangelogJson,
+  mergeChanges,
+  splitChange,
   mergeFreeModels,
   validateSnapshot,
   validateChangelog,
@@ -225,24 +227,52 @@ test("buildChanges: Modell hinzugefügt (mit Pricing) und Nutzung verschlechtert
       pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
     },
     {
-      type: "pricing_changed",
+      type: "usage_changed",
       model: "Alpha",
-      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
-      to: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+      from: 60,
+      to: 15,
     },
   ]);
 });
 
-test("buildChanges: Preisänderung enthält alte und neue Pricing-Zeile", () => {
+test("buildChanges: Preisänderung enthält alte und neue Pricing-Zeile mit fields", () => {
   const next = [{ ...base[0], input: 1.5 }, { ...base[1] }];
   const changes = buildChanges(base, next, [], []);
   assert.deepEqual(changes, [
     {
-      type: "pricing_changed",
+      type: "price_changed",
       model: "Alpha",
       from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
       to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+      fields: ["input"],
     },
+  ]);
+});
+
+test("splitChange: nur Nutzung → usage_changed, nur Preis → price_changed", () => {
+  const p = (o) => ({ input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60, ...o });
+  assert.deepEqual(splitChange({ key: "Alpha", from: p({}), to: p({ usage: 120 }) }), [
+    { type: "usage_changed", model: "Alpha", from: 60, to: 120 },
+  ]);
+  assert.deepEqual(splitChange({ key: "Alpha", from: p({}), to: p({ cachedRead: 0.5 }) }), [
+    { type: "price_changed", model: "Alpha", from: p({}), to: p({ cachedRead: 0.5 }), fields: ["cachedRead"] },
+  ]);
+});
+
+test("splitChange: Preis UND Nutzung ändern sich → zwei Events", () => {
+  const from = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 };
+  const to = { input: 1, output: 2, cachedRead: 0.5, cachedWrite: null, usage: 120 };
+  assert.deepEqual(splitChange({ key: "Alpha", from, to }), [
+    { type: "price_changed", model: "Alpha", from, to, fields: ["cachedRead"] },
+    { type: "usage_changed", model: "Alpha", from: 60, to: 120 },
+  ]);
+});
+
+test("splitChange: mehrere Preisfelder werden aufgelistet, Float-Toleranz zählt gleich", () => {
+  const from = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 };
+  const to = { input: 1.0000000001, output: 2, cachedRead: 0.05, cachedWrite: 0.3, usage: 60 };
+  assert.deepEqual(splitChange({ key: "Alpha", from, to }), [
+    { type: "price_changed", model: "Alpha", from, to, fields: ["cachedRead", "cachedWrite"] },
   ]);
 });
 
@@ -318,10 +348,10 @@ test("upsertChangelogJson: leere Änderungen löschen den Eintrag des gleichen D
         date: "2026-08-07",
         changes: [
           {
-            type: "pricing_changed",
+            type: "usage_changed",
             model: "DeepSeek V4 Flash",
-            from: { input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: 60 },
-            to: { input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: 120 },
+            from: 60,
+            to: 120,
           },
         ],
       },
@@ -355,10 +385,17 @@ test("validateChangelog: gültiger Changelog mit allen Event-Typen", () => {
             days: 5,
           },
           {
-            type: "pricing_changed",
+            type: "price_changed",
             model: "Beta",
             from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
-            to: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+            to: { input: 1, output: 2, cachedRead: 0.5, cachedWrite: null, usage: 15 },
+            fields: ["cachedRead"],
+          },
+          {
+            type: "usage_changed",
+            model: "Beta",
+            from: 15,
+            to: 60,
           },
           {
             type: "capabilities_changed",
@@ -373,6 +410,85 @@ test("validateChangelog: gültiger Changelog mit allen Event-Typen", () => {
     ],
   };
   assert.doesNotThrow(() => validateChangelog(changelog));
+});
+
+test("validateChangelog: price_changed ohne fields bzw. usage_changed ungültig bricht", () => {
+  assert.throws(() =>
+    validateChangelog({
+      entries: [
+        {
+          date: "2026-08-06",
+          changes: [
+            {
+              type: "price_changed",
+              model: "X",
+              from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+              to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+            },
+          ],
+        },
+      ],
+    })
+  );
+  assert.throws(() =>
+    validateChangelog({
+      entries: [
+        {
+          date: "2026-08-06",
+          changes: [
+            { type: "price_changed", model: "X", from: {}, to: {}, fields: [] },
+          ],
+        },
+      ],
+    })
+  );
+  assert.throws(() =>
+    validateChangelog({
+      entries: [
+        {
+          date: "2026-08-06",
+          changes: [{ type: "usage_changed", model: "X", from: -1, to: 60 }],
+        },
+      ],
+    })
+  );
+});
+
+test("mergeChanges: gleiche type+model → neuestes gewinnt, neue Events werden angehängt", () => {
+  const a = { type: "price_changed", model: "Alpha", from: { input: 1 }, to: { input: 2 }, fields: ["input"] };
+  const b = { type: "price_changed", model: "Alpha", from: { input: 2 }, to: { input: 1.5 }, fields: ["input"] };
+  const c = { type: "usage_changed", model: "Alpha", from: 60, to: 120 };
+  assert.deepEqual(mergeChanges([a], [b, c]), [b, c]);
+  assert.deepEqual(mergeChanges([c], [a]), [c, a]);
+});
+
+test("mergeChanges: verschiedene Typen/Modelle bleiben erhalten, ersetzte behalten Position", () => {
+  const a = { type: "free_added", model: "big-pickle" };
+  const b = { type: "price_changed", model: "Alpha", from: { input: 1 }, to: { input: 2 }, fields: ["input"] };
+  const c = { type: "text", lang: { de: "x", en: "x" } };
+  const d = { type: "text", lang: { de: "y", en: "y" } };
+  assert.deepEqual(mergeChanges([a, c], [b, d]), [a, d, b]);
+});
+
+test("upsertChangelogJson: Events desselben Datums werden gemerged (2 Läufe/Tag)", () => {
+  const existing = {
+    entries: [
+      {
+        date: "2026-08-07",
+        changes: [{ type: "usage_changed", model: "Alpha", from: 60, to: 120 }],
+      },
+    ],
+  };
+  const result = upsertChangelogJson(existing, "2026-08-07", [
+    { type: "free_added", model: "big-pickle" },
+    { type: "usage_changed", model: "Alpha", from: 120, to: 60 },
+  ]);
+  assert.equal(result.entries.length, 1);
+  assert.equal(result.entries[0].date, "2026-08-07");
+  assert.deepEqual(result.entries[0].changes, [
+    { type: "usage_changed", model: "Alpha", from: 120, to: 60 },
+    { type: "free_added", model: "big-pickle" },
+  ]);
 });
 
 test("validateChangelog: leere Einträge, unbekannte Typen und fehlende Felder brechen", () => {

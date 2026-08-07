@@ -63,7 +63,8 @@ export type Change =
   | { type: "text"; lang: Record<SupportedLocale, string> }
   | { type: "model_added"; model: string; pricing: PricingType }
   | { type: "model_removed"; model: string; days: number }
-  | { type: "pricing_changed"; model: string; from: PricingType; to: PricingType }
+  | { type: "price_changed"; model: string; from: PricingType; to: PricingType; fields: PriceField[] }
+  | { type: "usage_changed"; model: string; from: number; to: number }
   | { type: "capabilities_changed"; model: string; from: Capabilities | null; to: Capabilities | null }
   | { type: "free_added"; model: string }
   | { type: "free_removed"; model: string; availableFrom: string; until: string };

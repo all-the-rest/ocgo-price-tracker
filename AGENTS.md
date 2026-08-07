@@ -80,10 +80,11 @@ pnpm typecheck        # nur tsc --noEmit
   - `text` (mit `lang` = `{ de, en }`-Übersetzungen, z. B. `{ de: "Initialversion", en: "Initial version" }`; keine freien Texte)
   - `model_added` (mit `pricing` = `{ input, output, cachedRead, cachedWrite, usage }`, die Go-Tabellen-Zeile)
   - `model_removed` (mit `days` = verfügbare Tage, `firstSeen` aus `history.json`-Chronologie)
-  - `pricing_changed` (mit `from`/`to` = komplette Pricing-Zeile; fasst Preis- **und** Nutzungsänderungen zusammen)
+  - `price_changed` (mit `from`/`to` = komplette Pricing-Zeile und `fields` = geänderte Preisfelder `["input","output","cachedRead","cachedWrite"]`; die UI stellt die Felder in **beiden** Zeilen fett dar)
+  - `usage_changed` (mit `from`/`to` = Nutzungswert; getrenntes Event, damit Nutzungs- und Preisänderungen unterscheidbar sind)
   - `capabilities_changed` (mit `from`/`to` = capabilities-Objekt oder `null`; löst auch bei Nur-Fähigkeiten-Änderungen einen Daten-Commit aus)
   - `free_added`/`free_removed` (mit `availableFrom`/`until`)
-  - **Keine** `baseline`/`usage_changed`/`price_changed`-Events. Einträge haben IMMER `changes.length > 0`; ohne Änderungen wird kein Eintrag angelegt und ein bestehender Eintrag desselben Datums bleibt erhalten, leere Einträge werden entfernt (`upsertChangelogJson`).
+  - Preis- UND Nutzungsänderung am selben Tag → **zwei Events** (`price_changed` + `usage_changed`). **Keine** `baseline`/`pricing_changed`-Events. Einträge haben IMMER `changes.length > 0`; ohne Änderungen wird kein Eintrag angelegt und ein bestehender Eintrag desselben Datums bleibt erhalten, leere Einträge werden entfernt. Bei **zwei Läufen pro Tag** werden Events desselben Datums **gemerged** (`mergeChanges`, Dedupe nach `type`+`model`, neuestes gewinnt) — der Morgen-Eintrag wird nicht überschrieben (`upsertChangelogJson`).
 
 ## Scraper-Regeln (`scripts/scrape.mjs`)
 
@@ -94,9 +95,9 @@ pnpm typecheck        # nur tsc --noEmit
 - **Anfragemuster** (`Name — N Input-, M Cached-, K Output-Tokens pro Anfrage`) pro Modell extrahieren; Kurzschreibweisen (`GLM-5.2/5.1`, `Kimi K2.7/K2.6`) gegen die Modellnamen auflösen. Fehlende Muster über `PATTERN_FALLBACKS` (z. B. MiniMax M2.5 → M2.7) auffüllen.
 - **zod-Validierung** (`validateSnapshot`): jedes Modell MUSS `pattern` haben; ungültige Daten → `process.exit(1)` → CI rot.
 - Zen-Free-Models via `https://opencode.ai/zen/v1/models` (`extractFreeModels`), `availableFrom` aus dem vorherigen Lauf übernehmen (`mergeFreeModels`).
-- Diff gegen das vorherige `latest.json`: Modell hinzugefügt (mit Pricing-Zeile), Modell entfernt (mit `days` aus `firstSeen`), Nutzung verbessert/verschlechtert, Preisänderungen (Float-Toleranz 1e-9) → jeweils als **ein** `pricing_changed`-Event mit kompletten `from`/`to`-Zeilen, Fähigkeitsänderungen → `capabilities_changed` (undefiniert und `null` gelten als gleich), Free-Model-Events.
+- Diff gegen das vorherige `latest.json`: Modell hinzugefügt (mit Pricing-Zeile), Modell entfernt (mit `days` aus `firstSeen`), Nutzung verbessert/verschlechtert → `usage_changed`, Preisänderungen (Float-Toleranz 1e-9) → `price_changed` mit `fields` (geänderte Preisfelder), Preis- UND Nutzungsänderung → zwei Events (`splitChange`), Fähigkeitsänderungen → `capabilities_changed` (undefiniert und `null` gelten als gleich), Free-Model-Events.
 - **Fähigkeiten** aus models.dev via `@opencode-ai/models`: Live-API (`client.catalog()`, Timeout 10 s) mit Fallback auf den gebündelten Snapshot (`@opencode-ai/models/snapshot`, `source` = `live`/`snapshot`). Zuordnung über normalisierte Namen (`normalizeName`): zuerst `providers.opencode.models` (per ID/Name), dann kanonische `models`-Metadaten (bei Kollisionen exakter Normalized-ID-Treffer, sonst erste nach ID sortiert), Ausnahmen via `CAPABILITY_OVERRIDES`. Modelle ohne Treffer → `capabilities: null`. Die models.dev-Preise werden ignoriert.
-- CHANGELOG.json: neuer `{ date, changes }`-Eintrag oben, Datum UTC (`YYYY-MM-DD`), ein bestehender Eintrag mit demselben Datum wird ersetzt; **leere** Einträge (`changes: []`) werden entfernt, bei `changes.length === 0` wird kein Eintrag angelegt und ein bereits vorhandener Eintrag desselben Datums bleibt erhalten (auch kein Basis-Snapshot beim ersten Lauf). `validateChangelog` (zod) bricht bei leeren Einträgen/unbekannten Typen rot ab. **Minified schreiben** (`JSON.stringify(changelog)` — eine Zeile), niemals hübsch formatiert, damit Changelog-Diffs nur die tatsächlichen Änderungen zeigen.
+- CHANGELOG.json: neuer `{ date, changes }`-Eintrag oben, Datum UTC (`YYYY-MM-DD`); bei zwei Läufen pro Tag werden Events desselben Datums via `mergeChanges` **gemerged** (Dedupe nach `type`+`model`, neuestes gewinnt, kein Überschreiben des Morgen-Eintrags); **leere** Einträge (`changes: []`) werden entfernt, bei `changes.length === 0` wird kein Eintrag angelegt und ein bereits vorhandener Eintrag desselben Datums bleibt erhalten (auch kein Basis-Snapshot beim ersten Lauf). `validateChangelog` (zod) bricht bei leeren Einträgen/unbekannten Typen rot ab. **Minified schreiben** (`JSON.stringify(changelog)` — eine Zeile), niemals hübsch formatiert, damit Changelog-Diffs nur die tatsächlichen Änderungen zeigen.
 - `model_removed.days` = `heute − firstSeen`, `firstSeen` = frühester Snapshot in `data/history.json`, der das Modell enthält.
 - `data/latest.json`/`data/history.json` werden **nur bei Änderungen** geschrieben (`changes.length > 0`); sonst bleibt der Stand vom letzten Änderungstag erhalten (kein Commit, aber Deploy läuft weiter).
 - **Parsing-Fehler** (keine Preistabelle, unerwartete Spaltenstruktur, unparsebare Werte) → `process.exit(1)` → CI-Lauf wird rot.
@@ -108,13 +109,14 @@ pnpm typecheck        # nur tsc --noEmit
 - Sprache: localStorage `lang`, sonst Browser-Locale (automatisch `de` bei `navigator.language`-Präfix `de`); Default `en`. Theme via `theme-controller`-Checkbox (`value="dark"`), `basis` in localStorage.
 - **Query-Params** (shareable URLs): `sort=field:asc|desc`, `fsort=…` (Free-Tabelle), `basis=list|full`, `lang=de|en`, `cap=image,video,audio,pdf` (Fähigkeiten-Filter Preistabelle, OR-Semantik), `fcap=…` (Fähigkeiten-Filter Free-Tabelle, unabhängig von `cap`) — beim Laden URL > localStorage, Änderungen via `history.replaceState`.
 - Seitenstruktur: Kurzerklärung → Preistabelle (Sortierung je Spalte, `table-pin-cols` für horizontales Scrollen, Fähigkeiten-Badges-Spalte, Fähigkeiten-Filter-Toggles) → Free-Models-Tabelle (neuestes oben, eigene unabhängige Fähigkeiten-Filter-Toggles) → Changelog (JSON-Events, i18n-Texte, Badges) → Impressum/Datenschutz.
-- Quellen-Links (Go, Zen, models.dev) und der „Verfügbar seit“-Hinweis stehen ausschließlich im Footer (kein Quellen-Link im Free-Models-Header). Changelog-Badges sind richtungsabhängig: `badge-error` ↑/− = teurer/weniger, `badge-success` ↓/+ = billiger/mehr, neutral ≈ = `badge-ghost`.
+- Quellen-Links (Go, Zen, models.dev), RSS-Link (`releases.atom`) und der „Verfügbar seit“-Hinweis stehen ausschließlich im Footer (kein Quellen-Link im Free-Models-Header). Changelog-Badges sind richtungsabhängig: `badge-error` ↑/− = teurer/weniger, `badge-success` ↓/+ = billiger/mehr, neutral ≈ = `badge-ghost`.
 - Analytics-Skript (`stats.all-the.rest/x7k2p.js`, `defer`) gehört in `<head>` von `index.html`.
 
 ## CI/CD (`.github/workflows/price-tracker.yml`)
 
-- Trigger: `schedule cron "0 5 * * *"`, `workflow_dispatch`, `push` auf `main`.
-- Pipeline: install (`--frozen-lockfile`) → `pnpm test` → `pnpm scrape` → `pnpm build` → Commit (CHANGELOG.json + data + src/data, `github-actions[bot]`, nur bei Änderungen) → `upload-pages-artifact` (dist) + `upload-artifact` (dist-Zip) → `deploy-pages`.
+- Trigger: `schedule cron "0 8 * * 1-5"` (Mo–Fr 10:00 UTC+2) und `"0 20 * * *"` (täglich 22:00 UTC+2), `workflow_dispatch`, `push` auf `main`.
+- Pipeline: install (`--frozen-lockfile`) → `pnpm test` → `pnpm scrape` → `pnpm build` → Commit (CHANGELOG.json + data + src/data, `github-actions[bot]`, nur bei Änderungen) → Release (nur bei `changed=true`: `scripts/release-notes.mjs` → `gh release create`/`edit` mit Tag = Top-Changelog-Datum, damit Watcher per E-Mail und RSS-Reader via `releases.atom` benachrichtigt werden) → `upload-pages-artifact` (dist) + `upload-artifact` (dist-Zip) → `deploy-pages`.
+- `scripts/release-notes.mjs` rendert den neuesten Changelog-Eintrag als zweisprachiges Markdown (Titel, Event-Liste, Links zu Site + RSS + Watch-Hinweis); der Abend-Lauf editiert die Release des Tages (gemergter Eintrag).
 - Ein fehlgeschlagenes `pnpm scrape` bricht die Pipeline ab (kein Commit/Deploy, Lauf rot).
 
 ## Verifikation
