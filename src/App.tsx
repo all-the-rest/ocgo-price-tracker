@@ -1,5 +1,5 @@
 import { createEffect, createSignal } from "solid-js";
-import type { ChangelogData, PriceData } from "./types";
+import type { Basis, ChangelogData, PriceData } from "./types";
 import { i18n, type Lang } from "./i18n";
 import { VALID_SORT, type FreeSortState, type SortState } from "./sort";
 import { CAP_IDS, type CapId } from "./capabilities";
@@ -27,7 +27,7 @@ const defaultLang: Lang =
 function readParams(): {
   sort: SortState | null;
   fsort: FreeSortState | null;
-  basis: "list" | "full" | null;
+  basis: Basis | null;
   lang: "de" | "en" | null;
   cap: CapId[] | null;
   fcap: CapId[] | null;
@@ -45,7 +45,7 @@ function readParams(): {
       ? { field: ff as FreeSortState["field"], dir: (fd === "asc" ? 1 : -1) as 1 | -1 }
       : null;
   const b = p.get("basis");
-  const basis: "list" | "full" | null = b === "list" || b === "full" ? b : null;
+  const basis: Basis | null = b === "list" || b === "full" || b === "paid" ? b : null;
   const l = p.get("lang");
   const lang: "de" | "en" | null = l === "de" || l === "en" ? l : null;
   const parseCaps = (raw: string | null): CapId[] | null =>
@@ -61,7 +61,7 @@ const params = readParams();
 export default function App() {
   const [lang, setLang] = createSignal<Lang>(params.lang ?? defaultLang);
   const [dark, setDark] = createSignal(storedTheme === "dark");
-  const [basis, setBasis] = createSignal<"list" | "full">(
+  const [basis, setBasis] = createSignal<Basis>(
     params.basis ?? (storedBasis === "list" ? "list" : "full")
   );
   const [sort, setSort] = createSignal<SortState>(params.sort ?? { field: "cost", dir: 1 });
@@ -93,7 +93,7 @@ export default function App() {
     localStorage.setItem("basis", basis());
   });
 
-  const defaultBasis: "list" | "full" = storedBasis === "list" ? "list" : "full";
+  const defaultBasis: Basis = storedBasis === "list" ? "list" : "full";
 
   createEffect(() => {
     const p = new URLSearchParams(window.location.search);
@@ -143,6 +143,7 @@ export default function App() {
           caps={caps()}
           setCaps={setCaps}
           monthlyCredit={data.monthlyCredit}
+          monthlyCost={data.monthlyCost}
         />
         <FreeModelsTable
           freeModels={data.freeModels}

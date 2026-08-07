@@ -1,5 +1,7 @@
 export type PriceField = "input" | "output" | "cachedRead" | "cachedWrite";
 
+export type Basis = "list" | "full" | "paid";
+
 export type Modality = "text" | "audio" | "image" | "video" | "pdf";
 
 export interface Capabilities {
@@ -53,6 +55,7 @@ export interface PriceData {
   capabilitiesSourceUrl: string;
   sourceLang: string;
   monthlyCredit: number;
+  monthlyCost: number;
   models: Model[];
   freeModels: FreeModel[];
 }

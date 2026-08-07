@@ -1,4 +1,4 @@
-import type { Model, PriceField } from "./types";
+import type { Basis, Model, PriceField } from "./types";
 
 export type { PriceField };
 
@@ -9,9 +9,17 @@ const EFFECTIVE_FIELD: Record<PriceField, keyof Model> = {
   cachedWrite: "effectiveCachedWrite",
 };
 
-export function fieldPrice(m: Model, f: PriceField, basis: "list" | "full"): number | null {
+/**
+ * Preis je Modellfeld für die gewählte Preisbasis:
+ * - "list" → Listpreis (aus der Doku)
+ * - "full" → Effektivpreis bei vollem $60-Monatsguthaben (Listpreis × 60/Nutzung)
+ * - "paid" → Effektivpreis auf Basis dessen, was man tatsächlich zahlt
+ *            (Listpreis × Monatspreis/Nutzung, z. B. $10 → 1,5× bei $15-Nutzung)
+ */
+export function fieldPrice(m: Model, f: PriceField, basis: Basis, monthlyCost: number): number | null {
   const raw = m[f];
   if (basis === "list") return raw;
+  if (basis === "paid") return raw === null ? null : raw * (monthlyCost / m.usage);
   return (m[EFFECTIVE_FIELD[f]] ?? raw) as number | null;
 }
 
@@ -24,12 +32,12 @@ export function fieldPrice(m: Model, f: PriceField, basis: "list" | "full"): num
  * fehlender Cached-Write-Preis (in der Doku mit "-" dokumentiert) zählt wie der
  * Input-Preis (der Input-Anteil wird dann zum reinen Input-Preis).
  */
-export function requestCost(m: Model, basis: "list" | "full"): number | null {
+export function requestCost(m: Model, basis: Basis, monthlyCost: number): number | null {
   if (!m.pattern) return null;
-  const input = fieldPrice(m, "input", basis);
-  const cached = fieldPrice(m, "cachedRead", basis);
-  const writeRaw = fieldPrice(m, "cachedWrite", basis);
-  const output = fieldPrice(m, "output", basis);
+  const input = fieldPrice(m, "input", basis, monthlyCost);
+  const cached = fieldPrice(m, "cachedRead", basis, monthlyCost);
+  const writeRaw = fieldPrice(m, "cachedWrite", basis, monthlyCost);
+  const output = fieldPrice(m, "output", basis, monthlyCost);
   if (input === null || cached === null || output === null) return null;
   const write = writeRaw ?? input;
   const inputEffective = 0.8 * input + 0.2 * write;

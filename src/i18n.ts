@@ -3,9 +3,9 @@ export type Lang = "de" | "en";
 export const i18n = {
   de: {
     title: "Preis-Tracking für OpenCode Go",
-    subtitle: "Tägliche Preisübersicht für OpenCode Go, umgerechnet auf volle $60-Monatsguthaben.",
+    subtitle: "Tägliche Preisübersicht für OpenCode Go — umgerechnet aufs volle $60-Monatsguthaben oder auf das, was du wirklich zahlst ($10/Monat).",
     intro:
-      "Einmal täglich von der offiziellen OpenCode-Dokumentation abgerufen. Preise pro 1M Tokens; Effektivpreis bei vollem $60-Monatsguthaben = Listpreis × (60 / inkl. Nutzung). Die Kosten pro Anfrage nutzen das in der Doku dokumentierte Anfragemuster des jeweiligen Modells (Details im Tooltip).",
+      "Einmal täglich von der offiziellen OpenCode-Dokumentation abgerufen. Preise pro 1M Tokens. Effektivpreise: volles Guthaben = Listpreis × (60 / inkl. Nutzung), was du zahlst = Listpreis × (10 / inkl. Nutzung). Die Kosten pro Anfrage nutzen das in der Doku dokumentierte Anfragemuster des jeweiligen Modells (Details im Tooltip).",
     headingPrices: "Preise",
     headingChangelog: "Changelog",
     headingFree: "Kostenlose Modelle",
@@ -30,8 +30,9 @@ export const i18n = {
     statsModelsTitle: "Modelle",
     statsModelsDesc: "aktuell gelistet",
     basisLabel: "Preisbasis",
-    basisList: "Listpreis",
+    basisList: "Listenpreis",
     basisFull: "Volles $60-Guthaben",
+    basisPaid: "Was du zahlst ($10)",
     capsLabel: "Fähigkeiten",
     capImage: "Bild",
     capVideo: "Video",
@@ -51,8 +52,9 @@ export const i18n = {
       "Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: 80% Input-Preis + 20% Cached-Write-Preis, Cached-Tokens: Cached-Read-Preis, Output-Tokens: Output-Preis — Heuristik). Fehlender Cached-Write („-“) zählt wie der Input-Preis. Details im Tooltip der Zeile.",
     patternTooltip: "Muster: {input} Input · {cached} Cached · {output} Output Tokens/Anfrage",
     metricNote:
-      "Preise auf Basis des vollen $60-Monatsguthabens: Effektivpreis = Listpreis × (60 / inkl. Nutzung). Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: 80% Input-Preis + 20% Cached-Write-Preis, Cached-Tokens: Cached-Read-Preis, Output-Tokens: Output-Preis — Heuristik). Fehlt ein Cached-Write-Preis („-“), zählt er wie der Input-Preis.",
-    factorNote: "Bei vollem $60-Guthaben: Modelle mit $15 Nutzung ×{n}",
+      "Preise wahlweise auf Basis des vollen $60-Monatsguthabens (Effektivpreis = Listpreis × 60/Nutzung) oder dessen, was du zahlst ($10/Monat, Effektivpreis = Listpreis × 10/Nutzung). Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: 80% Input-Preis + 20% Cached-Write-Preis, Cached-Tokens: Cached-Read-Preis, Output-Tokens: Output-Preis — Heuristik). Fehlt ein Cached-Write-Preis („-“), zählt er wie der Input-Preis.",
+    factorNote: "Effektivpreis = Listpreis × {credit}/Nutzung: {rows}",
+    paidNote: "Du zahlst ${paid}/Monat und bekommst dafür die inkl. Nutzung: {rows} (bei voller Ausnutzung, nichts verfällt).",
     noValue: "–",
     fetchedAt: "Stand",
     sourceLink: "Quelle",
@@ -66,9 +68,9 @@ export const i18n = {
   },
   en: {
     title: "Price Tracking for OpenCode Go",
-    subtitle: "Daily price overview for OpenCode Go, converted to the full $60 monthly credit.",
+    subtitle: "Daily price overview for OpenCode Go — converted to the full $60 monthly credit or to what you really pay ($10/month).",
     intro:
-      "Fetched daily from the official OpenCode documentation. Prices per 1M tokens; effective price at full $60 monthly credit = list price × (60 / included usage). Cost per request uses each model's documented request pattern (details in the tooltip).",
+      "Fetched daily from the official OpenCode documentation. Prices per 1M tokens. Effective prices: full credit = list price × (60 / included usage), what you pay = list price × (10 / included usage). Cost per request uses each model's documented request pattern (details in the tooltip).",
     headingPrices: "Prices",
     headingChangelog: "Changelog",
     headingFree: "Free models",
@@ -95,6 +97,7 @@ export const i18n = {
     basisLabel: "Price basis",
     basisList: "List price",
     basisFull: "Full $60 credit",
+    basisPaid: "What you pay ($10)",
     capsLabel: "Capabilities",
     capImage: "Image",
     capVideo: "Video",
@@ -114,8 +117,9 @@ export const i18n = {
       "Cost per request = model price × documented request pattern (input tokens: 80% input price + 20% cache write price, cached tokens: cached read price, output tokens: output price — heuristic). Missing cache write (\"-\") counts as the input price. Details in the row tooltip.",
     patternTooltip: "Pattern: {input} input · {cached} cached · {output} output tokens/request",
     metricNote:
-      "Prices based on the full $60 monthly credit: effective price = list price × (60 / included usage). Cost per request = model price × documented request pattern (input tokens: 80% input price + 20% cache write price, cached tokens: cached read price, output tokens: output price — heuristic). If no cache write price is listed (\"-\"), it counts as the input price.",
-    factorNote: "At full $60 credit: $15-usage models ×{n}",
+      "Prices either based on the full $60 monthly credit (effective price = list price × 60/usage) or on what you pay ($10/month, effective price = list price × 10/usage). Cost per request = model price × documented request pattern (input tokens: 80% input price + 20% cache write price, cached tokens: cached read price, output tokens: output price — heuristic). If no cache write price is listed (\"-\"), it counts as the input price.",
+    factorNote: "Effective price = list price × {credit}/usage: {rows}",
+    paidNote: "You pay ${paid}/month and get the included usage: {rows} (assuming full usage, nothing lapses).",
     noValue: "–",
     fetchedAt: "As of",
     sourceLink: "Source",

@@ -17,6 +17,7 @@ const ZEN_URL = "https://opencode.ai/zen/v1/models";
 const MODELS_DEV_URL = "https://models.dev";
 const SOURCE_LANG = "de";
 const MONTHLY_CREDIT = 60;
+const MONTHLY_COST = 10;
 const FLOAT_TOLERANCE = 1e-9;
 const USER_AGENT =
   "ocgo-price-tracker/0.1.0 (+https://github.com/reisi007/ocgo-price-tracker)";
@@ -672,6 +673,7 @@ const SnapshotSchema = z.object({
   capabilitiesSourceUrl: z.string().url(),
   sourceLang: z.string(),
   monthlyCredit: z.number(),
+  monthlyCost: z.number(),
   models: z.array(ModelSchema).min(1),
   freeModels: z.array(FreeModelSchema),
 });
@@ -808,6 +810,7 @@ async function main() {
       capabilitiesSourceUrl: MODELS_DEV_URL,
       sourceLang: SOURCE_LANG,
       monthlyCredit: MONTHLY_CREDIT,
+      monthlyCost: MONTHLY_COST,
       models,
       freeModels,
     };

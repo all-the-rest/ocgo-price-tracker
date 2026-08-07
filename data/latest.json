@@ -5,6 +5,7 @@
   "capabilitiesSourceUrl": "https://models.dev",
   "sourceLang": "de",
   "monthlyCredit": 60,
+  "monthlyCost": 10,
   "models": [
     {
       "name": "Grok 4.5",

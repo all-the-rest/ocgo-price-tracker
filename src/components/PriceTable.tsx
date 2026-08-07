@@ -1,6 +1,6 @@
 import { createMemo, For, Show } from "solid-js";
 import type { Translation } from "../i18n";
-import type { Model } from "../types";
+import type { Basis, Model } from "../types";
 import { fmt } from "../util";
 import { fieldPrice, formatTokens, requestCost } from "../weighted";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
@@ -11,19 +11,26 @@ interface PriceTableProps {
   models: Model[];
   t: Translation;
   lang: "de" | "en";
-  basis: "list" | "full";
-  setBasis: (b: "list" | "full") => void;
+  basis: Basis;
+  setBasis: (b: Basis) => void;
   sort: SortState;
   setSort: (u: (prev: SortState) => SortState) => void;
   caps: CapId[];
   setCaps: (u: (prev: CapId[]) => CapId[]) => void;
   monthlyCredit: number;
+  monthlyCost: number;
 }
+
+const formatMult = (n: number, lang: "de" | "en") =>
+  new Intl.NumberFormat(lang === "de" ? "de-DE" : "en-US", { maximumFractionDigits: 2 }).format(n);
 
 export default function PriceTable(props: PriceTableProps) {
   const sortValue = (m: Model, f: SortField): number | string | null => {
-    if (f === "cost") return requestCost(m, props.basis);
+    if (f === "cost") return requestCost(m, props.basis, props.monthlyCost);
     if (f === "name") return m.name.toLowerCase();
+    if (f === "input" || f === "output" || f === "cachedRead" || f === "cachedWrite") {
+      return fieldPrice(m, f, props.basis, props.monthlyCost);
+    }
     return m[f];
   };
 
@@ -101,6 +108,27 @@ export default function PriceTable(props: PriceTableProps) {
 
   const usagePct = (usage: number) => Math.round((usage / props.monthlyCredit) * 100);
 
+  const factorNote = createMemo(() => {
+    if (props.basis === "list") return "";
+    const usages = [...new Set(props.models.map((m) => m.usage))].sort((a, b) => a - b);
+    if (props.basis === "paid") {
+      const rows = usages
+        .map((u) => `$${u} → ${formatMult(u / props.monthlyCost, props.lang)}×`)
+        .join(" · ");
+      return props.t.paidNote.replace("{paid}", String(props.monthlyCost)).replace("{rows}", rows);
+    }
+    const rows = usages
+      .map(
+        (u) =>
+          `${Math.round((u / props.monthlyCredit) * 100)} % → ×${formatMult(
+            props.monthlyCredit / u,
+            props.lang
+          )}`
+      )
+      .join(" · ");
+    return props.t.factorNote.replace("{credit}", String(props.monthlyCredit)).replace("{rows}", rows);
+  });
+
   const priceCell = (n: number | null | undefined) => {
     const s = fmt(n);
     const isNull = s === "–";
@@ -133,11 +161,16 @@ export default function PriceTable(props: PriceTableProps) {
           >
             {props.t.basisFull}
           </button>
+          <button
+            class="join-item btn btn-sm"
+            classList={{ "btn-active": props.basis === "paid" }}
+            onClick={() => props.setBasis("paid")}
+          >
+            {props.t.basisPaid}
+          </button>
         </div>
-        <Show when={props.basis === "full"}>
-          <span class="text-sm text-base-content/50">
-            {props.t.factorNote.replace("{n}", String(props.monthlyCredit / 15))}
-          </span>
+        <Show when={props.basis === "full" || props.basis === "paid"}>
+          <span class="text-sm text-base-content/50">{factorNote()}</span>
         </Show>
       </div>
 
@@ -180,10 +213,10 @@ export default function PriceTable(props: PriceTableProps) {
                   <td>
                     <CapabilityBadges m={m} t={props.t} />
                   </td>
-                  <td>{priceCell(fieldPrice(m, "input", props.basis))}</td>
-                  <td>{priceCell(fieldPrice(m, "output", props.basis))}</td>
-                  <td>{priceCell(fieldPrice(m, "cachedRead", props.basis))}</td>
-                  <td>{priceCell(fieldPrice(m, "cachedWrite", props.basis))}</td>
+                  <td>{priceCell(fieldPrice(m, "input", props.basis, props.monthlyCost))}</td>
+                  <td>{priceCell(fieldPrice(m, "output", props.basis, props.monthlyCost))}</td>
+                  <td>{priceCell(fieldPrice(m, "cachedRead", props.basis, props.monthlyCost))}</td>
+                  <td>{priceCell(fieldPrice(m, "cachedWrite", props.basis, props.monthlyCost))}</td>
                   <td class="text-right whitespace-nowrap">
                     <span class="inline-grid grid-cols-[4.5rem_3.5rem] gap-1">
                       <Tooltip
@@ -208,7 +241,7 @@ export default function PriceTable(props: PriceTableProps) {
                   <td>
                     <Show when={m.pattern} fallback={priceCell(null)}>
                       <Tooltip tip={patternTooltip(m)} class="block">
-                        {priceCell(requestCost(m, props.basis))}
+                        {priceCell(requestCost(m, props.basis, props.monthlyCost))}
                       </Tooltip>
                     </Show>
                   </td>

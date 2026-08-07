@@ -46,6 +46,7 @@ pnpm typecheck        # nur tsc --noEmit
   "capabilitiesSourceUrl": "https://models.dev",
   "sourceLang": "de",
   "monthlyCredit": 60,
+  "monthlyCost": 10,
   "freeModels": [{ "id": "big-pickle", "availableFrom": "2026-08-05" }],
   "models": [
     {
@@ -69,6 +70,7 @@ pnpm typecheck        # nur tsc --noEmit
 ```
 
 - `multiplier = 60 / usage`; `usage` = Basis-Nutzung aus der Preistabelle (`$15`/`$60`) **× Bonus-Faktor** (z. B. `2x usage` → `usage` = `30`/`120`). Ein Bonus-Anstieg senkt `multiplier` und damit die Effektivpreise.
+- `monthlyCost` = 10 (laufender Abo-Preis); die UI berechnet daraus die zusätzliche Preisbasis „Was du zahlst“ (`Effektivpreis = Listpreis × 10/Nutzung`).
 - `effective* = preis × multiplier`
 - `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: 80% Input-Preis + 20% Cached-Write-Preis, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
 - `capabilities` = Fähigkeiten aus models.dev (via `@opencode-ai/models`): `input`/`output`-Modalitäten (`text`, `audio`, `image`, `video`, `pdf`), `reasoning`, `toolCall`. `null` = kein models.dev-Eintrag. **Nur Fähigkeiten — die Preise bleiben aus dem Go-Scrape (models.dev-Preise weichen ab und werden ignoriert).**
@@ -107,7 +109,8 @@ pnpm typecheck        # nur tsc --noEmit
 - Nur daisyUI- und Tailwind-Klassen verwenden; Default-Varianten bevorzugen; daisyUI-Semantic-Colors (`base-*`, `primary`, `badge-success/-error/-warning/-info`), kein `dark:`-Präfix.
 - Kein `tailwind.config.js` — Tailwind 4 braucht nur `@import "tailwindcss";` + `@plugin "daisyui";` in `src/index.css`.
 - Sprache: localStorage `lang`, sonst Browser-Locale (automatisch `de` bei `navigator.language`-Präfix `de`); Default `en`. Theme via `theme-controller`-Checkbox (`value="dark"`), `basis` in localStorage.
-- **Query-Params** (shareable URLs): `sort=field:asc|desc`, `fsort=…` (Free-Tabelle), `basis=list|full`, `lang=de|en`, `cap=image,video,audio,pdf` (Fähigkeiten-Filter Preistabelle, OR-Semantik), `fcap=…` (Fähigkeiten-Filter Free-Tabelle, unabhängig von `cap`) — beim Laden URL > localStorage, Änderungen via `history.replaceState`.
+- **Query-Params** (shareable URLs): `sort=field:asc|desc`, `fsort=…` (Free-Tabelle), `basis=list|full|paid`, `lang=de|en`, `cap=image,video,audio,pdf` (Fähigkeiten-Filter Preistabelle, OR-Semantik), `fcap=…` (Fähigkeiten-Filter Free-Tabelle, unabhängig von `cap`) — beim Laden URL > localStorage, Änderungen via `history.replaceState`.
+- Preisbasis-Umschalter (drei Optionen): `list` = Listpreis, `full` = volles $60-Guthaben (`× 60/Nutzung`), `paid` = „Was du zahlst“ (`× 10/Nutzung`, Monatspreis aus `monthlyCost`). Der Prozent-Hinweis neben dem Umschalter listet die Nutzungs-Mappings aus den aktuellen `usage`-Werten (z. B. `25 % → ×4, 50 % → ×2, 100 % → ×1, 200 % → ×0,5`; bei `paid` als „$15 → 1,5×“-Wertfaktor).
 - Seitenstruktur: Kurzerklärung → Preistabelle (Sortierung je Spalte, `table-pin-cols` für horizontales Scrollen, Fähigkeiten-Badges-Spalte, Fähigkeiten-Filter-Toggles) → Free-Models-Tabelle (neuestes oben, eigene unabhängige Fähigkeiten-Filter-Toggles) → Changelog (JSON-Events, i18n-Texte, Badges) → Impressum/Datenschutz.
 - Quellen-Links (Go, Zen, models.dev), RSS-Link (`releases.atom`) und der „Verfügbar seit“-Hinweis stehen ausschließlich im Footer (kein Quellen-Link im Free-Models-Header). Changelog-Badges sind richtungsabhängig: `badge-error` ↑/− = teurer/weniger, `badge-success` ↓/+ = billiger/mehr, neutral ≈ = `badge-ghost`.
 - Analytics-Skript (`stats.all-the.rest/x7k2p.js`, `defer`) gehört in `<head>` von `index.html`.
@@ -118,6 +121,11 @@ pnpm typecheck        # nur tsc --noEmit
 - Pipeline: install (`--frozen-lockfile`) → `pnpm test` → `pnpm scrape` → `pnpm build` → Commit (CHANGELOG.json + data + src/data, `github-actions[bot]`, nur bei Änderungen) → Release (nur bei `changed=true`: `scripts/release-notes.mjs` → `gh release create`/`edit` mit Tag = Top-Changelog-Datum, damit Watcher per E-Mail und RSS-Reader via `releases.atom` benachrichtigt werden) → `upload-pages-artifact` (dist) + `upload-artifact` (dist-Zip) → `deploy-pages`.
 - `scripts/release-notes.mjs` rendert den neuesten Changelog-Eintrag als zweisprachiges Markdown (Titel, Event-Liste, Links zu Site + RSS + Watch-Hinweis); der Abend-Lauf editiert die Release des Tages (gemergter Eintrag).
 - Ein fehlgeschlagenes `pnpm scrape` bricht die Pipeline ab (kein Commit/Deploy, Lauf rot).
+
+## Tests
+
+- `pnpm test` = Scraper-Unit-Tests (`tests/scrape.test.mjs`) **plus** ein E2E-Sortier-Test (`tests/sorting.test.mjs`).
+- Der Sortier-Test baut die echte `PriceTable`-Komponente per SolidJS-SSR (`tests/ssr-entry.tsx`, Vite-Build in `tests/.ssr/`, gitignored) und prüft für jede Preisbasis (`list`/`full`/`paid`) × Preisspalte (`input`/`output`/`cachedRead`/`cachedWrite`/`cost`) × Richtung, dass die gerenderte Reihenfolge exakt der Reihenfolge der **angezeigten** Werte (`fieldPrice`/`requestCost`) entspricht — nicht dem rohen Listenpreis. Regression: bei `paid` sortiert der Effektivpreis (DeepSeek V4 Flash vor MiMo V2.5), obwohl beide denselben rohen Input-Preis (0.14) haben.
 
 ## Verifikation
 

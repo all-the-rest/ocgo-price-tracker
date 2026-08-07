@@ -536,6 +536,7 @@ test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () =
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     monthlyCredit: 60,
+    monthlyCost: 10,
     models: parseHtml(fixture),
     freeModels: [{ id: "big-pickle", availableFrom: "2026-08-05", capabilities: null }],
   };
@@ -552,6 +553,7 @@ test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     monthlyCredit: 60,
+    monthlyCost: 10,
     models: [withoutPattern],
     freeModels: [],
   };
