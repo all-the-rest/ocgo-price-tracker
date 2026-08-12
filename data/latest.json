@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-11T20:56:07.012Z",
+  "fetchedAt": "2026-08-12T09:06:21.607Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -731,36 +731,8 @@
       }
     },
     {
-      "id": "ling-3.0-flash-free",
-      "availableFrom": "2026-08-05",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      }
-    },
-    {
       "id": "ling-3.0-tiny-free",
       "availableFrom": "2026-08-07",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      }
-    },
-    {
-      "id": "longcat-2.0-free",
-      "availableFrom": "2026-08-05",
       "capabilities": {
         "input": [
           "text"
@@ -806,20 +778,6 @@
     {
       "id": "nemotron-3.5-lightning-free",
       "availableFrom": "2026-08-11",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      }
-    },
-    {
-      "id": "north-mini-code-free",
-      "availableFrom": "2026-08-05",
       "capabilities": {
         "input": [
           "text"
