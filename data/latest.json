@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-12T09:06:21.607Z",
+  "fetchedAt": "2026-08-13T15:49:22.731Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -719,20 +719,6 @@
     {
       "id": "laguna-s-2.1-free",
       "availableFrom": "2026-08-05",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      }
-    },
-    {
-      "id": "ling-3.0-tiny-free",
-      "availableFrom": "2026-08-07",
       "capabilities": {
         "input": [
           "text"
