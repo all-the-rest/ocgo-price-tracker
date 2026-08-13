@@ -66,8 +66,6 @@ Setup:
 3. Im GitHub-Repo: Settings → Pages → Source "GitHub Actions", Custom domain
    `ocgo-pricing.all-the.rest` setzen.
 4. DNS: CNAME `ocgo-pricing.all-the.rest` → `reisi007.github.io`
-5. Analytics: Site `ocgo-pricing.all-the.rest` als Alias im stats-Dashboard
-   (https://stats.all-the.rest) registrieren.
 
 ## Hinweise
 

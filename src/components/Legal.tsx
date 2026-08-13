@@ -27,14 +27,6 @@ export default function Legal(props: LegalProps) {
         <h2 class="text-lg font-bold tracking-tight">{props.t.datenschutz}</h2>
         <div class="mt-2 max-w-3xl space-y-3 text-sm leading-relaxed text-base-content/80">
           <p>
-            Diese Seite verwendet die selbst gehostete, datenschutzfreundliche Analyse-Software
-            unter stats.all-the.rest. Es werden ausschließlich anonymisierte Statistikdaten
-            erfasst (aufgerufene Seiten, Titel, Referrer, Bildschirmgröße, Sprache). Keine
-            Cookies, keine gespeicherten IP-Adressen; Besuchererkennung über Einweg-Hash.
-            Rückschlüsse auf einzelne Personen sind nicht möglich. Rechtsgrundlage:
-            Art. 6 Abs. 1 lit. f DSGVO.
-          </p>
-          <p>
             Ihre Rechte: Auskunft, Berichtigung, Löschung, Einschränkung und Widerspruch — Kontakt
             über hello@all-the.rest. Weiters Beschwerderecht bei der österreichischen
             Datenschutzbehörde (Barichgasse 40–42, 1030 Wien).

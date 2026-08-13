@@ -11,7 +11,6 @@ Go-Landingpage `https://opencode.ai/de/go` und verdoppeln das Nutzungslimit.
 
 - Repo (remote): `reisi007/ocgo-price-tracker`
 - GitHub Pages Custom Domain: `ocgo-pricing.all-the.rest` (CNAME)
-- Analytics: self-hosted `https://stats.all-the.rest/x7k2p.js` (Site-Alias `ocgo-pricing.all-the.rest` in stats-Dashboard registrieren)
 
 ## Stack
 
@@ -114,7 +113,6 @@ pnpm typecheck        # nur tsc --noEmit
 - Preisbasis-Umschalter (drei Optionen): `list` = Listenpreis, `full` = volles $60-Guthaben (`× 60/Nutzung`), `paid` = „Was du zahlst“ (`× 10/Nutzung`, Monatspreis aus `monthlyCost`). Der Prozent-Hinweis neben dem Umschalter listet die Nutzungs-Mappings aus den aktuellen `usage`-Werten (z. B. `25 % → 4-facher Preis, 50 % → 2-facher Preis, 100 % → Listenpreis, 200 % → halber Preis`; bei `paid` als „$15 → 1,5-facher Wert“-Wertfaktor).
 - Seitenstruktur: Kurzerklärung → Preistabelle (Sortierung je Spalte, `table-pin-cols` für horizontales Scrollen, Fähigkeiten-Badges-Spalte, Fähigkeiten-Filter-Toggles) → Free-Models-Tabelle (neuestes oben, eigene unabhängige Fähigkeiten-Filter-Toggles) → Changelog (JSON-Events, i18n-Texte, Badges) → Impressum/Datenschutz.
 - Quellen-Links (Go, Zen, models.dev), RSS-Link (`releases.atom`) und der „Verfügbar seit“-Hinweis stehen ausschließlich im Footer (kein Quellen-Link im Free-Models-Header). Changelog-Badges sind richtungsabhängig: `badge-error` ↑/− = teurer/weniger, `badge-success` ↓/+ = billiger/mehr, neutral ≈ = `badge-ghost`.
-- Analytics-Skript (`stats.all-the.rest/x7k2p.js`, `defer`) gehört in `<head>` von `index.html`.
 
 ## CI/CD (`.github/workflows/price-tracker.yml`)
 
