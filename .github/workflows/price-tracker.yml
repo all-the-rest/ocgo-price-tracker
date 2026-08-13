@@ -61,18 +61,10 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create/update release
-        if: steps.commit.outputs.changed == 'true'
+      - name: Ensure release for changelog days
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          TAG="$(node -e 'const c=require("fs").readFileSync("CHANGELOG.json","utf8");const e=JSON.parse(c).entries[0];process.stdout.write(e.date)')"
-          NOTES="$(node scripts/release-notes.mjs)"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release edit "$TAG" --title "Price Update $TAG" --notes "$NOTES"
-          else
-            gh release create "$TAG" --title "Price Update $TAG" --notes "$NOTES"
-          fi
+        run: node scripts/ensure-release.mjs --all
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

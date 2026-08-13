@@ -62,8 +62,7 @@ function renderChange(c) {
   }
 }
 
-export function renderReleaseNotes(changelog) {
-  const entry = changelog?.entries?.[0];
+export function renderReleaseNotesForEntry(entry) {
   if (!entry || !Array.isArray(entry.changes) || entry.changes.length === 0) return null;
   const lines = [
     `# Preisupdate ${entry.date} / Price Update ${entry.date}`,
@@ -81,9 +80,25 @@ export function renderReleaseNotes(changelog) {
   return lines.join("\n");
 }
 
+export function renderReleaseNotes(changelog) {
+  return renderReleaseNotesForEntry(changelog?.entries?.[0]);
+}
+
 function main() {
   const changelog = JSON.parse(readFileSync(join(ROOT, "CHANGELOG.json"), "utf8"));
-  const notes = renderReleaseNotes(changelog);
+  const argv = process.argv.slice(2);
+  const dateIdx = argv.indexOf("--date");
+  const date =
+    (dateIdx !== -1 ? argv[dateIdx + 1] : null) ??
+    (argv.find((a) => a.startsWith("--date="))?.slice("--date=".length) ?? null);
+  const entry = date
+    ? changelog.entries.find((e) => e.date === date)
+    : changelog?.entries?.[0];
+  if (!entry) {
+    console.error(`no changelog entry found${date ? ` for date ${date}` : ""}`);
+    process.exit(1);
+  }
+  const notes = renderReleaseNotesForEntry(entry);
   if (notes !== null) process.stdout.write(notes + "\n");
 }
 

@@ -117,8 +117,8 @@ pnpm typecheck        # nur tsc --noEmit
 ## CI/CD (`.github/workflows/price-tracker.yml`)
 
 - Trigger: `schedule cron "0 8 * * 1-5"` (Mo–Fr 10:00 UTC+2) und `"0 20 * * *"` (täglich 22:00 UTC+2), `workflow_dispatch`, `push` auf `main`.
-- Pipeline: install (`--frozen-lockfile`) → `pnpm test` → `pnpm scrape` → `pnpm build` → Commit (CHANGELOG.json + data + src/data, `github-actions[bot]`, nur bei Änderungen) → Release (nur bei `changed=true`: `scripts/release-notes.mjs` → `gh release create`/`edit` mit Tag = Top-Changelog-Datum, damit Watcher per E-Mail und RSS-Reader via `releases.atom` benachrichtigt werden) → `upload-pages-artifact` (dist) + `upload-artifact` (dist-Zip) → `deploy-pages`.
-- `scripts/release-notes.mjs` rendert den neuesten Changelog-Eintrag als zweisprachiges Markdown (Titel, Event-Liste, Links zu Site + RSS + Watch-Hinweis); der Abend-Lauf editiert die Release des Tages (gemergter Eintrag).
+- Pipeline: install (`--frozen-lockfile`) → `pnpm test` → `pnpm scrape` → `pnpm build` → Commit (CHANGELOG.json + data + src/data, `github-actions[bot]`, nur bei Änderungen) → Release (`node scripts/ensure-release.mjs --all` → `gh release create`/`edit` mit Tag = Changelog-Datum, damit Watcher per E-Mail und RSS-Reader via `releases.atom` benachrichtigt werden) → `upload-pages-artifact` (dist) + `upload-artifact` (dist-Zip) → `deploy-pages`.
+- `scripts/release-notes.mjs` rendert Changelog-Einträge als zweisprachiges Markdown (Titel, Event-Liste, Links zu Site + RSS + Watch-Hinweis). `scripts/ensure-release.mjs` stellt **pro Changelog-Datum genau eine Release** sicher und läuft bei **jedem** Workflow-Lauf (nicht mehr nur bei `changed=true`): `--all` prüft alle Einträge, erstellt fehlende Releases nach (Backfill, `--latest=false` für alte Daten) und editiert bestehende nur bei geänderten Notizen; Tag = Eintragsdatum → Morgen- und Abend-Lauf desselben Tages **mergen in eine Release** (Abend editiert, falls `mergeChanges` den Eintrag ergänzt hat). Manueller Backfill: `node scripts/ensure-release.mjs --all` bzw. `--date YYYY-MM-DD`.
 - Ein fehlgeschlagenes `pnpm scrape` bricht die Pipeline ab (kein Commit/Deploy, Lauf rot).
 
 ## Tests
