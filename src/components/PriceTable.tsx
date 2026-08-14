@@ -32,7 +32,7 @@ const factorPhrase = (mult: number, lang: "de" | "en", kind: "price" | "value"):
     if (mult === 0.5) return lang === "de" ? "halber Preis" : "half price";
     return lang === "de" ? `${n}-facher Preis` : `${n}× the price`;
   }
-  return lang === "de" ? `${n}-facher Wert` : `${n}× the value`;
+  return `${n}×`;
 };
 
 export default function PriceTable(props: PriceTableProps) {
@@ -136,14 +136,7 @@ export default function PriceTable(props: PriceTableProps) {
       return props.t.paidNote.replace("{paid}", String(props.monthlyCost)).replace("{rows}", rows);
     }
     const rows = usages
-      .map(
-        (u) =>
-          `${Math.round((u / props.monthlyCredit) * 100)} % → ${factorPhrase(
-            props.monthlyCredit / u,
-            props.lang,
-            "price"
-          )}`
-      )
+      .map((u) => `$${u} → ${factorPhrase(props.monthlyCredit / u, props.lang, "price")}`)
       .join(" · ");
     return props.t.factorNote.replace("{credit}", String(props.monthlyCredit)).replace("{rows}", rows);
   });
@@ -237,25 +230,22 @@ export default function PriceTable(props: PriceTableProps) {
                   <td>{priceCell(fieldPrice(m, "cachedRead", props.basis, props.monthlyCost))}</td>
                   <td>{priceCell(fieldPrice(m, "cachedWrite", props.basis, props.monthlyCost))}</td>
                   <td class="text-right whitespace-nowrap">
-                    <span class="inline-grid grid-cols-[4.5rem_3.5rem] gap-1">
-                      <Tooltip
-                        tip={props.t.usageTooltip
-                          .replace("{pct}", String(usagePct(m.usage)))
-                          .replace("{usage}", String(m.usage))
-                          .replace("{credit}", String(props.monthlyCredit))}
-                        class="w-full"
+                    <Tooltip
+                      tip={props.t.usageTooltip
+                        .replace("{pct}", String(usagePct(m.usage)))
+                        .replace("{usage}", String(m.usage))
+                        .replace("{credit}", String(props.monthlyCredit))
+                        .replace("{mult}", formatMult(m.usage / props.monthlyCost, props.lang))
+                        .replace("{paid}", String(props.monthlyCost))}
+                      class="inline-block"
+                    >
+                      <span
+                        class={`badge badge-sm ${usageBadge(m.usage)}`}
+                        classList={{ "font-bold": m.usage > props.monthlyCredit }}
                       >
-                        <span
-                          class={`badge badge-sm w-full justify-center ${usageBadge(m.usage)}`}
-                          classList={{ "font-bold": m.usage > props.monthlyCredit }}
-                        >
-                          ${m.usage}
-                        </span>
-                      </Tooltip>
-                      <span class="badge badge-ghost badge-sm w-full justify-center">
-                        {usagePct(m.usage)}%
+                        ${m.usage} · {formatMult(m.usage / props.monthlyCost, props.lang)}×
                       </span>
-                    </span>
+                    </Tooltip>
                   </td>
                   <td>
                     <Show when={m.pattern} fallback={priceCell(null)}>

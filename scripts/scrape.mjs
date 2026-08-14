@@ -570,6 +570,20 @@ export const capabilitiesEqual = (a, b) => JSON.stringify(a ?? null) === JSON.st
 export const privacyEqual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 /**
+ * Vergleich der Datenschutz-*Stufe* ohne `validUntil`: reine Verlängerung oder
+ * Änderung des ZDR-Datums ist kein Status-Wechsel (z. B. ZDR → ZDR mit neuem
+ * Datum) → kein Changelog-Event, nur stilles Daten-Update.
+ */
+export const privacyStatusEqual = (a, b) => {
+  const strip = (p) => {
+    if (p == null) return null;
+    const { validUntil, ...status } = p;
+    return status;
+  };
+  return JSON.stringify(strip(a)) === JSON.stringify(strip(b));
+};
+
+/**
  * Baut die Lookups für die models.dev-Zuordnung auf: opencode-Provider
  * (normalisierte ID und Name) plus kanonische Metadaten (normalisierter Name,
  * bei Kollisionen exakter Normalized-ID-Treffer, sonst erste nach ID sortiert).
@@ -667,7 +681,8 @@ export function computeCapabilityDiff(prevModels, nextModels) {
  * Vergleicht die Datenschutz-Infos von vorherigem und aktuellem Lauf. Modelle,
  * deren Vorgänger noch kein `privacy` hatte (`undefined`/`null` — Feld fehlt
  * oder Modell nicht gelistet), werden übersprungen: die Erst-Befüllung (auch
- * Familien-Fallback) erzeugt keinen Changelog-Event.
+ * Familien-Fallback) erzeugt keinen Changelog-Event. Reine `validUntil`-Änderungen
+ * (Stufe unverändert, z. B. ZDR-Verlängerung) erzeugen ebenfalls keinen Event.
  */
 export function computePrivacyDiff(prevModels, nextModels) {
   const prev = new Map(prevModels.map((m) => [modelKey(m), m]));
@@ -675,7 +690,7 @@ export function computePrivacyDiff(prevModels, nextModels) {
   for (const m of nextModels) {
     const before = prev.get(modelKey(m));
     if (!before || before.privacy == null) continue;
-    if (!privacyEqual(before.privacy, m.privacy)) {
+    if (!privacyStatusEqual(before.privacy, m.privacy)) {
       diffs.push({ key: modelKey(m), from: before.privacy ?? null, to: m.privacy ?? null });
     }
   }
@@ -791,7 +806,7 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
   for (const f of nextFree) {
     const before = (Array.isArray(prevFree) ? prevFree : []).find((p) => p.id === f.id);
     if (!before || before.privacy == null) continue;
-    if (!privacyEqual(before.privacy, f.privacy)) {
+    if (!privacyStatusEqual(before.privacy, f.privacy)) {
       changes.push({
         type: "privacy_changed",
         model: f.id,
@@ -1053,6 +1068,17 @@ async function main() {
         ([key, p]) => p !== null && prevPrivacy.get(key) == null
       );
 
+    // Reine validUntil-Änderung (Stufe unverändert, z. B. ZDR-Verlängerung):
+    // Daten-Dateien schreiben, aber KEINE Changelog-Events.
+    const privacySilentUpdate =
+      prev !== null &&
+      [...models.map((m) => [modelKey(m), m.privacy]), ...freeModels.map((f) => [f.id, f.privacy])].some(
+        ([key, p]) => {
+          const before = prevPrivacy.get(key);
+          return p !== null && before != null && privacyStatusEqual(before, p) && !privacyEqual(before, p);
+        }
+      );
+
     validateSnapshot(latest);
 
     const changelogPath = join(ROOT, "CHANGELOG.json");
@@ -1064,7 +1090,7 @@ async function main() {
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
 
-    if (changes.length > 0 || privacyPopulated) {
+    if (changes.length > 0 || privacyPopulated || privacySilentUpdate) {
       history.snapshots.push(latest);
       writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
       writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
@@ -1073,7 +1099,7 @@ async function main() {
     const enriched = models.filter((m) => m.capabilities !== null).length;
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
     const privacyCovered = models.filter((m) => m.privacy !== null).length;
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}.`);
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

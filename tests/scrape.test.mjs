@@ -710,13 +710,38 @@ test("buildChanges: privacy_changed bei geänderter Datenaufbewahrung", () => {
   ]);
 });
 
-test("buildChanges: privacy_changed bei geändertem validUntil (ZDR-Verlängerung)", () => {
+test("buildChanges: reine validUntil-Änderung (ZDR-Verlängerung) erzeugt keinen privacy_changed", () => {
   const prev = [{ ...base[0], privacy: { training: false, retentionDays: 0, validUntil: "2026-08-31" } }];
   const next = [{ ...base[0], privacy: { training: false, retentionDays: 0, validUntil: "2026-09-30" } }];
+  assert.deepEqual(buildChanges(prev, next, [], []), []);
+});
+
+test("buildChanges: privacy_changed nur bei Status-Änderung (validUntil zählt nicht)", () => {
+  const prev = [{ ...base[0], privacy: { training: false, retentionDays: 0, validUntil: "2026-08-31" } }];
+  const next = [{ ...base[0], privacy: { training: true, retentionDays: 0, validUntil: "2026-09-30" } }];
   const changes = buildChanges(prev, next, [], []);
   assert.equal(changes.length, 1);
   assert.equal(changes[0].type, "privacy_changed");
-  assert.equal(changes[0].to.validUntil, "2026-09-30");
+  assert.deepEqual(changes[0].from, { training: false, retentionDays: 0, validUntil: "2026-08-31" });
+  assert.deepEqual(changes[0].to, { training: true, retentionDays: 0, validUntil: "2026-09-30" });
+});
+
+test("buildChanges: reine validUntil-Änderung bei kostenlosen Modellen erzeugt keinen privacy_changed", () => {
+  const prevFree = [
+    {
+      id: "a-free",
+      availableFrom: "2026-08-01",
+      privacy: { training: true, retentionDays: null, validUntil: null },
+    },
+  ];
+  const nextFree = [
+    {
+      id: "a-free",
+      availableFrom: "2026-08-01",
+      privacy: { training: true, retentionDays: null, validUntil: "2026-09-30" },
+    },
+  ];
+  assert.deepEqual(buildChanges(base, base, prevFree, nextFree, "2026-08-06"), []);
 });
 
 test("buildChanges: keine privacy_changed bei gleichen Werten", () => {
