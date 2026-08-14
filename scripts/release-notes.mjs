@@ -4,8 +4,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SITE_URL = "https://ocgo-pricing.all-the.rest";
-const REPO_URL = "https://github.com/reisi007/ocgo-price-tracker";
 
 const PRICE_FIELD_NAMES = {
   input: "Input",
@@ -37,26 +35,38 @@ function fmtCaps(c) {
   return `in:${inp} out:${outp}${flags ? ` ${flags}` : ""}`;
 }
 
+function fmtPrivacy(p) {
+  if (!p) return "–";
+  const core = p.training
+    ? "training"
+    : (p.retentionDays ?? 0) > 0
+      ? `${p.retentionDays} days retention`
+      : "ZDR";
+  return p.validUntil ? `${core} (valid until ${p.validUntil})` : core;
+}
+
 function renderChange(c) {
   switch (c.type) {
     case "text":
-      return `- ${c.lang.de}\n- ${c.lang.en}`;
+      return `- ${c.lang.en}`;
     case "model_added":
-      return `- **${c.model}** — hinzugefügt / added (${pricingLine(c.pricing)})`;
+      return `- **${c.model}** — added (${pricingLine(c.pricing)})`;
     case "model_removed":
-      return `- **${c.model}** — entfernt / removed (${c.days} Tage / days)`;
+      return `- **${c.model}** — removed (was available ${c.days} days)`;
     case "price_changed": {
       const fields = c.fields.map((f) => PRICE_FIELD_NAMES[f] ?? f).join(", ");
-      return `- **${c.model}** — Preisänderung / price change (${fields}): ${pricingLine(c.from)} → ${pricingLine(c.to)}`;
+      return `- **${c.model}** — price change (${fields}): ${pricingLine(c.from)} → ${pricingLine(c.to)}`;
     }
     case "usage_changed":
-      return `- **${c.model}** — Nutzung / usage: $${c.from} → $${c.to}`;
+      return `- **${c.model}** — usage: $${c.from} → $${c.to}`;
     case "capabilities_changed":
-      return `- **${c.model}** — Fähigkeiten / capabilities: ${fmtCaps(c.from)} → ${fmtCaps(c.to)}`;
+      return `- **${c.model}** — capabilities: ${fmtCaps(c.from)} → ${fmtCaps(c.to)}`;
+    case "privacy_changed":
+      return `- **${c.model}** — privacy: ${fmtPrivacy(c.from)} → ${fmtPrivacy(c.to)}`;
     case "free_added":
-      return `- **${c.model}** — neues kostenloses Modell / new free model`;
+      return `- **${c.model}** — new free model`;
     case "free_removed":
-      return `- **${c.model}** — kostenloses Modell entfernt / free model removed (seit / since ${c.availableFrom})`;
+      return `- **${c.model}** — free model removed (since ${c.availableFrom})`;
     default:
       return `- ${c.type}: ${JSON.stringify(c)}`;
   }
@@ -65,17 +75,11 @@ function renderChange(c) {
 export function renderReleaseNotesForEntry(entry) {
   if (!entry || !Array.isArray(entry.changes) || entry.changes.length === 0) return null;
   const lines = [
-    `# Preisupdate ${entry.date} / Price Update ${entry.date}`,
+    `# Price Update ${entry.date}`,
     "",
-    `Preisänderungen für OpenCode Go am **${entry.date}** · Price changes for OpenCode Go on **${entry.date}**`,
+    `Price changes for OpenCode Go on **${entry.date}**:`,
     "",
     ...entry.changes.flatMap((c) => renderChange(c).split("\n")),
-    "",
-    "---",
-    "",
-    `- Details / Full details: ${SITE_URL}`,
-    `- RSS: ${REPO_URL}/releases.atom`,
-    `- E-Mail-Benachrichtigung / Email notifications: Repo beobachten unter “Watch → Releases” · watch the repo under “Watch → Releases”`,
   ];
   return lines.join("\n");
 }

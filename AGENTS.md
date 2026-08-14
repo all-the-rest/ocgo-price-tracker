@@ -46,7 +46,7 @@ pnpm typecheck        # nur tsc --noEmit
   "sourceLang": "de",
   "monthlyCredit": 60,
   "monthlyCost": 10,
-  "freeModels": [{ "id": "big-pickle", "availableFrom": "2026-08-05" }],
+  "freeModels": [{ "id": "big-pickle", "availableFrom": "2026-08-05", "privacy": { "training": true, "retentionDays": null, "validUntil": null } }],
   "models": [
     {
       "name": "Grok 4.5",
@@ -62,7 +62,8 @@ pnpm typecheck        # nur tsc --noEmit
       "effectiveCachedRead": 1.2,
       "effectiveCachedWrite": null,
       "pattern": { "input": 1100, "cachedRead": 71500, "output": 220 },
-      "capabilities": { "input": ["text", "image"], "output": ["text"], "reasoning": true, "toolCall": true }
+      "capabilities": { "input": ["text", "image"], "output": ["text"], "reasoning": true, "toolCall": true },
+      "privacy": { "training": false, "retentionDays": 30, "validUntil": null }
     }
   ]
 }
@@ -71,10 +72,11 @@ pnpm typecheck        # nur tsc --noEmit
 - `multiplier = 60 / usage`; `usage` = Basis-Nutzung aus der Preistabelle (`$15`/`$60`) **× Bonus-Faktor** (z. B. `2x usage` → `usage` = `30`/`120`). Ein Bonus-Anstieg senkt `multiplier` und damit die Effektivpreise.
 - `monthlyCost` = 10 (laufender Abo-Preis); die UI berechnet daraus die zusätzliche Preisbasis „Was du zahlst“ (`Effektivpreis = Listpreis × 10/Nutzung`).
 - `effective* = preis × multiplier`
-- `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: 15% Input-Preis + 85% Cached-Write-Preis, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
+- `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: 5% Input-Preis + 95% Cached-Write-Preis, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
 - `capabilities` = Fähigkeiten aus models.dev (via `@opencode-ai/models`): `input`/`output`-Modalitäten (`text`, `audio`, `image`, `video`, `pdf`), `reasoning`, `toolCall`. `null` = kein models.dev-Eintrag. **Nur Fähigkeiten — die Preise bleiben aus dem Go-Scrape (models.dev-Preise weichen ab und werden ignoriert).**
+- `privacy` = Datenschutz-Info aus der Doku-Tabelle (`Modelltraining`/`Datenaufbewahrung`): `training` (bool, `true` = Daten fürs Modelltraining), `retentionDays` (0/N Tage oder `null`), `validUntil` (ISO-Datum = Ablauf der ZDR-Vereinbarung, z. B. monatliche Verlängerung DeepSeek V4 Flash), `fallback` (optional `true` = nicht in der Doku gelistet, Angabe aus derselben Modellfamilie via `PRIVACY_FALLBACKS`). `null` = keine Angabe (weder eigene Zeile noch Familien-Fallback). **Kostenlose Zen-Modelle (inkl. big-pickle) sind hartkodiert `training: true`** (`enrichFreeModels`); die Zen-Doku nennt nur den generischen Feedback-Text.
 - `capabilitiesSourceUrl` = `https://models.dev` (Fähigkeiten-Quelle).
-- `cachedWrite: null` (= `-` in der Doku) bedeutet: Cached-Write-Preis = **Input-Preis** (1:1, keine Schätzung). In `requestCost` fließt er als Cached-Write-Preis in die 15/85-Heuristik ein; in der Tabelle steht weiterhin `-` (Heuristik nur im Footer dokumentiert). Die 15/85-Gewichtung (15% Input-Preis + 85% Cached-Write-Preis für Input-Tokens) basiert auf beobachteter Nutzung (Luna ~28/72, Qwen3.8 Max ~0/100 Input/Cached-Write).
+- `cachedWrite: null` (= `-` in der Doku) bedeutet: Cached-Write-Preis = **Input-Preis** (1:1, keine Schätzung). In `requestCost` fließt er als Cached-Write-Preis in die 5/95-Heuristik ein; in der Tabelle steht weiterhin `-` (Heuristik nur im Footer dokumentiert). Die 5/95-Gewichtung (5% Input-Preis + 95% Cached-Write-Preis für Input-Tokens) basiert auf beobachteter Nutzung (Luna ~28/72, Qwen3.8 Max ~0/100 Input/Cached-Write).
 - `freeModels` = kostenlose Zen-Modelle (ID enthält `free`) + `big-pickle` aus `https://opencode.ai/zen/v1/models`; `availableFrom` = erstes Beobachtungsdatum (bleibt über Läufe erhalten).
 - `data/history.json` = `{ "snapshots": [ … ] }` (Chronologie, append, nur bei Änderungen)
 - `CHANGELOG.json` = `{ "entries": [{ "date", "changes": [ … ] }] }`; wird bewusst **minified** (`JSON.stringify`, eine Zeile) geschrieben — nie hübsch formatiert, damit Git-Diffs minimal bleiben. Events (zod via `validateChangelog`):
@@ -84,6 +86,7 @@ pnpm typecheck        # nur tsc --noEmit
   - `price_changed` (mit `from`/`to` = komplette Pricing-Zeile und `fields` = geänderte Preisfelder `["input","output","cachedRead","cachedWrite"]`; die UI stellt die Felder in **beiden** Zeilen fett dar)
   - `usage_changed` (mit `from`/`to` = Nutzungswert; getrenntes Event, damit Nutzungs- und Preisänderungen unterscheidbar sind)
   - `capabilities_changed` (mit `from`/`to` = capabilities-Objekt oder `null`; löst auch bei Nur-Fähigkeiten-Änderungen einen Daten-Commit aus)
+  - `privacy_changed` (mit `from`/`to` = privacy-Objekt oder `null`; löst bei Änderung von `training`/`retentionDays`/`validUntil`/`fallback` aus — **nicht** bei Erst-Befüllung `undefined`/`null` → Wert, kein Baseline-Event)
   - `free_added`/`free_removed` (mit `availableFrom`/`until`)
   - Preis- UND Nutzungsänderung am selben Tag → **zwei Events** (`price_changed` + `usage_changed`). **Keine** `baseline`/`pricing_changed`-Events. Einträge haben IMMER `changes.length > 0`; ohne Änderungen wird kein Eintrag angelegt und ein bestehender Eintrag desselben Datums bleibt erhalten, leere Einträge werden entfernt. Bei **zwei Läufen pro Tag** werden Events desselben Datums **gemerged** (`mergeChanges`, Dedupe nach `type`+`model`, neuestes gewinnt) — der Morgen-Eintrag wird nicht überschrieben (`upsertChangelogJson`).
 
@@ -98,9 +101,11 @@ pnpm typecheck        # nur tsc --noEmit
 - Zen-Free-Models via `https://opencode.ai/zen/v1/models` (`extractFreeModels`), `availableFrom` aus dem vorherigen Lauf übernehmen (`mergeFreeModels`).
 - Diff gegen das vorherige `latest.json`: Modell hinzugefügt (mit Pricing-Zeile), Modell entfernt (mit `days` aus `firstSeen`), Nutzung verbessert/verschlechtert → `usage_changed`, Preisänderungen (Float-Toleranz 1e-9) → `price_changed` mit `fields` (geänderte Preisfelder), Preis- UND Nutzungsänderung → zwei Events (`splitChange`), Fähigkeitsänderungen → `capabilities_changed` (undefiniert und `null` gelten als gleich), Free-Model-Events.
 - **Fähigkeiten** aus models.dev via `@opencode-ai/models`: Live-API (`client.catalog()`, Timeout 10 s) mit Fallback auf den gebündelten Snapshot (`@opencode-ai/models/snapshot`, `source` = `live`/`snapshot`). Zuordnung über normalisierte Namen (`normalizeName`): zuerst `providers.opencode.models` (per ID/Name), dann kanonische `models`-Metadaten (bei Kollisionen exakter Normalized-ID-Treffer, sonst erste nach ID sortiert), Ausnahmen via `CAPABILITY_OVERRIDES`. Modelle ohne Treffer → `capabilities: null`. Die models.dev-Preise werden ignoriert.
+- **Datenschutz** über die Header-Zeile identifizieren (`modelltraining` UND `datenaufbewahrung`, analog Preistabelle; fehlende Tabelle → rot): `Nicht verwendet` → `training: false`, `N Tage` → `retentionDays`, `–` → `null`. Notizen-Liste unter der Tabelle: `gilt bis (einschließlich) D. Month YYYY` → `validUntil` (deutsche Monatsnamen, `parseGermanDate`). Zuordnung über `normalizeName` (eine Zeile gilt für alle Tier-Varianten). Modelle ohne eigene Zeile übernehmen via `PRIVACY_FALLBACKS` (explizit, z. B. MiniMax M2.5 → M2.7) die Familien-Angabe und werden mit `fallback: true` markiert; ohne Fallback → `privacy: null`.
+- Diff gegen das vorherige `latest.json`: Modell hinzugefügt (mit Pricing-Zeile), Modell entfernt (mit `days` aus `firstSeen`), Nutzung verbessert/verschlechtert → `usage_changed`, Preisänderungen (Float-Toleranz 1e-9) → `price_changed` mit `fields` (geänderte Preisfelder), Preis- UND Nutzungsänderung → zwei Events (`splitChange`), Fähigkeitsänderungen → `capabilities_changed` (undefiniert und `null` gelten als gleich), Datenschutzänderungen → `privacy_changed` (**nicht** bei Erst-Befüllung `undefined`/`null` → Wert), Free-Model-Events.
 - CHANGELOG.json: neuer `{ date, changes }`-Eintrag oben, Datum UTC (`YYYY-MM-DD`); bei zwei Läufen pro Tag werden Events desselben Datums via `mergeChanges` **gemerged** (Dedupe nach `type`+`model`, neuestes gewinnt, kein Überschreiben des Morgen-Eintrags); **leere** Einträge (`changes: []`) werden entfernt, bei `changes.length === 0` wird kein Eintrag angelegt und ein bereits vorhandener Eintrag desselben Datums bleibt erhalten (auch kein Basis-Snapshot beim ersten Lauf). `validateChangelog` (zod) bricht bei leeren Einträgen/unbekannten Typen rot ab. **Minified schreiben** (`JSON.stringify(changelog)` — eine Zeile), niemals hübsch formatiert, damit Changelog-Diffs nur die tatsächlichen Änderungen zeigen.
 - `model_removed.days` = `heute − firstSeen`, `firstSeen` = frühester Snapshot in `data/history.json`, der das Modell enthält.
-- `data/latest.json`/`data/history.json` werden **nur bei Änderungen** geschrieben (`changes.length > 0`); sonst bleibt der Stand vom letzten Änderungstag erhalten (kein Commit, aber Deploy läuft weiter).
+- `data/latest.json`/`data/history.json` werden **nur bei Datenänderungen** geschrieben (`changes.length > 0` oder `privacyPopulated` — stille Erst-Befüllung des `privacy`-Felds ohne Changelog-Events); sonst bleibt der Stand vom letzten Änderungstag erhalten (kein Commit, aber Deploy läuft weiter).
 - **Build-Stempel:** `fetchedAt` (der „Stand“ im Footer) wird beim `vite build` in `vite.config.ts` (Plugin `stamp-build-time`) auf die **Build-Zeit** gesetzt — auch ohne Datenänderung, weil der Lauf den Stand ja verifiziert hat. Das passiert **nur im Build-Output** (gebundeltes JS + `dist/data/latest.json`), `data/latest.json` bleibt unverändert → alleinige `fetchedAt`-Änderungen erzeugen **keinen Commit**. In `data/latest.json` steht weiterhin die letzte Scrape-/Änderungszeit.
 - **Parsing-Fehler** (keine Preistabelle, unerwartete Spaltenstruktur, unparsebare Werte) → `process.exit(1)` → CI-Lauf wird rot.
 
@@ -109,16 +114,16 @@ pnpm typecheck        # nur tsc --noEmit
 - Nur daisyUI- und Tailwind-Klassen verwenden; Default-Varianten bevorzugen; daisyUI-Semantic-Colors (`base-*`, `primary`, `badge-success/-error/-warning/-info`), kein `dark:`-Präfix.
 - Kein `tailwind.config.js` — Tailwind 4 braucht nur `@import "tailwindcss";` + `@plugin "daisyui";` in `src/index.css`.
 - Sprache: localStorage `lang`, sonst Browser-Locale (automatisch `de` bei `navigator.language`-Präfix `de`); Default `en`. Theme via `theme-controller`-Checkbox (`value="dark"`), `basis` in localStorage.
-- **Query-Params** (shareable URLs): `sort=field:asc|desc`, `fsort=…` (Free-Tabelle), `basis=list|full|paid`, `lang=de|en`, `cap=image,video,audio,pdf` (Fähigkeiten-Filter Preistabelle, OR-Semantik), `fcap=…` (Fähigkeiten-Filter Free-Tabelle, unabhängig von `cap`) — beim Laden URL > localStorage, Änderungen via `history.replaceState`.
+- **Query-Params** (shareable URLs): `sort=field:asc|desc`, `fsort=…` (Free-Tabelle), `psort=model:tier:asc|desc` (Datenschutz-Tabelle, Default `tier:asc` = schlechteste Stufe oben), `basis=list|full|paid`, `lang=de|en`, `cap=image,video,audio,pdf` (Fähigkeiten-Filter Preistabelle, OR-Semantik), `fcap=…` (Fähigkeiten-Filter Free-Tabelle, unabhängig von `cap`) — beim Laden URL > localStorage, Änderungen via `history.replaceState`.
 - Preisbasis-Umschalter (drei Optionen): `list` = Listenpreis, `full` = volles $60-Guthaben (`× 60/Nutzung`), `paid` = „Was du zahlst“ (`× 10/Nutzung`, Monatspreis aus `monthlyCost`). Der Prozent-Hinweis neben dem Umschalter listet die Nutzungs-Mappings aus den aktuellen `usage`-Werten (z. B. `25 % → 4-facher Preis, 50 % → 2-facher Preis, 100 % → Listenpreis, 200 % → halber Preis`; bei `paid` als „$15 → 1,5-facher Wert“-Wertfaktor).
-- Seitenstruktur: Kurzerklärung → Preistabelle (Sortierung je Spalte, `table-pin-cols` für horizontales Scrollen, Fähigkeiten-Badges-Spalte, Fähigkeiten-Filter-Toggles) → Free-Models-Tabelle (neuestes oben, eigene unabhängige Fähigkeiten-Filter-Toggles) → Changelog (JSON-Events, i18n-Texte, Badges) → Impressum/Datenschutz.
+- Seitenstruktur: Kurzerklärung → Preistabelle (Sortierung je Spalte, horizontales Scrollen per Drag-to-Scroll `setupDragScroll` auf dem `overflow-x-auto`-Container, Fähigkeiten-Badges-Spalte, Fähigkeiten-Filter-Toggles) → Free-Models-Tabelle (neuestes oben, eigene unabhängige Fähigkeiten-Filter-Toggles) → Datenschutz-Tabelle (`PrivacyTable`: Sortierung Modell/Stufe, Default `tier:asc` = schlechteste Stufe oben; Badges `badge-error` Modelltraining / `badge-warning` Aufbewahrung > 0 / `badge-success` ZDR / `badge-ghost` keine Angabe; „≈“ = Familien-Fallback; „Gültig bis“-Spalte = `validUntil` oder „bis auf weiteres“) → Changelog (JSON-Events, i18n-Texte, Badges) → Impressum/Datenschutz.
 - Quellen-Links (Go, Zen, models.dev), RSS-Link (`releases.atom`) und der „Verfügbar seit“-Hinweis stehen ausschließlich im Footer (kein Quellen-Link im Free-Models-Header). Changelog-Badges sind richtungsabhängig: `badge-error` ↑/− = teurer/weniger, `badge-success` ↓/+ = billiger/mehr, neutral ≈ = `badge-ghost`.
 
 ## CI/CD (`.github/workflows/price-tracker.yml`)
 
 - Trigger: `schedule cron "0 8 * * 1-5"` (Mo–Fr 10:00 UTC+2) und `"0 20 * * *"` (täglich 22:00 UTC+2), `workflow_dispatch`, `push` auf `main`.
 - Pipeline: install (`--frozen-lockfile`) → `pnpm test` → `pnpm scrape` → `pnpm build` → Commit (CHANGELOG.json + data + src/data, `github-actions[bot]`, nur bei Änderungen) → Release (`node scripts/ensure-release.mjs --all` → `gh release create`/`edit` mit Tag = Changelog-Datum, damit Watcher per E-Mail und RSS-Reader via `releases.atom` benachrichtigt werden) → `upload-pages-artifact` (dist) + `upload-artifact` (dist-Zip) → `deploy-pages`.
-- `scripts/release-notes.mjs` rendert Changelog-Einträge als zweisprachiges Markdown (Titel, Event-Liste, Links zu Site + RSS + Watch-Hinweis). `scripts/ensure-release.mjs` stellt **pro Changelog-Datum genau eine Release** sicher und läuft bei **jedem** Workflow-Lauf (nicht mehr nur bei `changed=true`): `--all` prüft alle Einträge, erstellt fehlende Releases nach (Backfill, `--latest=false` für alte Daten) und editiert bestehende nur bei geänderten Notizen; Tag = Eintragsdatum → Morgen- und Abend-Lauf desselben Tages **mergen in eine Release** (Abend editiert, falls `mergeChanges` den Eintrag ergänzt hat). Manueller Backfill: `node scripts/ensure-release.mjs --all` bzw. `--date YYYY-MM-DD`.
+- `scripts/release-notes.mjs` rendert Changelog-Einträge als **rein englisches Markdown mit nur den Fakten** (Titel + Event-Liste — keine Links zu Site/RSS, kein Watch-Hinweis). `scripts/ensure-release.mjs` stellt **pro Changelog-Datum genau eine Release** sicher und läuft bei **jedem** Workflow-Lauf (nicht mehr nur bei `changed=true`): `--all` prüft alle Einträge, erstellt fehlende Releases nach (Backfill, `--latest=false` für alte Daten) und editiert bestehende nur bei geänderten Notizen; Tag = Eintragsdatum → Morgen- und Abend-Lauf desselben Tages **mergen in eine Release** (Abend editiert, falls `mergeChanges` den Eintrag ergänzt hat). Manueller Backfill: `node scripts/ensure-release.mjs --all` bzw. `--date YYYY-MM-DD`. Bestehende Releases werden bei einem Lauf mit geänderten Notizen automatisch nachgezogen.
 - Ein fehlgeschlagenes `pnpm scrape` bricht die Pipeline ab (kein Commit/Deploy, Lauf rot).
 
 ## Tests
@@ -129,8 +134,8 @@ pnpm typecheck        # nur tsc --noEmit
 ## Verifikation
 
 Nach jeder Umsetzung prüft ein **unabhängiger Agent**:
-`pnpm scrape` (exit 0, korrekte Daten), `pnpm test` grün, `pnpm build` grün,
+`pnpm scrape` (exit 0, korrekte Daten — **vor Commit/Push verpflichtend**), `pnpm test` grün, `pnpm build` grün,
 `dist/` enthält `data/latest.json` + `CNAME`, Workflow-YAML valide,
-`pnpm preview` liefert 200 und der JSON-Endpunkt `/data/latest.json` antwortet.
+`pnpm preview` liefert 200 und der JSON-Endpunkt `/data/latest.json` antwortet (alle Modelle mit `privacy`).
 Außerdem wird geprüft, dass **aktuelle Tool-Versionen** verwendet werden
-(`pnpm outdated` ohne ungewollte Abweichungen, Node ≥22, pnpm aus `packageManager`).
+(`pnpm outdated` ohne ungewollte Abweichungen, Node ≥22, pnpm aus `packageManager`). Nach Push wird die CI bis zum grünen Lauf beobachtet.

@@ -1,12 +1,13 @@
 import { createEffect, createSignal } from "solid-js";
 import type { Basis, ChangelogData, PriceData } from "./types";
 import { i18n, type Lang } from "./i18n";
-import { VALID_SORT, type FreeSortState, type SortState } from "./sort";
+import { VALID_SORT, type FreeSortState, type PrivacySortState, type SortState } from "./sort";
 import { CAP_IDS, type CapId } from "./capabilities";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import PriceTable from "./components/PriceTable";
 import FreeModelsTable from "./components/FreeModelsTable";
+import PrivacyTable from "./components/PrivacyTable";
 import Changelog from "./components/Changelog";
 import Legal from "./components/Legal";
 import Footer from "./components/Footer";
@@ -27,6 +28,7 @@ const defaultLang: Lang =
 function readParams(): {
   sort: SortState | null;
   fsort: FreeSortState | null;
+  psort: PrivacySortState | null;
   basis: Basis | null;
   lang: "de" | "en" | null;
   cap: CapId[] | null;
@@ -44,6 +46,11 @@ function readParams(): {
     (ff === "model" || ff === "availableFrom") && (fd === "asc" || fd === "desc")
       ? { field: ff as FreeSortState["field"], dir: (fd === "asc" ? 1 : -1) as 1 | -1 }
       : null;
+  const [pf, pd] = (p.get("psort") ?? "").split(":");
+  const psort =
+    (pf === "model" || pf === "tier") && (pd === "asc" || pd === "desc")
+      ? { field: pf as PrivacySortState["field"], dir: (pd === "asc" ? 1 : -1) as 1 | -1 }
+      : null;
   const b = p.get("basis");
   const basis: Basis | null = b === "list" || b === "full" || b === "paid" ? b : null;
   const l = p.get("lang");
@@ -54,7 +61,7 @@ function readParams(): {
       : Array.from(new Set(raw.split(",").filter((x): x is CapId => (CAP_IDS as readonly string[]).includes(x))));
   const cap = parseCaps(p.get("cap"));
   const fcap = parseCaps(p.get("fcap"));
-  return { sort, fsort, basis, lang, cap, fcap };
+  return { sort, fsort, psort, basis, lang, cap, fcap };
 }
 const params = readParams();
 
@@ -67,6 +74,9 @@ export default function App() {
   const [sort, setSort] = createSignal<SortState>(params.sort ?? { field: "cost", dir: 1 });
   const [freeSort, setFreeSort] = createSignal<FreeSortState>(
     params.fsort ?? { field: "availableFrom", dir: -1 }
+  );
+  const [privacySort, setPrivacySort] = createSignal<PrivacySortState>(
+    params.psort ?? { field: "tier", dir: 1 }
   );
   const [caps, setCaps] = createSignal<CapId[]>(params.cap ?? []);
   const [freeCaps, setFreeCaps] = createSignal<CapId[]>(params.fcap ?? []);
@@ -103,6 +113,9 @@ export default function App() {
     const fs = freeSort();
     if (fs.field === "availableFrom" && fs.dir === -1) p.delete("fsort");
     else p.set("fsort", `${fs.field}:${fs.dir === 1 ? "asc" : "desc"}`);
+    const ps = privacySort();
+    if (ps.field === "tier" && ps.dir === 1) p.delete("psort");
+    else p.set("psort", `${ps.field}:${ps.dir === 1 ? "asc" : "desc"}`);
     if (basis() === defaultBasis) p.delete("basis");
     else p.set("basis", basis());
     if (lang() === defaultLang) p.delete("lang");
@@ -119,6 +132,7 @@ export default function App() {
   const resetAll = () => {
     setSort({ field: "cost", dir: 1 });
     setFreeSort({ field: "availableFrom", dir: -1 });
+    setPrivacySort({ field: "tier", dir: 1 });
     setBasis(defaultBasis);
     setLang(defaultLang);
     setCaps([]);
@@ -153,6 +167,14 @@ export default function App() {
           setSort={setFreeSort}
           caps={freeCaps()}
           setCaps={setFreeCaps}
+        />
+        <PrivacyTable
+          models={data.models}
+          freeModels={data.freeModels}
+          t={t()}
+          lang={lang()}
+          sort={privacySort()}
+          setSort={setPrivacySort}
         />
         <Changelog entries={changelogData.entries} t={t()} lang={lang()} monthlyCredit={data.monthlyCredit} />
         <Legal t={t()} />

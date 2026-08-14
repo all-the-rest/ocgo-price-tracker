@@ -119,6 +119,65 @@ test("parseHtml: wirft bei unparsebarem Preis", () => {
   assert.throws(() => parseHtml(broken));
 });
 
+test("parseHtml: Datenschutz — Grok 4.5 mit 30 Tagen Aufbewahrung", () => {
+  const grok = parseHtml(fixture).find((m) => m.name === "Grok 4.5");
+  assert.deepEqual(grok.privacy, { training: false, retentionDays: 30, validUntil: null });
+});
+
+test("parseHtml: Datenschutz — ZDR-Modelle mit 0 Tagen", () => {
+  const glm = parseHtml(fixture).find((m) => m.name === "GLM-5.2");
+  assert.deepEqual(glm.privacy, { training: false, retentionDays: 0, validUntil: null });
+});
+
+test("parseHtml: Datenschutz — DeepSeek V4 Flash mit gültig-bis-Datum", () => {
+  const flash = parseHtml(fixture).find((m) => m.name === "DeepSeek V4 Flash");
+  assert.deepEqual(flash.privacy, { training: false, retentionDays: 0, validUntil: "2026-08-31" });
+});
+
+test("parseHtml: Datenschutz — Luna (beide Tiers) aus einer Tabellenzeile", () => {
+  const luna = parseHtml(fixture).filter((m) => m.name === "GPT 5.6 Luna");
+  assert.equal(luna.length, 2);
+  for (const l of luna) {
+    assert.deepEqual(l.privacy, { training: false, retentionDays: 30, validUntil: null });
+  }
+});
+
+test("parseHtml: Datenschutz — MiniMax M2.5 übernimmt Familien-Fallback von M2.7", () => {
+  const mimo = parseHtml(fixture).find((m) => m.name === "MiniMax M2.5");
+  assert.deepEqual(mimo.privacy, {
+    training: false,
+    retentionDays: 0,
+    validUntil: null,
+    fallback: true,
+  });
+});
+
+test("parseHtml: Datenschutz — Modell ohne Zeile und ohne Fallback bleibt null", () => {
+  const html = `
+    <html><body><main>
+      <table>
+        <thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Nutzung</th></tr></thead>
+        <tbody><tr><td>Alpha</td><td>$1</td><td>$1</td><td>-</td><td>-</td><td>$60</td></tr></tbody>
+      </table>
+      <table>
+        <thead><tr><th>Modell</th><th>Modelltraining</th><th>Datenaufbewahrung</th></tr></thead>
+        <tbody><tr><td>Beta</td><td>Nicht verwendet</td><td>0 Tage</td></tr></tbody>
+      </table>
+    </main></body></html>`;
+  assert.equal(parseHtml(html)[0].privacy, null);
+});
+
+test("parseHtml: wirft bei fehlender Datenschutz-Tabelle", () => {
+  const html = `
+    <html><body><main>
+      <table>
+        <thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Nutzung</th></tr></thead>
+        <tbody><tr><td>Test Model</td><td>$1</td><td>$1</td><td>-</td><td>-</td><td>$60</td></tr></tbody>
+      </table>
+    </main></body></html>`;
+  assert.throws(() => parseHtml(html));
+});
+
 test("parseUsageBonuses: extrahiert 2x-usage-Boni aus der Landingpage", () => {
   const $ = loadBonusFixture();
   const bonuses = parseUsageBonuses($);
@@ -403,6 +462,12 @@ test("validateChangelog: gültiger Changelog mit allen Event-Typen", () => {
             from: null,
             to: { input: ["text", "image"], output: ["text"], reasoning: true, toolCall: true },
           },
+          {
+            type: "privacy_changed",
+            model: "DeepSeek V4 Flash",
+            from: { training: false, retentionDays: 0, validUntil: "2026-08-31" },
+            to: { training: false, retentionDays: 0, validUntil: "2026-09-30" },
+          },
           { type: "free_added", model: "big-pickle" },
           { type: "free_removed", model: "a-free", availableFrom: "2026-08-01", until: "2026-08-06" },
         ],
@@ -538,7 +603,14 @@ test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () =
     monthlyCredit: 60,
     monthlyCost: 10,
     models: parseHtml(fixture),
-    freeModels: [{ id: "big-pickle", availableFrom: "2026-08-05", capabilities: null }],
+    freeModels: [
+      {
+        id: "big-pickle",
+        availableFrom: "2026-08-05",
+        capabilities: null,
+        privacy: { training: true, retentionDays: null, validUntil: null },
+      },
+    ],
   };
   assert.doesNotThrow(() => validateSnapshot(snapshot));
 });
@@ -624,6 +696,68 @@ test("buildChanges: capabilities_changed bei geänderten Fähigkeiten", () => {
   assert.deepEqual(changes, [{ type: "capabilities_changed", model: "Alpha", from: null, to: cap }]);
 });
 
+test("buildChanges: privacy_changed bei geänderter Datenaufbewahrung", () => {
+  const prev = [{ ...base[0], privacy: { training: false, retentionDays: 0, validUntil: null } }];
+  const next = [{ ...base[0], privacy: { training: false, retentionDays: 30, validUntil: null } }];
+  const changes = buildChanges(prev, next, [], []);
+  assert.deepEqual(changes, [
+    {
+      type: "privacy_changed",
+      model: "Alpha",
+      from: { training: false, retentionDays: 0, validUntil: null },
+      to: { training: false, retentionDays: 30, validUntil: null },
+    },
+  ]);
+});
+
+test("buildChanges: privacy_changed bei geändertem validUntil (ZDR-Verlängerung)", () => {
+  const prev = [{ ...base[0], privacy: { training: false, retentionDays: 0, validUntil: "2026-08-31" } }];
+  const next = [{ ...base[0], privacy: { training: false, retentionDays: 0, validUntil: "2026-09-30" } }];
+  const changes = buildChanges(prev, next, [], []);
+  assert.equal(changes.length, 1);
+  assert.equal(changes[0].type, "privacy_changed");
+  assert.equal(changes[0].to.validUntil, "2026-09-30");
+});
+
+test("buildChanges: keine privacy_changed bei gleichen Werten", () => {
+  const p = { training: false, retentionDays: 0, validUntil: null };
+  const prev = [{ ...base[0], privacy: p }];
+  const next = [{ ...base[0], privacy: { ...p } }];
+  assert.deepEqual(buildChanges(prev, next, [], []), []);
+});
+
+test("buildChanges: kein Baseline-Event bei erstmals vorhandenem privacy", () => {
+  const prev = [{ ...base[0] }];
+  const next = [{ ...base[0], privacy: { training: false, retentionDays: 0, validUntil: null } }];
+  assert.deepEqual(buildChanges(prev, next, [], []), []);
+});
+
+test("buildChanges: privacy_changed für kostenlose Zen-Modelle", () => {
+  const prevFree = [
+    {
+      id: "a-free",
+      availableFrom: "2026-08-01",
+      privacy: { training: true, retentionDays: null, validUntil: null },
+    },
+  ];
+  const nextFree = [
+    {
+      id: "a-free",
+      availableFrom: "2026-08-01",
+      privacy: { training: false, retentionDays: 0, validUntil: null },
+    },
+  ];
+  const changes = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
+  assert.deepEqual(changes, [
+    {
+      type: "privacy_changed",
+      model: "a-free",
+      from: { training: true, retentionDays: null, validUntil: null },
+      to: { training: false, retentionDays: 0, validUntil: null },
+    },
+  ]);
+});
+
 test("buildChanges: keine capabilities_changed bei gleichen Fähigkeiten", () => {
   const cap = { input: ["text"], output: ["text"], reasoning: false, toolCall: false };
   const prev = [{ ...base[0], capabilities: cap }];
@@ -648,6 +782,26 @@ test("enrichFreeModels: reichert Zen-Modelle über die opencode-ID an", () => {
     reasoning: false,
     toolCall: false,
   });
+});
+
+test("enrichFreeModels: setzt privacy (Modelltraining) für Zen-Modelle", () => {
+  const enriched = enrichFreeModels([{ id: "big-pickle", availableFrom: "2026-08-05" }], {}, {});
+  assert.deepEqual(enriched[0].privacy, { training: true, retentionDays: null, validUntil: null });
+});
+
+test("validateSnapshot: kostenloses Modell ohne privacy bricht", () => {
+  const snapshot = {
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/zen/v1/models",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    monthlyCredit: 60,
+    monthlyCost: 10,
+    models: parseHtml(fixture),
+    freeModels: [{ id: "big-pickle", availableFrom: "2026-08-05", capabilities: null }],
+  };
+  assert.throws(() => validateSnapshot(snapshot));
 });
 
 test("enrichFreeModels: lässt capabilities null bei unbekannter ID", () => {

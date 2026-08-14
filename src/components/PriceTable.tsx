@@ -1,9 +1,10 @@
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import type { Translation } from "../i18n";
 import type { Basis, Model } from "../types";
 import { fmt } from "../util";
 import { fieldPrice, formatTokens, requestCost } from "../weighted";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
+import { setupDragScroll } from "../dragscroll";
 import Tooltip from "./Tooltip";
 import type { SortField, SortState } from "../sort";
 
@@ -35,6 +36,13 @@ const factorPhrase = (mult: number, lang: "de" | "en", kind: "price" | "value"):
 };
 
 export default function PriceTable(props: PriceTableProps) {
+  let scroller: HTMLDivElement | undefined;
+  onMount(() => {
+    if (!scroller) return;
+    const dispose = setupDragScroll(scroller);
+    onCleanup(dispose);
+  });
+
   const sortValue = (m: Model, f: SortField): number | string | null => {
     if (f === "cost") return requestCost(m, props.basis, props.monthlyCost);
     if (f === "name") return m.name.toLowerCase();
@@ -187,7 +195,7 @@ export default function PriceTable(props: PriceTableProps) {
 
       <CapabilityFilter value={() => props.caps} setter={props.setCaps} t={props.t} />
 
-      <div class="mt-4 max-w-full overflow-x-auto">
+      <div ref={scroller} class="mt-4 max-w-full overflow-x-auto">
         <table class="table table-zebra table-sm table-pin-rows">
           <thead>
             <tr>

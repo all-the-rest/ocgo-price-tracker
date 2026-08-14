@@ -11,6 +11,13 @@ export interface Capabilities {
   toolCall: boolean;
 }
 
+export interface Privacy {
+  training: boolean;
+  retentionDays: number | null;
+  validUntil: string | null;
+  fallback?: boolean;
+}
+
 export interface PricingType {
   input: number | null;
   output: number | null;
@@ -29,6 +36,7 @@ export interface FreeModel {
   id: string;
   availableFrom: string;
   capabilities: Capabilities | null;
+  privacy: Privacy;
 }
 
 export interface Model {
@@ -46,6 +54,7 @@ export interface Model {
   effectiveCachedWrite: number | null;
   pattern: RequestPattern | null;
   capabilities: Capabilities | null;
+  privacy: Privacy | null;
 }
 
 export interface PriceData {
@@ -69,6 +78,7 @@ export type Change =
   | { type: "price_changed"; model: string; from: PricingType; to: PricingType; fields: PriceField[] }
   | { type: "usage_changed"; model: string; from: number; to: number }
   | { type: "capabilities_changed"; model: string; from: Capabilities | null; to: Capabilities | null }
+  | { type: "privacy_changed"; model: string; from: Privacy | null; to: Privacy | null }
   | { type: "free_added"; model: string }
   | { type: "free_removed"; model: string; availableFrom: string; until: string };
 

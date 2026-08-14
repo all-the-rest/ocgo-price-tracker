@@ -150,6 +150,16 @@ const PATTERN_FALLBACKS = {
 };
 
 /**
+ * Fallback-Datenschutz für Modelle ohne eigene Zeile in der Datenschutz-Tabelle:
+ * normalisierter Modellname → Familien-Modell, dessen privacy-Angabe übernommen
+ * wird (z. B. MiniMax M2.5 → MiniMax M2.7). Übernommene Werte werden im
+ * privacy-Objekt mit `fallback: true` markiert.
+ */
+const PRIVACY_FALLBACKS = {
+  "minimaxm2.5": "minimaxm2.7",
+};
+
+/**
  * Filtert aus einer Liste von OpenCode-Zen-Modell-IDs die kostenlosen Modelle
  * ("free" im Namen) sowie "big-pickle" heraus, dedupliziert und sortiert.
  */
@@ -332,6 +342,139 @@ function parseModels($, table, colMap) {
 }
 
 /**
+ * Findet die Datenschutz-Tabelle (Modell / Modelltraining / Datenaufbewahrung)
+ * über die Header-Zeile — NICHT über nth-child-Selektoren.
+ */
+function findPrivacyTable($) {
+  const matches = [];
+  $("main table").each((_, table) => {
+    const headers = $(table)
+      .find("thead th")
+      .map((_, th) => $(th).text().trim().toLowerCase())
+      .get();
+    if (
+      headers.some((h) => h.includes("modelltraining")) &&
+      headers.some((h) => h.includes("datenaufbewahrung"))
+    ) {
+      matches.push(table);
+    }
+  });
+  if (matches.length === 0) {
+    throw new ScrapeError(
+      "keine Datenschutz-Tabelle gefunden (Header-Zellen mit 'modelltraining' UND 'datenaufbewahrung' fehlen)"
+    );
+  }
+  if (matches.length > 1) {
+    console.error(`[scrape] Warnung: ${matches.length} Datenschutz-Tabellen gefunden, erste wird verwendet.`);
+  }
+  return matches[0];
+}
+
+/**
+ * Parst die Spalte "Modelltraining". "Nicht verwendet"/"Nein" → false, alles
+ * andere Nicht-leere (z. B. "Verwendet"/"Ja") → true.
+ */
+function parseTraining(text) {
+  const t = (text ?? "").trim();
+  if (t === "") throw new ScrapeError("Modelltraining unparsebar: leere Zelle");
+  return !/nicht|kein|nein|no\b/i.test(t);
+}
+
+/**
+ * Parst die Spalte "Datenaufbewahrung": "30 Tage" → 30, "0 Tage" → 0,
+ * "–"/"-" → null.
+ */
+function parseRetentionDays(text) {
+  const t = (text ?? "").trim();
+  if (t === "" || t === "-" || t === "—" || t === "–") return null;
+  const m = t.match(/^(\d+(?:[.,]\d+)?)\s*Tage?$/i);
+  if (!m) throw new ScrapeError(`Datenaufbewahrung unparsebar: "${text}"`);
+  return Number(m[1].replace(",", "."));
+}
+
+const DE_MONTHS = {
+  januar: "01",
+  februar: "02",
+  märz: "03",
+  maerz: "03",
+  april: "04",
+  mai: "05",
+  juni: "06",
+  juli: "07",
+  august: "08",
+  september: "09",
+  oktober: "10",
+  november: "11",
+  dezember: "12",
+};
+
+/**
+ * Parst ein deutsches Datum ("31. August 2026") zu ISO ("2026-08-31").
+ * Liefert null bei unbekanntem Format oder Monatsnamen.
+ */
+export function parseGermanDate(text) {
+  const t = (text ?? "").trim().replace(/\.+$/, "");
+  const m = t.match(/^(\d{1,2})\.\s+([A-Za-zäöüß]+)\s+(\d{4})$/);
+  if (!m) return null;
+  const month = DE_MONTHS[m[2].toLowerCase()];
+  if (!month) return null;
+  const day = Number(m[1]);
+  if (day < 1 || day > 31) return null;
+  return `${m[3]}-${month}-${String(day).padStart(2, "0")}`;
+}
+
+/**
+ * Parst die Datenschutz-Tabelle und liefert eine Map normalisierter Modellnamen
+ * → { training, retentionDays }. Die Zuordnung erfolgt über den Modellnamen
+ * (eine Tabellenzeile gilt für alle Tier-Varianten des Modells).
+ */
+export function parsePrivacyTable($, table) {
+  const map = new Map();
+  $(table)
+    .find("tbody tr, > tr")
+    .each((_, row) => {
+      const cells = $(row)
+        .find("th, td")
+        .map((_, c) => $(c).text().trim())
+        .get();
+      const first = (cells[0] ?? "").trim().toLowerCase();
+      if (first === "modell" || first === "model") return;
+      if (cells.length < 3) return;
+      map.set(normalizeName(cells[0]), {
+        training: parseTraining(cells[1]),
+        retentionDays: parseRetentionDays(cells[2]),
+      });
+    });
+  return map;
+}
+
+/**
+ * Parst die Notizen-Liste unter der Datenschutz-Tabelle (z. B. die monatliche
+ * ZDR-Vereinbarung von DeepSeek V4 Flash: "gilt bis einschließlich 31. August
+ * 2026") und liefert eine Map normalisierter Modellnamen → validUntil (ISO).
+ */
+export function parsePrivacyNotes($) {
+  const map = new Map();
+  $("main ul li").each((_, li) => {
+    const $li = $(li);
+    const label = $li
+      .find("strong")
+      .first()
+      .text()
+      .trim()
+      .replace(/:$/, "")
+      .trim();
+    if (!label) return;
+    const text = $li.text().replace(/\s+/g, " ").trim();
+    const m = text.match(/(?:gilt|gültig)\s+bis(?:\s+einschließlich)?\s+(\d{1,2}\.\s+[A-Za-zäöüß]+\s+\d{4})/i);
+    if (!m) return;
+    const date = parseGermanDate(m[1]);
+    if (date) map.set(normalizeName(label), date);
+  });
+  return map;
+}
+
+/**
  * Extrahiert die Modelle aus dem HTML einer OpenCode-Go-Dokumentationsseite.
  * Wirft ScrapeError bei strukturellen Parsing-Fehlern.
  */
@@ -349,6 +492,26 @@ export function parseHtml(html) {
     }
     m.pattern = pattern ?? null;
   }
+
+  const privacyTable = findPrivacyTable($);
+  const privacyMap = parsePrivacyTable($, privacyTable);
+  const validUntilMap = parsePrivacyNotes($);
+  for (const m of models) {
+    const norm = normalizeName(m.name);
+    const own = privacyMap.get(norm);
+    const base = own ?? privacyMap.get(PRIVACY_FALLBACKS[norm] ?? "");
+    if (!base) {
+      m.privacy = null;
+      continue;
+    }
+    const fallback = !own;
+    m.privacy = {
+      ...base,
+      validUntil: validUntilMap.get(norm) ?? null,
+      ...(fallback ? { fallback: true } : {}),
+    };
+  }
+
   if (models.length === 0) throw new ScrapeError("keine Modelle aus der Preistabelle extrahiert");
   return models;
 }
@@ -399,6 +562,12 @@ export function applyUsageBonuses(models, bonuses) {
  * identisch behandelt (fehlendes Feld vs. explizites null).
  */
 export const capabilitiesEqual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/**
+ * Tiefen-Vergleich zweier privacy-Werte; undefined und null werden identisch
+ * behandelt (fehlendes Feld vs. explizites null).
+ */
+export const privacyEqual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 /**
  * Baut die Lookups für die models.dev-Zuordnung auf: opencode-Provider
@@ -469,6 +638,10 @@ export function enrichFreeModels(freeModels, opencodeModels, metadataModels) {
   const { resolve } = buildModelsDevLookup(opencodeModels, metadataModels);
   for (const f of freeModels) {
     f.capabilities = toCapabilities(resolve(f.id, f.id));
+    // Kostenlose Zen-Modelle (inkl. big-pickle) werden von OpenCode fürs
+    // Modelltraining genutzt (keine explizite Angabe in der Doku — Zen-Seite
+    // nennt lediglich das Feedback zur Modellverbesserung).
+    f.privacy = { training: true, retentionDays: null, validUntil: null };
   }
   return freeModels;
 }
@@ -485,6 +658,25 @@ export function computeCapabilityDiff(prevModels, nextModels) {
     if (!before) continue;
     if (!capabilitiesEqual(before.capabilities, m.capabilities)) {
       diffs.push({ key: modelKey(m), from: before.capabilities ?? null, to: m.capabilities ?? null });
+    }
+  }
+  return diffs;
+}
+
+/**
+ * Vergleicht die Datenschutz-Infos von vorherigem und aktuellem Lauf. Modelle,
+ * deren Vorgänger noch kein `privacy` hatte (`undefined`/`null` — Feld fehlt
+ * oder Modell nicht gelistet), werden übersprungen: die Erst-Befüllung (auch
+ * Familien-Fallback) erzeugt keinen Changelog-Event.
+ */
+export function computePrivacyDiff(prevModels, nextModels) {
+  const prev = new Map(prevModels.map((m) => [modelKey(m), m]));
+  const diffs = [];
+  for (const m of nextModels) {
+    const before = prev.get(modelKey(m));
+    if (!before || before.privacy == null) continue;
+    if (!privacyEqual(before.privacy, m.privacy)) {
+      diffs.push({ key: modelKey(m), from: before.privacy ?? null, to: m.privacy ?? null });
     }
   }
   return diffs;
@@ -570,6 +762,10 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
     changes.push({ type: "capabilities_changed", model: key, from, to });
   }
 
+  for (const { key, from, to } of computePrivacyDiff(prevModels, nextModels)) {
+    changes.push({ type: "privacy_changed", model: key, from, to });
+  }
+
   const prevIds = prevFree.map((f) => f.id);
   const nextIds = nextFree.map((f) => f.id);
   for (const f of nextFree.filter((f) => !prevIds.includes(f.id))) {
@@ -588,6 +784,19 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
         model: f.id,
         from: before.capabilities ?? null,
         to: f.capabilities ?? null,
+      });
+    }
+  }
+
+  for (const f of nextFree) {
+    const before = (Array.isArray(prevFree) ? prevFree : []).find((p) => p.id === f.id);
+    if (!before || before.privacy == null) continue;
+    if (!privacyEqual(before.privacy, f.privacy)) {
+      changes.push({
+        type: "privacy_changed",
+        model: f.id,
+        from: before.privacy ?? null,
+        to: f.privacy ?? null,
       });
     }
   }
@@ -643,6 +852,13 @@ const CapabilitiesSchema = z.object({
   toolCall: z.boolean(),
 });
 
+const PrivacySchema = z.object({
+  training: z.boolean(),
+  retentionDays: z.number().nullable(),
+  validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  fallback: z.boolean().optional(),
+});
+
 const ModelSchema = z.object({
   name: z.string().min(1),
   tier: z.string().nullable(),
@@ -658,12 +874,14 @@ const ModelSchema = z.object({
   effectiveCachedWrite: z.number().nullable(),
   pattern: RequestPatternSchema,
   capabilities: CapabilitiesSchema.nullable(),
+  privacy: PrivacySchema.nullable(),
 });
 
 const FreeModelSchema = z.object({
   id: z.string().min(1),
   availableFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   capabilities: CapabilitiesSchema.nullable(),
+  privacy: PrivacySchema,
 });
 
 const SnapshotSchema = z.object({
@@ -719,6 +937,12 @@ const ChangeSchema = z.discriminatedUnion("type", [
     model: z.string().min(1),
     from: CapabilitiesSchema.nullable(),
     to: CapabilitiesSchema.nullable(),
+  }),
+  z.object({
+    type: z.literal("privacy_changed"),
+    model: z.string().min(1),
+    from: PrivacySchema.nullable(),
+    to: PrivacySchema.nullable(),
   }),
   z.object({ type: z.literal("free_added"), model: z.string().min(1) }),
   z.object({
@@ -817,6 +1041,18 @@ async function main() {
 
     const changes = buildChanges(prevModels, models, prevFree, freeModels, date, firstSeen);
 
+    // Stille, strukturelle privacy-Änderungen (Feld erstmals befüllt oder
+    // Familien-Fallback): Daten-Dateien schreiben, aber KEINE Changelog-Events.
+    const prevPrivacy = new Map([
+      ...(prev?.models ?? []).map((m) => [modelKey(m), m.privacy]),
+      ...(Array.isArray(prev?.freeModels) ? prev.freeModels : []).map((f) => [f.id, f.privacy]),
+    ]);
+    const privacyPopulated =
+      prev !== null &&
+      [...models.map((m) => [modelKey(m), m.privacy]), ...freeModels.map((f) => [f.id, f.privacy])].some(
+        ([key, p]) => p !== null && prevPrivacy.get(key) == null
+      );
+
     validateSnapshot(latest);
 
     const changelogPath = join(ROOT, "CHANGELOG.json");
@@ -828,7 +1064,7 @@ async function main() {
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
 
-    if (changes.length > 0) {
+    if (changes.length > 0 || privacyPopulated) {
       history.snapshots.push(latest);
       writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
       writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
@@ -836,7 +1072,8 @@ async function main() {
 
     const enriched = models.filter((m) => m.capabilities !== null).length;
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle.`);
+    const privacyCovered = models.filter((m) => m.privacy !== null).length;
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

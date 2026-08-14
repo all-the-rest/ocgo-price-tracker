@@ -27,12 +27,12 @@ export function fieldPrice(m: Model, f: PriceField, basis: Basis, monthlyCost: n
  * Kosten pro Anfrage für ein Modell: dokumentiertes Anfragemuster des Modells
  * (Input/Cached/Output Tokens pro Anfrage) × Modellpreis pro 1M Tokens.
  *
- * Preiszuordnung (Heuristik): Input-Tokens → 15% Input-Preis + 85% Cached-Write-
+ * Preiszuordnung (Heuristik): Input-Tokens → 5% Input-Preis + 95% Cached-Write-
  * Preis, Cached-Tokens → Cached-Read-Preis, Output-Tokens → Output-Preis. Ein
  * fehlender Cached-Write-Preis (in der Doku mit "-" dokumentiert) zählt wie der
  * Input-Preis (der Input-Anteil wird dann zum reinen Input-Preis).
  *
- * Die 15/85-Gewichtung basiert auf beobachteter Nutzung (opencode-Telemetrie):
+ * Die 5/95-Gewichtung basiert auf beobachteter Nutzung (opencode-Telemetrie):
  * für Modelle mit dokumentiertem Cached-Write-Preis entfällt der Großteil der
  * frischen Token auf Cached-Write (Luna ~28/72, Qwen3.8 Max ~0/100), nicht auf
  * den reinen Input-Preis.
@@ -45,7 +45,7 @@ export function requestCost(m: Model, basis: Basis, monthlyCost: number): number
   const output = fieldPrice(m, "output", basis, monthlyCost);
   if (input === null || cached === null || output === null) return null;
   const write = writeRaw ?? input;
-  const inputEffective = 0.15 * input + 0.85 * write;
+  const inputEffective = 0.05 * input + 0.95 * write;
   return (
     (inputEffective * m.pattern.input + cached * m.pattern.cachedRead + output * m.pattern.output) /
     1e6

@@ -3,6 +3,7 @@ import type { Lang, Translation } from "../i18n";
 import type { Change, ChangelogEntry, PriceField, PricingType } from "../types";
 import { fmt, formatModelName } from "../util";
 import { capCount, fmtCaps } from "../capabilities";
+import { privacyLabelWithValidUntil, privacyRank } from "../privacy";
 
 interface ChangelogProps {
   entries: ChangelogEntry[];
@@ -66,6 +67,12 @@ export default function Changelog(props: ChangelogProps) {
         if (diff < 0) return <span class={`${baseCls} badge-error`}>−</span>;
         return <span class={`${baseCls} badge-ghost`}>≈</span>;
       }
+      case "privacy_changed": {
+        const diff = privacyRank(c.to) - privacyRank(c.from);
+        if (diff > 0) return <span class={`${baseCls} badge-success`}>↓</span>;
+        if (diff < 0) return <span class={`${baseCls} badge-error`}>↑</span>;
+        return <span class={`${baseCls} badge-ghost`}>≈</span>;
+      }
       case "text":
         return <span class={`${baseCls} badge-ghost`}>i</span>;
     }
@@ -107,6 +114,15 @@ export default function Changelog(props: ChangelogProps) {
               .replace("{model}", c.model)
               .replace("{from}", fmtCaps(c.from, props.t))
               .replace("{to}", fmtCaps(c.to, props.t))}
+          </span>
+        );
+      case "privacy_changed":
+        return (
+          <span>
+            {props.t.chgPrivacy
+              .replace("{model}", c.model)
+              .replace("{from}", privacyLabelWithValidUntil(c.from, props.t, props.lang))
+              .replace("{to}", privacyLabelWithValidUntil(c.to, props.t, props.lang))}
           </span>
         );
       case "free_added":
