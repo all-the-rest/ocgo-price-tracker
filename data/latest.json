@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-13T15:49:22.731Z",
+  "fetchedAt": "2026-08-14T09:02:35.518Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -98,6 +98,35 @@
       "effectiveOutput": 3.6,
       "effectiveCachedRead": 0.08,
       "effectiveCachedWrite": 1
+    },
+    {
+      "name": "GLM-5.3",
+      "tier": null,
+      "input": 1.4,
+      "output": 4.4,
+      "cachedRead": 0.26,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 700,
+        "cachedRead": 52000,
+        "output": 150
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 5.6,
+      "effectiveOutput": 17.6,
+      "effectiveCachedRead": 1.04,
+      "effectiveCachedWrite": null
     },
     {
       "name": "GLM-5.2",
