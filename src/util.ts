@@ -5,6 +5,19 @@ export function fmt(n: number | null | undefined): string {
   return "$" + s.replace(/0+$/, "").replace(/\.$/, "");
 }
 
+/**
+ * Ersetzt die dynamischen Platzhalter `{credit}`/`{cost}` (mit `$`) sowie
+ * `{creditNum}`/`{costNum}` (nackte Zahlen) in i18n-Texten durch die tatsächlich
+ * gefetchten Monatsguthaben/-preis-Werte.
+ */
+export function fmtPricing(tpl: string, credit: number, cost: number): string {
+  return tpl
+    .replaceAll("{credit}", "$" + credit)
+    .replaceAll("{cost}", "$" + cost)
+    .replaceAll("{creditNum}", String(credit))
+    .replaceAll("{costNum}", String(cost));
+}
+
 export function fmtDate(iso: string, lang: "de" | "en"): string {
   const d = new Date(iso);
   return new Intl.DateTimeFormat(lang === "de" ? "de-DE" : "en-US", {

@@ -145,7 +145,12 @@ export default function App() {
     <div class="min-h-screen w-full bg-base-100 text-base-content">
       <Header lang={lang()} setLang={setLang} dark={dark()} setDark={setDark} onReset={resetAll} />
       <main class="mx-auto max-w-5xl px-4 py-8">
-        <Hero t={t()} modelCount={data.models.length} />
+        <Hero
+          t={t()}
+          modelCount={data.models.length}
+          monthlyCredit={data.monthlyCredit}
+          monthlyCost={data.monthlyCost}
+        />
         <PriceTable
           models={data.models}
           t={t()}

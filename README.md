@@ -1,11 +1,13 @@
 # Price Tracking for OpenCode Go
 
 Scrapet täglich die Preistabelle von `https://opencode.ai/docs/de/go/` und
-berechnet die Preise wahlweise auf Basis des vollen $60/Monat-Guthabens
-(Effektivpreis = Listenpreis × 60/Nutzung) oder dessen, was man tatsächlich
-zahlst ($10/Monat, Effektivpreis = Listenpreis × 10/Nutzung). Die Ergebnisse
-werden als statische SolidJS-Seite unter `https://ocgo-pricing.all-the.rest`
-bereitgestellt.
+berechnet die Preise wahlweise auf Basis des vollen Monatsguthabens
+(Effektivpreis = Listenpreis × Guthaben/Nutzung) oder dessen, was man
+tatsächlich zahlt (Monatspreis/Nutzung). Monatsguthaben und Monatspreis werden
+dynamisch gefetchtt (Go-Landingpage `https://opencode.ai/de/go` → `$10/Monat`,
+Doku-Seite → „das Sechsfache dieses Betrags“ → Guthaben `$60`; Fallback 60/10).
+Die Ergebnisse werden als statische SolidJS-Seite unter
+`https://ocgo-pricing.all-the.rest` bereitgestellt.
 
 ## Lokal entwickeln
 
@@ -31,8 +33,8 @@ aktualisiert dabei `data/latest.json`, `data/history.json`, `CHANGELOG.json` und
 ## Daten
 
 - `data/latest.json` — aktueller Snapshot mit folgendem Schema:
-  - `monthlyCredit` = 60 (voller Monatsbetrag in USD)
-  - `monthlyCost` = 10 (laufender Abo-Preis)
+  - `monthlyCredit` = voller Monatsbetrag in USD (dynamisch aus Landingpage-Preis × Doku-Faktor, aktuell 60)
+  - `monthlyCost` = laufender Abo-Preis (dynamisch aus der Landingpage, aktuell 10)
   - `usage` = $15 oder $60 pro Modell
   - `multiplier` = 60 / usage
   - `effective*` = Preis × multiplier

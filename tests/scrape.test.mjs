@@ -22,6 +22,9 @@ import {
   enrichFreeModels,
   parseUsageBonuses,
   applyUsageBonuses,
+  parseMonthlyCost,
+  parseCreditFactor,
+  parseMonthlyPricing,
 } from "../scripts/scrape.mjs";
 
 const fixture = readFileSync(
@@ -226,6 +229,54 @@ test("applyUsageBonuses: lässt Modelle ohne Bonus unverändert", () => {
   assert.equal(grok.usage, 15);
   assert.equal(grok.multiplier, 4);
   assert.equal(models.find((m) => m.name === "DeepSeek V4 Flash").usage, 60);
+});
+
+test("parseMonthlyPricing: Doku-Fixture liefert $10/Monat und Faktor 6", () => {
+  const pricing = parseMonthlyPricing(cheerio.load(fixture));
+  assert.deepEqual(pricing, { monthlyCost: 10, creditFactor: 6 });
+});
+
+test("parseMonthlyPricing: Landing-Fixture liefert $10/Monat aus dem CTA, keinen Faktor", () => {
+  const pricing = parseMonthlyPricing(loadBonusFixture());
+  assert.deepEqual(pricing, { monthlyCost: 10, creditFactor: null });
+});
+
+test("parseMonthlyPricing: Monatsguthaben = Monatspreis × Faktor (10 × 6 = 60)", () => {
+  const landing = parseMonthlyPricing(loadBonusFixture());
+  const docs = parseMonthlyPricing(cheerio.load(fixture));
+  const monthlyCost = landing.monthlyCost ?? docs.monthlyCost;
+  const creditFactor = docs.creditFactor ?? landing.creditFactor;
+  assert.equal(monthlyCost, 10);
+  assert.equal(monthlyCost * creditFactor, 60);
+});
+
+test("parseMonthlyPricing: fehlende Werte → null statt Fehler (Fallback-Pfad)", () => {
+  const $ = cheerio.load("<html><body><p>Keine Preise hier.</p></body></html>");
+  assert.deepEqual(parseMonthlyPricing($), { monthlyCost: null, creditFactor: null });
+});
+
+test("parseMonthlyCost: existierendes, aber unparsebares CTA-Element wirft", () => {
+  const $ = cheerio.load('<span data-slot="cta-price-old">kostenlos</span>');
+  assert.throws(() => parseMonthlyCost($), /unparsebar/);
+});
+
+test("parseCreditFactor: numerischer Faktor (das 6-fache) wird geparst", () => {
+  const $ = cheerio.load("<p>unser Ziel ist, dir dafür das 6-fache dieses Betrags zu bieten.</p>");
+  assert.equal(parseCreditFactor($), 6);
+});
+
+test("parseCreditFactor: unbekannter Faktor bei vorhandenem Satz wirft", () => {
+  const $ = cheerio.load("<p>das Elffache dieses Betrags</p>");
+  assert.throws(() => parseCreditFactor($), /unparsebar/);
+});
+
+test("applyUsageBonuses: monthlyCredit-Parameter fließt in multiplier und Effektivpreise ein", () => {
+  const models = parseHtml(fixture);
+  applyUsageBonuses(models, new Map([["deepseekv4flash", 2]]), 75);
+  const flash = models.find((m) => m.name === "DeepSeek V4 Flash");
+  assert.equal(flash.usage, 120);
+  assert.equal(flash.multiplier, 0.625);
+  assert.equal(flash.effectiveInput, 0.14 * (75 / 120));
 });
 
 const base = [

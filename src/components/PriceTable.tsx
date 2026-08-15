@@ -1,7 +1,7 @@
 import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import type { Translation } from "../i18n";
 import type { Basis, Model } from "../types";
-import { fmt } from "../util";
+import { fmt, fmtPricing } from "../util";
 import { fieldPrice, formatTokens, requestCost } from "../weighted";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import { setupDragScroll } from "../dragscroll";
@@ -171,14 +171,14 @@ export default function PriceTable(props: PriceTableProps) {
             classList={{ "btn-active": props.basis === "full" }}
             onClick={() => props.setBasis("full")}
           >
-            {props.t.basisFull}
+            {fmtPricing(props.t.basisFull, props.monthlyCredit, props.monthlyCost)}
           </button>
           <button
             class="join-item btn btn-sm"
             classList={{ "btn-active": props.basis === "paid" }}
             onClick={() => props.setBasis("paid")}
           >
-            {props.t.basisPaid}
+            {fmtPricing(props.t.basisPaid, props.monthlyCredit, props.monthlyCost)}
           </button>
         </div>
         <Show when={props.basis === "full" || props.basis === "paid"}>

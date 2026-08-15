@@ -1,6 +1,6 @@
 import type { Translation } from "../i18n";
 import type { PriceData } from "../types";
-import { fmtDate } from "../util";
+import { fmtDate, fmtPricing } from "../util";
 
 interface FooterProps {
   t: Translation;
@@ -17,7 +17,9 @@ export default function Footer(props: FooterProps) {
   return (
     <footer class="mx-auto max-w-5xl px-4 pb-10">
       <div class="flex flex-col gap-2 border-t border-base-300 pt-4 text-xs text-base-content/40">
-        <p class="max-w-3xl">{props.t.metricNote}</p>
+        <p class="max-w-3xl">
+          {fmtPricing(props.t.metricNote, props.data.monthlyCredit, props.data.monthlyCost)}
+        </p>
         <p class="max-w-3xl">{props.t.freeAvailableNote}</p>
         <span>
           {props.t.fetchedAt}: {fmtDate(props.data.fetchedAt, props.lang)}

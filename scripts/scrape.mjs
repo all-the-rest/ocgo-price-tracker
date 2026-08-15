@@ -16,8 +16,12 @@ const BONUS_URL = "https://opencode.ai/de/go";
 const ZEN_URL = "https://opencode.ai/zen/v1/models";
 const MODELS_DEV_URL = "https://models.dev";
 const SOURCE_LANG = "de";
-const MONTHLY_CREDIT = 60;
-const MONTHLY_COST = 10;
+// Fallback-Werte: Monatsguthaben/-preis werden dynamisch aus der Go-Landingpage
+// (`https://opencode.ai/de/go`, `[data-slot="cta-price-old"]`) und der Doku-Seite
+// ("das Sechsfache dieses Betrags") gezogen; nur wenn die Extraktion fehlschlägt,
+// greifen diese Konstanten (mit Warnung, kein Rot-Abbruch).
+const DEFAULT_MONTHLY_CREDIT = 60;
+const DEFAULT_MONTHLY_COST = 10;
 const FLOAT_TOLERANCE = 1e-9;
 const USER_AGENT =
   "ocgo-price-tracker/0.1.0 (+https://github.com/reisi007/ocgo-price-tracker)";
@@ -183,15 +187,78 @@ async function fetchZenFreeModels(previousFree) {
 }
 
 /**
- * Holt die temporären Nutzungs-Boni von der Go-Landingpage. Ein HTTP-Fehler
- * bricht rot ab, weil die Boni den Effektivpreis direkt verändern (verlässliche
- * Preise sind Pflicht); ein strukturierter Zustand ohne `[data-bonus]` liefert
- * einfach eine leere Map.
+ * Holt die Go-Landingpage (`https://opencode.ai/de/go`). Ein HTTP-Fehler bricht
+ * rot ab, weil die Seite sowohl die temporären Nutzungs-Boni als auch den
+ * laufenden Monatspreis liefert (verlässliche Preise sind Pflicht).
  */
-async function fetchUsageBonuses() {
+async function fetchGoLanding() {
   const res = await fetch(BONUS_URL, { headers: { "User-Agent": USER_AGENT } });
   if (!res.ok) throw new ScrapeError(`HTTP ${res.status} beim Abrufen von ${BONUS_URL}`);
-  return parseUsageBonuses(cheerio.load(await res.text()));
+  return cheerio.load(await res.text());
+}
+
+const CREDIT_FACTOR_WORDS = {
+  ein: 1,
+  eins: 1,
+  zwei: 2,
+  drei: 3,
+  vier: 4,
+  fünf: 5,
+  sechs: 6,
+  sieben: 7,
+  acht: 8,
+  neun: 9,
+  zehn: 10,
+};
+
+/**
+ * Parst den laufenden Monatspreis (`$10/Monat`) aus einer Seite. Bevorzugt das
+ * semantische `[data-slot="cta-price-old"]`-Element der Go-Landingpage, sonst
+ * die Prosa `$N/Monat` (Doku-Seite). Existiert das CTA-Element, ist sein Text
+ * aber unparsebar → ScrapeError; existiert gar kein Kandidat → null (Fallback).
+ */
+export function parseMonthlyCost($) {
+  const cta = $("[data-slot='cta-price-old']").first();
+  if (cta.length > 0) {
+    const text = cta.text().trim();
+    const m = text.match(/\$(\d+(?:[.,]\d+)?)\s*\/\s*Monat/i);
+    if (!m) throw new ScrapeError(`Monatspreis im CTA-Element unparsebar: "${text}"`);
+    return Number(m[1].replace(",", "."));
+  }
+  const text = $("body").text().replace(/\s+/g, " ");
+  const m = text.match(/\$(\d+(?:[.,]\d+)?)\s*\/\s*Monat/i);
+  return m ? Number(m[1].replace(",", ".")) : null;
+}
+
+/**
+ * Parst den dokumentierten Guthaben-Faktor ("das Sechsfache dieses Betrags" =
+ * 6, "das 6-fache dieses Betrags" = 6, "das 6× dieses Betrags" = 6) aus der
+ * Doku-Seite. Das Monatsguthaben ergibt sich als Monatspreis × Faktor
+ * ($10 × 6 = $60). Kein solcher Satz → null; Satz vorhanden, aber Faktor
+ * unbekannt → ScrapeError.
+ */
+export function parseCreditFactor($) {
+  const text = $("body").text().replace(/\s+/g, " ").trim();
+  const m = text.match(
+    /\bdas\s+(?:([a-zäöüß]+)-?fache|(\d+(?:[.,]\d+)?)\s*(?:[x×]|-?fache))\s+dieses\s+Betrags\b/i
+  );
+  if (!m) return null;
+  if (m[2] !== undefined) return Number(m[2].replace(",", "."));
+  const factor = CREDIT_FACTOR_WORDS[m[1].toLowerCase()];
+  if (factor === undefined) {
+    throw new ScrapeError(`Guthaben-Faktor unparsebar: "${m[1]}"`);
+  }
+  return factor;
+}
+
+/**
+ * Parst Monatspreis und Guthaben-Faktor aus einer Seite (Landingpage oder
+ * Doku-Seite). Das Guthaben wird erst in main() aus Preis × Faktor berechnet,
+ * damit beide Seiten kombiniert werden können (Landingpage liefert den Preis,
+ * die Doku-Seite den Faktor).
+ */
+export function parseMonthlyPricing($) {
+  return { monthlyCost: parseMonthlyCost($), creditFactor: parseCreditFactor($) };
 }
 
 function parsePatternNum(text) {
@@ -313,10 +380,12 @@ function parseModel(cells, colMap) {
 
 /**
  * Setzt `multiplier` und die `effective*`-Preise aus dem aktuellen `usage` neu.
- * Wird nach einer Bonus-Anpassung des Nutzungslimits erneut aufgerufen.
+ * Wird nach einer Bonus-Anpassung des Nutzungslimits und nach der Bestimmung des
+ * (dynamisch gefetchten) Monatsguthabens erneut aufgerufen. Ohne expliziten
+ * Wert wird das Fallback-Guthaben (`DEFAULT_MONTHLY_CREDIT`) verwendet.
  */
-function recomputeUsageDerived(model) {
-  const multiplier = MONTHLY_CREDIT / model.usage;
+function recomputeUsageDerived(model, monthlyCredit = DEFAULT_MONTHLY_CREDIT) {
+  const multiplier = monthlyCredit / model.usage;
   const effective = (price) => (price === null ? null : price * multiplier);
   model.multiplier = multiplier;
   model.effectiveInput = effective(model.input);
@@ -544,15 +613,15 @@ export function parseUsageBonuses($) {
 /**
  * Wendet Nutzungs-Boni (Map normalisierter Modellname → Faktor) auf die
  * gescrapten Modelle an: `usage` wird multipliziert, `multiplier` und die
- * `effective*`-Preise werden neu berechnet.
+ * `effective*`-Preise werden neu berechnet (mit dem übergebenen Monatsguthaben).
  */
-export function applyUsageBonuses(models, bonuses) {
+export function applyUsageBonuses(models, bonuses, monthlyCredit = DEFAULT_MONTHLY_CREDIT) {
   if (!bonuses || bonuses.size === 0) return models;
   for (const m of models) {
     const factor = bonuses.get(normalizeName(m.name));
     if (!factor || factor <= 0) continue;
     m.usage = m.usage * factor;
-    recomputeUsageDerived(m);
+    recomputeUsageDerived(m, monthlyCredit);
   }
   return models;
 }
@@ -905,8 +974,8 @@ const SnapshotSchema = z.object({
   freeModelsSourceUrl: z.string().url(),
   capabilitiesSourceUrl: z.string().url(),
   sourceLang: z.string(),
-  monthlyCredit: z.number(),
-  monthlyCost: z.number(),
+  monthlyCredit: z.number().positive(),
+  monthlyCost: z.number().positive(),
   models: z.array(ModelSchema).min(1),
   freeModels: z.array(FreeModelSchema),
 });
@@ -1003,10 +1072,38 @@ async function main() {
     });
     if (!response.ok) throw new ScrapeError(`HTTP ${response.status} beim Abrufen von ${SOURCE_URL}`);
     const html = await response.text();
+    const docs$ = cheerio.load(html);
     const models = parseHtml(html);
-    const usageBonuses = await fetchUsageBonuses();
+    const landing$ = await fetchGoLanding();
+    const usageBonuses = parseUsageBonuses(landing$);
     applyUsageBonuses(models, usageBonuses);
     const bonusLabels = [...usageBonuses.entries()].map(([n, f]) => `${n}×${f}`).join(", ");
+
+    // Monatsguthaben/-preis dynamisch: Monatspreis von der Landingpage
+    // (`[data-slot="cta-price-old"]` → "$10/Monat"), Guthaben-Faktor von der
+    // Doku-Seite ("das Sechsfache dieses Betrags" → 6). Guthaben = Preis ×
+    // Faktor. Fehlt eine der beiden Quellen → Fallback-Konstanten (Warnung,
+    // kein Rot-Abbruch, damit ein Layout-Wechsel die Pipeline nicht bricht).
+    const landingPricing = parseMonthlyPricing(landing$);
+    const docsPricing = parseMonthlyPricing(docs$);
+    const monthlyCost = landingPricing.monthlyCost ?? docsPricing.monthlyCost;
+    const creditFactor = docsPricing.creditFactor ?? landingPricing.creditFactor;
+    const pricingFallback = monthlyCost === null || creditFactor === null;
+    let monthlyCredit;
+    let monthlyCostFinal;
+    if (pricingFallback) {
+      console.error(
+        `[scrape] Warnung: Monatsguthaben/-preis nicht extrahierbar (Monatspreis=${monthlyCost}, Faktor=${creditFactor}); nutze Konstanten ${DEFAULT_MONTHLY_CREDIT}/${DEFAULT_MONTHLY_COST}.`
+      );
+      monthlyCredit = DEFAULT_MONTHLY_CREDIT;
+      monthlyCostFinal = DEFAULT_MONTHLY_COST;
+    } else {
+      monthlyCredit = monthlyCost * creditFactor;
+      monthlyCostFinal = monthlyCost;
+    }
+    // Effektivpreise auf Basis des (möglicherweise geänderten) Monatsguthabens
+    // neu berechnen — nutzt die bereits bonus-bereinigten usage-Werte.
+    for (const m of models) recomputeUsageDerived(m, monthlyCredit);
 
     const { providers: mdProviders, models: mdModels, source: mdSource } = await loadModelsDev();
     enrichCapabilities(models, mdProviders.opencode?.models ?? {}, mdModels);
@@ -1048,8 +1145,8 @@ async function main() {
       freeModelsSourceUrl: ZEN_URL,
       capabilitiesSourceUrl: MODELS_DEV_URL,
       sourceLang: SOURCE_LANG,
-      monthlyCredit: MONTHLY_CREDIT,
-      monthlyCost: MONTHLY_COST,
+      monthlyCredit,
+      monthlyCost: monthlyCostFinal,
       models,
       freeModels,
     };
@@ -1079,6 +1176,12 @@ async function main() {
         }
       );
 
+    // Monatsguthaben/-preis haben sich geändert (dynamisch gefetchte Werte):
+    // Daten-Dateien schreiben, aber KEINE Changelog-Events — die Werte sind die
+    // globale Preisbasis (kein Modell-Event), die UI liest sie aus latest.json.
+    const monthlyPricingChanged =
+      prev !== null && (prev.monthlyCredit !== monthlyCredit || prev.monthlyCost !== monthlyCostFinal);
+
     validateSnapshot(latest);
 
     const changelogPath = join(ROOT, "CHANGELOG.json");
@@ -1090,7 +1193,7 @@ async function main() {
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
 
-    if (changes.length > 0 || privacyPopulated || privacySilentUpdate) {
+    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || monthlyPricingChanged) {
       history.snapshots.push(latest);
       writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
       writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
@@ -1099,7 +1202,7 @@ async function main() {
     const enriched = models.filter((m) => m.capabilities !== null).length;
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
     const privacyCovered = models.filter((m) => m.privacy !== null).length;
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}.`);
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Monatsguthaben $${monthlyCredit} / Monatspreis $${monthlyCostFinal} (${pricingFallback ? "Fallback 60/10" : "dynamisch"})${monthlyPricingChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);
