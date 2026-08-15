@@ -75,7 +75,7 @@ jobs:
           path: dist
 
       - name: Upload dist artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: ocgo-pricing-dist
           path: dist
