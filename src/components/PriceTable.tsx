@@ -119,6 +119,7 @@ export default function PriceTable(props: PriceTableProps) {
   };
 
   const usageBadge = (usage: number) => {
+    if (usage / props.monthlyCost <= 1) return "bg-red-800 border-red-800 text-red-100";
     if (usage > props.monthlyCredit) return "bg-green-800 border-green-800 text-green-100";
     if (usage < props.monthlyCredit) return usage < props.monthlyCredit / 2 ? "badge-error" : "badge-warning";
     return "badge-success";
