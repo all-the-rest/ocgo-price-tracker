@@ -38,6 +38,20 @@ export const uiReviewConfig: UiReviewConfig = {
       note: "Deutsche Variante zur i18n-Kontrolle; Default-Lang ist en (Browser-Locale).",
       expectedTitle: "Price Tracking for OpenCode Go",
     },
+    {
+      name: "home-dark",
+      path: "/?theme=dark",
+      states: ["filled"],
+      note: "Dark-Mode-Variante (data-theme=dark) — prüft Farben/Kontrast im dunklen Theme.",
+      expectedTitle: "Price Tracking for OpenCode Go",
+    },
+    {
+      name: "home-de-dark",
+      path: "/?lang=de&theme=dark",
+      states: ["filled"],
+      note: "Deutsche Dark-Mode-Variante — prüft i18n + dunkles Theme zusammen.",
+      expectedTitle: "Price Tracking for OpenCode Go",
+    },
   ],
 };
 

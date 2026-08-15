@@ -31,6 +31,7 @@ function readParams(): {
   psort: PrivacySortState | null;
   basis: Basis | null;
   lang: "de" | "en" | null;
+  theme: "dark" | null;
   cap: CapId[] | null;
   fcap: CapId[] | null;
 } {
@@ -55,19 +56,20 @@ function readParams(): {
   const basis: Basis | null = b === "list" || b === "full" || b === "paid" ? b : null;
   const l = p.get("lang");
   const lang: "de" | "en" | null = l === "de" || l === "en" ? l : null;
+  const theme: "dark" | null = p.get("theme") === "dark" ? "dark" : null;
   const parseCaps = (raw: string | null): CapId[] | null =>
     raw === null
       ? null
       : Array.from(new Set(raw.split(",").filter((x): x is CapId => (CAP_IDS as readonly string[]).includes(x))));
   const cap = parseCaps(p.get("cap"));
   const fcap = parseCaps(p.get("fcap"));
-  return { sort, fsort, psort, basis, lang, cap, fcap };
+  return { sort, fsort, psort, basis, lang, theme, cap, fcap };
 }
 const params = readParams();
 
 export default function App() {
   const [lang, setLang] = createSignal<Lang>(params.lang ?? defaultLang);
-  const [dark, setDark] = createSignal(storedTheme === "dark");
+  const [dark, setDark] = createSignal(params.theme === "dark" || storedTheme === "dark");
   const [basis, setBasis] = createSignal<Basis>(
     params.basis ?? (storedBasis === "list" ? "list" : "full")
   );

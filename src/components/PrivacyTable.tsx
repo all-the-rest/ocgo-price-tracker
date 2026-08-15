@@ -77,7 +77,7 @@ export default function PrivacyTable(props: PrivacyTableProps) {
   return (
     <section class="mt-10">
       <h2 class="text-lg font-bold tracking-tight">{props.t.headingPrivacy}</h2>
-      <p class="mt-1 text-sm text-base-content/60">{props.t.privacyNote}</p>
+      <p class="mt-1 text-sm text-base-content/90">{props.t.privacyNote}</p>
       <div class="mt-4 max-w-full overflow-x-auto">
         <table class="table table-sm table-zebra">
           <thead>
