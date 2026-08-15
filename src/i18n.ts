@@ -54,8 +54,8 @@ export const i18n = {
     colModel: "Modell",
     colInput: "Input",
     colOutput: "Output",
-    colCachedRead: "Cached Read",
-    colCachedWrite: "Cached Write",
+    colCachedRead: "Cache-Lesen",
+    colCachedWrite: "Cache-Schreiben",
     colUsage: "Inkl. Nutzung",
     usageTooltip:
       "Inkl. Nutzung: ${usage} = {mult}× vom ${paid}/Monat, den du zahlst ({pct}% vom ${credit}-Guthaben). Farben: ≤ 1× dunkelrot · unter halbem Guthaben rot · bis zum Guthaben gelb · Guthaben grün · darüber dunkelgrün",

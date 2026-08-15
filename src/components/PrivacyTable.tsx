@@ -95,10 +95,10 @@ export default function PrivacyTable(props: PrivacyTableProps) {
                   <td>
                     <Show
                       when={row.privacy}
-                      fallback={<span class="badge badge-ghost badge-sm">{props.t.privacyUnknown}</span>}
+                      fallback={<span class="badge badge-ghost badge-sm whitespace-nowrap">{props.t.privacyUnknown}</span>}
                     >
                       {(p) => (
-                        <span class={`badge badge-sm ${privacyBadgeClass(p())}`}>
+                        <span class={`badge badge-sm whitespace-nowrap ${privacyBadgeClass(p())}`}>
                           {p().fallback ? "≈ " : ""}
                           {privacyLabel(p(), props.t)}
                         </span>

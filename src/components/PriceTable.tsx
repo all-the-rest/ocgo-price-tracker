@@ -161,22 +161,22 @@ export default function PriceTable(props: PriceTableProps) {
         <span>{props.t.basisLabel}</span>
         <div class="join">
           <button
-            class="join-item btn btn-sm"
-            classList={{ "btn-active": props.basis === "list" }}
+            class="join-item btn btn-sm text-xs sm:text-sm whitespace-nowrap"
+            classList={{ "btn-active": props.basis === "list", "btn-primary": props.basis === "list" }}
             onClick={() => props.setBasis("list")}
           >
             {props.t.basisList}
           </button>
           <button
-            class="join-item btn btn-sm"
-            classList={{ "btn-active": props.basis === "full" }}
+            class="join-item btn btn-sm text-xs sm:text-sm whitespace-nowrap"
+            classList={{ "btn-active": props.basis === "full", "btn-primary": props.basis === "full" }}
             onClick={() => props.setBasis("full")}
           >
             {fmtPricing(props.t.basisFull, props.monthlyCredit, props.monthlyCost)}
           </button>
           <button
-            class="join-item btn btn-sm"
-            classList={{ "btn-active": props.basis === "paid" }}
+            class="join-item btn btn-sm text-xs sm:text-sm whitespace-nowrap"
+            classList={{ "btn-active": props.basis === "paid", "btn-primary": props.basis === "paid" }}
             onClick={() => props.setBasis("paid")}
           >
             {fmtPricing(props.t.basisPaid, props.monthlyCredit, props.monthlyCost)}
