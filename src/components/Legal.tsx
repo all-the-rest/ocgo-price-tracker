@@ -19,7 +19,7 @@ export default function Legal(props: LegalProps) {
               hello@all-the.rest
             </a>
           </p>
-          <p class="mt-3 text-base-content/50">Angaben gemäß § 5 ECG. Privates, nicht-kommerzielles Projekt.</p>
+          <p class="mt-3 text-base-content/60">Angaben gemäß § 5 ECG. Privates, nicht-kommerzielles Projekt.</p>
         </div>
       </section>
 

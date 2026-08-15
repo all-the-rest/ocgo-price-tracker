@@ -183,7 +183,7 @@ export default function PriceTable(props: PriceTableProps) {
           </button>
         </div>
         <Show when={props.basis === "full" || props.basis === "paid"}>
-          <span class="text-sm text-base-content/50">{factorNote()}</span>
+          <span class="text-sm text-base-content/60">{factorNote()}</span>
         </Show>
       </div>
 
@@ -205,12 +205,12 @@ export default function PriceTable(props: PriceTableProps) {
             <tr>
               <th></th>
               <th></th>
-              <th class="text-right font-normal text-base-content/40">{props.t.per1m}</th>
-              <th class="text-right font-normal text-base-content/40">{props.t.per1m}</th>
-              <th class="text-right font-normal text-base-content/40">{props.t.per1m}</th>
-              <th class="text-right font-normal text-base-content/40">{props.t.per1m}</th>
+              <th class="text-right font-normal text-base-content/60">{props.t.per1m}</th>
+              <th class="text-right font-normal text-base-content/60">{props.t.per1m}</th>
+              <th class="text-right font-normal text-base-content/60">{props.t.per1m}</th>
+              <th class="text-right font-normal text-base-content/60">{props.t.per1m}</th>
               <th></th>
-              <th class="text-right font-normal text-base-content/40">{props.t.perReq}</th>
+              <th class="text-right font-normal text-base-content/60">{props.t.perReq}</th>
             </tr>
           </thead>
           <tbody>
@@ -220,7 +220,7 @@ export default function PriceTable(props: PriceTableProps) {
                   <th class="font-medium">
                     <span class="block">{m.name}</span>
                     <Show when={m.tier}>
-                      <span class="block text-xs font-normal text-base-content/50">{m.tier}</span>
+                      <span class="block text-xs font-normal text-base-content/60">{m.tier}</span>
                     </Show>
                   </th>
                   <td>

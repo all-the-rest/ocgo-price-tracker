@@ -13,6 +13,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "node --test \"tests/**/*.test.mjs\"",
+    "test:screenshots": "playwright test -c playwright.screenshots.config.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@opencode-ai/models": "^0.0.35",
+    "@playwright/test": "1.62.1",
     "@tailwindcss/vite": "^4.1.0",
     "@types/node": "^26.1.2",
     "cheerio": "^1.0.0",

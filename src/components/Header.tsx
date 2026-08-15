@@ -15,7 +15,9 @@ export default function Header(props: HeaderProps) {
         <a
           href={window.location.pathname}
           class="inline-flex items-center"
-          aria-label="Price Tracking for OpenCode Go — Home"
+          aria-label={
+            props.lang === "de" ? "Preis-Tracking für OpenCode Go — Start" : "Price Tracking for OpenCode Go — Home"
+          }
           onClick={(e) => {
             e.preventDefault();
             props.onReset();
@@ -56,7 +58,7 @@ export default function Header(props: HeaderProps) {
             EN
           </button>
         </div>
-        <label class="swap swap-rotate">
+        <label class="swap swap-rotate p-1">
           <input
             type="checkbox"
             class="theme-controller"

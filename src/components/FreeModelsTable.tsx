@@ -54,7 +54,7 @@ export default function FreeModelsTable(props: FreeModelsTableProps) {
     <Show when={props.freeModels.length > 0}>
       <section class="mt-10">
         <h2 class="text-lg font-bold tracking-tight">{props.t.headingFree}</h2>
-        <p class="mt-1 text-sm text-base-content/50">{props.t.freeModelsNote}</p>
+        <p class="mt-1 text-sm text-base-content/60">{props.t.freeModelsNote}</p>
         <CapabilityFilter value={() => props.caps} setter={props.setCaps} t={props.t} />
         <div class="mt-4 w-full overflow-x-auto">
           <table class="table table-sm table-zebra">

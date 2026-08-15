@@ -144,3 +144,15 @@ Nach jeder Umsetzung prüft ein **unabhängiger Agent**:
 `pnpm preview` liefert 200 und der JSON-Endpunkt `/data/latest.json` antwortet (alle Modelle mit `privacy`).
 Außerdem wird geprüft, dass **aktuelle Tool-Versionen** verwendet werden
 (`pnpm outdated` ohne ungewollte Abweichungen, Node ≥22, pnpm aus `packageManager`). Nach Push wird die CI bis zum grünen Lauf beobachtet.
+
+## Delegation & Parallelisierung (Subagenten)
+
+- Wo möglich arbeitet OpenCode mit Subagenten statt alles selbst zu tun: `explore` für Recherche, `general` für
+  Implementierung, `vision` für Screenshot-Analyse.
+- **Implementierung und Verifikation laufen in getrennten Subagenten**: ein Implementierungs-Agent baut, ein
+  **unabhängiger Verifikations-Agent** prüft (siehe „Verifikation"). Bei unabhängigen Teilaufgaben (z. B. zwei
+  Projekten, unabhängigen Routen/Batches) werden beide Agenten **parallel** gestartet.
+- Jeder Subagent bekommt eine in sich geschlossene Aufgabenbeschreibung (frischer Kontext) inkl. Pfaden, Befehlen
+  und Akzeptanzkriterien — keine Annahmen über bereits Gesehenes.
+- **Kleine Änderungen** (einzelne Edits, offensichtliche Fixes, Versions-/Befehlskosmetik) macht OpenCode weiter
+  **direkt selbst** — Subagenten sind für größere, unabhängige Arbeitspakete gedacht.
