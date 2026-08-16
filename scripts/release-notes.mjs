@@ -52,7 +52,7 @@ function renderChange(c) {
     case "model_added":
       return `- **${c.model}** — added (${pricingLine(c.pricing)})`;
     case "model_removed":
-      return `- **${c.model}** — removed (was available ${c.days} days)`;
+      return `- **${c.model}** — removed (${pricingLine(c.pricing)}, was available ${c.days} days)`;
     case "price_changed": {
       const fields = c.fields.map((f) => PRICE_FIELD_NAMES[f] ?? f).join(", ");
       return `- **${c.model}** — price change (${fields}): ${pricingLine(c.from)} → ${pricingLine(c.to)}`;

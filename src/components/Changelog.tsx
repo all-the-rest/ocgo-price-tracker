@@ -90,7 +90,12 @@ export default function Changelog(props: ChangelogProps) {
         );
       case "model_removed":
         return (
-          <span>{props.t.chgModelRemoved.replace("{model}", c.model).replace("{days}", String(c.days))}</span>
+          <span>
+            {props.t.chgModelRemoved
+              .replace("{model}", c.model)
+              .replace("{pricing}", fmtPricingString(c.pricing))
+              .replace("{days}", String(c.days))}
+          </span>
         );
       case "price_changed":
         return (

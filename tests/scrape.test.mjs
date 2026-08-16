@@ -410,7 +410,14 @@ test("buildChanges: keine Änderungen", () => {
 test("buildChanges: entferntes Modell mit Tagen aus firstSeen", () => {
   const firstSeen = new Map([["Alpha", "2026-08-01"]]);
   const changes = buildChanges(base, [base[1]], [], [], "2026-08-06", firstSeen);
-  assert.deepEqual(changes, [{ type: "model_removed", model: "Alpha", days: 5 }]);
+  assert.deepEqual(changes, [
+    {
+      type: "model_removed",
+      model: "Alpha",
+      days: 5,
+      pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+    },
+  ]);
 });
 
 test("buildChanges: kostenlose Modelle hinzugefügt/entfernt", () => {
@@ -510,6 +517,7 @@ test("validateChangelog: gültiger Changelog mit allen Event-Typen", () => {
             type: "model_removed",
             model: "Alpha",
             days: 5,
+            pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
           },
           {
             type: "price_changed",

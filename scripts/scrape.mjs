@@ -902,6 +902,7 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
 
   const { added, removed, changed } = computeDiff(prevModels, nextModels);
   const nextById = new Map(nextModels.map((m) => [modelKey(m), m]));
+  const prevById = new Map((prevModels ?? []).map((m) => [modelKey(m), m]));
   const changes = [];
 
   for (const key of added) {
@@ -911,7 +912,13 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
   for (const key of removed) {
     const first = firstSeen.get(key);
     const days = first ? Math.max(0, Math.round((Date.parse(today) - Date.parse(first)) / 86_400_000)) : 0;
-    changes.push({ type: "model_removed", model: key, days });
+    const prevModel = prevById.get(key);
+    changes.push({
+      type: "model_removed",
+      model: key,
+      days,
+      pricing: prevModel ? pricingOf(prevModel) : null,
+    });
   }
   for (const { key, from, to } of changed) {
     changes.push(...splitChange({ key, from, to }));
@@ -1088,6 +1095,7 @@ const ChangeSchema = z.discriminatedUnion("type", [
     type: z.literal("model_removed"),
     model: z.string().min(1),
     days: z.number().int().nonnegative(),
+    pricing: PricingTypeSchema,
   }),
   z.object({
     type: z.literal("price_changed"),
