@@ -19,7 +19,6 @@ const changelogData = changelogJson as unknown as ChangelogData;
 
 const storedLang = typeof localStorage !== "undefined" ? localStorage.getItem("lang") : null;
 const storedTheme = typeof localStorage !== "undefined" ? localStorage.getItem("theme") : null;
-const storedBasis = typeof localStorage !== "undefined" ? localStorage.getItem("basis") : null;
 const browserLang =
   typeof navigator !== "undefined" ? (navigator.language || "").toLowerCase() : "";
 const defaultLang: Lang =
@@ -71,7 +70,7 @@ export default function App() {
   const [lang, setLang] = createSignal<Lang>(params.lang ?? defaultLang);
   const [dark, setDark] = createSignal(params.theme === "dark" || storedTheme === "dark");
   const [basis, setBasis] = createSignal<Basis>(
-    params.basis ?? (storedBasis === "list" ? "list" : "full")
+    params.basis ?? "full"
   );
   const [sort, setSort] = createSignal<SortState>(params.sort ?? { field: "cost", dir: 1 });
   const [freeSort, setFreeSort] = createSignal<FreeSortState>(
@@ -101,11 +100,7 @@ export default function App() {
     }
   });
 
-  createEffect(() => {
-    localStorage.setItem("basis", basis());
-  });
-
-  const defaultBasis: Basis = storedBasis === "list" ? "list" : "full";
+  const defaultBasis: Basis = "full";
 
   createEffect(() => {
     const p = new URLSearchParams(window.location.search);
