@@ -340,6 +340,29 @@ test("buildChanges: Baseline ohne Vorgänger erzeugt keinen Eintrag", () => {
   assert.deepEqual(buildChanges(null, base, [], []), []);
 });
 
+test("buildChanges: Off-Peak-Stufe gilt als Normal-Nutzung (kein add/remove, Preisänderung)", () => {
+  const prev = [{ name: "Delta", tier: null, usage: 15, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const next = [
+    { name: "Delta", tier: "Off-Peak", usage: 15, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Delta", tier: "Peak", usage: 15, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
+  ];
+  const changes = buildChanges(prev, next, [], []);
+  assert.deepEqual(changes, [
+    {
+      type: "model_added",
+      model: "Delta (Peak)",
+      pricing: { input: 3, output: 4, cachedRead: 0.2, cachedWrite: null, usage: 15 },
+    },
+    {
+      type: "price_changed",
+      model: "Delta",
+      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+      to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+      fields: ["input"],
+    },
+  ]);
+});
+
 test("buildChanges: Modell hinzugefügt (mit Pricing) und Nutzung verschlechtert", () => {
   const next = [
     { ...base[0], usage: 15 },

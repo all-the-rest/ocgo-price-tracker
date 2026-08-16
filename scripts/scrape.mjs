@@ -547,6 +547,17 @@ function isPeakTier(tier) {
   return /^(?:off[- ]?peak|peak)$/i.test(tier ?? "");
 }
 
+/**
+ * "Off-Peak" ist die normale Nutzung eines Modells. Eine Off-Peak-Stufe wird
+ * beim Modell-Diff wie das ungestufte (normale) Modell behandelt, damit die
+ * Einführung von Peak-/Off-Peak-Stufen kein `model_added`/`model_removed`
+ * auslöst, sondern als `price_changed` am (Off-Peak = Normal-Nutzung) Modell
+ * erscheint.
+ */
+function isOffPeakTier(tier) {
+  return /^(?:off[- ]?peak)$/i.test(tier ?? "");
+}
+
 function sharedModelPrefix(a, b) {
   const aWords = a.trim().split(/\s+/);
   const bWords = b.trim().split(/\s+/);
@@ -871,9 +882,16 @@ export const pricingOf = (model) => ({
   usage: model.usage,
 });
 
+/**
+ * Vergleichs-Key für das Modell-Diff: eine "Off-Peak"-Stufe kollabiert auf den
+ * reinen Modellnamen (die normale Nutzung), sodass sie mit dem bisherigen
+ * ungestuften Modell desselben Namens verschmilzt.
+ */
+const diffKey = (m) => (isOffPeakTier(m.tier) ? m.name : modelKey(m));
+
 export function computeDiff(prevModels, nextModels) {
-  const prev = new Map(prevModels.map((m) => [modelKey(m), m]));
-  const next = new Map(nextModels.map((m) => [modelKey(m), m]));
+  const prev = new Map(prevModels.map((m) => [diffKey(m), m]));
+  const next = new Map(nextModels.map((m) => [diffKey(m), m]));
 
   const added = [...next.keys()].filter((k) => !prev.has(k));
   const removed = [...prev.keys()].filter((k) => !next.has(k));
@@ -901,8 +919,8 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
   if (prevModels === null) return [];
 
   const { added, removed, changed } = computeDiff(prevModels, nextModels);
-  const nextById = new Map(nextModels.map((m) => [modelKey(m), m]));
-  const prevById = new Map((prevModels ?? []).map((m) => [modelKey(m), m]));
+  const nextById = new Map(nextModels.map((m) => [diffKey(m), m]));
+  const prevById = new Map((prevModels ?? []).map((m) => [diffKey(m), m]));
   const changes = [];
 
   for (const key of added) {
