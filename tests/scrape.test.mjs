@@ -319,6 +319,7 @@ test("computeDiff: erkennt Nutzungsverbesserung als komplette Pricing-Änderung"
   assert.deepEqual(diff.changed, [
     {
       key: "Beta",
+      offPeak: false,
       from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
       to: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
     },
@@ -357,6 +358,29 @@ test("buildChanges: Off-Peak-Stufe gilt als Normal-Nutzung (kein add/remove, Pre
       type: "price_changed",
       model: "Delta",
       from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+      to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+      fields: ["input"],
+    },
+  ]);
+});
+
+test("buildChanges: Off-Peak mit Preis- UND Nutzungsänderung wird zu EINEM price_changed (kein usage_changed)", () => {
+  const prev = [{ name: "Delta", tier: null, usage: 120, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const next = [
+    { name: "Delta", tier: "Off-Peak", usage: 15, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Delta", tier: "Peak", usage: 15, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
+  ];
+  const changes = buildChanges(prev, next, [], []);
+  assert.deepEqual(changes, [
+    {
+      type: "model_added",
+      model: "Delta (Peak)",
+      pricing: { input: 3, output: 4, cachedRead: 0.2, cachedWrite: null, usage: 15 },
+    },
+    {
+      type: "price_changed",
+      model: "Delta",
+      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 120 },
       to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
       fields: ["input"],
     },

@@ -909,7 +909,7 @@ export function computeDiff(prevModels, nextModels) {
       near(from.cachedRead, to.cachedRead) &&
       near(from.cachedWrite, to.cachedWrite) &&
       from.usage === to.usage;
-    if (!same) changed.push({ key, from, to });
+    if (!same) changed.push({ key, from, to, offPeak: isOffPeakTier(after.tier) });
   }
 
   return { added, removed, changed };
@@ -938,8 +938,16 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
       pricing: prevModel ? pricingOf(prevModel) : null,
     });
   }
-  for (const { key, from, to } of changed) {
-    changes.push(...splitChange({ key, from, to }));
+  for (const { key, from, to, offPeak } of changed) {
+    // Off-Peak ist die normale Nutzung: eine gleichzeitige Preis- UND
+    // Nutzungsänderung am (Off-Peak = Normal-)Modell wird als ein einziges
+    // `price_changed` gemeldet, nicht als zusätzliches `usage_changed`.
+    if (offPeak && from.usage !== to.usage) {
+      const priceEvt = splitChange({ key, from, to }).find((e) => e.type === "price_changed");
+      if (priceEvt) changes.push(priceEvt);
+    } else {
+      changes.push(...splitChange({ key, from, to }));
+    }
   }
 
   for (const { key, from, to } of computeCapabilityDiff(prevModels, nextModels)) {

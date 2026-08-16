@@ -13,7 +13,7 @@ interface ChangelogProps {
 }
 
 export default function Changelog(props: ChangelogProps) {
-  const fmtPricing = (p: PricingType, fields: PriceField[]) => {
+  const fmtPricing = (p: PricingType, fields: PriceField[], boldUsage = false) => {
     const order: PriceField[] = ["input", "output", "cachedRead"];
     if (p.cachedWrite !== null) order.push("cachedWrite");
     return (
@@ -24,7 +24,7 @@ export default function Changelog(props: ChangelogProps) {
             {fields.includes(f) ? <strong class="font-bold">{fmt(p[f])}</strong> : <span>{fmt(p[f])}</span>}
           </>
         ))}{" "}
-        @ ${p.usage}
+        @ {boldUsage ? <strong class="font-bold">{fmt(p.usage)}</strong> : fmt(p.usage)}
       </>
     );
   };
@@ -100,18 +100,23 @@ export default function Changelog(props: ChangelogProps) {
       case "price_changed":
         return (
           <span>
-            {c.model}: {fmtPricing(c.from, c.fields)} → {fmtPricing(c.to, c.fields)}
+            {c.model}: {fmtPricing(c.from, c.fields, c.from.usage !== c.to.usage)} →{" "}
+            {fmtPricing(c.to, c.fields, c.from.usage !== c.to.usage)}
           </span>
         );
-      case "usage_changed":
+      case "usage_changed": {
+        const phrase = props.t.chgUsage
+          .split("{model}:")[1]
+          ?.split("{from}")[0]
+          ?.trim();
         return (
           <span>
-            {props.t.chgUsage
-              .replace("{model}", c.model)
-              .replace("{from}", fmt(c.from))
-              .replace("{to}", fmt(c.to))}
+            {c.model}: {phrase}{" "}
+            <strong class="font-bold">{fmt(c.from)}</strong> →{" "}
+            <strong class="font-bold">{fmt(c.to)}</strong>
           </span>
         );
+      }
       case "capabilities_changed":
         return (
           <span>
