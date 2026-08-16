@@ -1,11 +1,12 @@
 import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import type { Translation } from "../i18n";
-import type { Basis, Model } from "../types";
+import type { Basis, Model, PeakHours } from "../types";
 import { fmt, fmtPricing } from "../util";
 import { fieldPrice, formatTokens, requestCost } from "../weighted";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import { setupDragScroll } from "../dragscroll";
 import Tooltip from "./Tooltip";
+import PeakIndicator, { isPeakTier, isTierActive, peakRangesFor, usePeakClock } from "./PeakIndicator";
 import type { SortField, SortState } from "../sort";
 
 interface PriceTableProps {
@@ -20,6 +21,7 @@ interface PriceTableProps {
   setCaps: (u: (prev: CapId[]) => CapId[]) => void;
   monthlyCredit: number;
   monthlyCost: number;
+  peakHours?: PeakHours;
 }
 
 const formatMult = (n: number, lang: "de" | "en") =>
@@ -37,6 +39,7 @@ const factorPhrase = (mult: number, lang: "de" | "en", kind: "price" | "value"):
 
 export default function PriceTable(props: PriceTableProps) {
   let scroller: HTMLDivElement | undefined;
+  const now = usePeakClock();
   onMount(() => {
     if (!scroller) return;
     const dispose = setupDragScroll(scroller);
@@ -216,11 +219,32 @@ export default function PriceTable(props: PriceTableProps) {
           <tbody>
             <For each={sorted()}>
               {(m) => (
-                <tr>
+                <tr
+                  classList={{
+                    "opacity-50":
+                      isPeakTier(m.tier) &&
+                      peakRangesFor(props.peakHours, m.name).length > 0 &&
+                      !isTierActive(m.tier, now(), peakRangesFor(props.peakHours, m.name)),
+                  }}
+                >
                   <th class="font-medium">
                     <span class="block">{m.name}</span>
                     <Show when={m.tier}>
-                      <span class="block text-xs font-normal text-base-content/60">{m.tier}</span>
+                      {(tier) => (
+                        <Show
+                          when={isPeakTier(tier()) && peakRangesFor(props.peakHours, m.name).length > 0}
+                          fallback={<span class="block text-xs font-normal text-base-content/60">{tier()}</span>}
+                        >
+                          <span class="block text-xs font-normal text-base-content/60">
+                            <PeakIndicator
+                              tier={tier()}
+                              ranges={peakRangesFor(props.peakHours, m.name)}
+                              now={now()}
+                              t={props.t}
+                            />
+                          </span>
+                        </Show>
+                      )}
                     </Show>
                   </th>
                   <td>
@@ -264,4 +288,3 @@ export default function PriceTable(props: PriceTableProps) {
     </section>
   );
 }
-

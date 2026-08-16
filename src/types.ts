@@ -57,6 +57,8 @@ export interface Model {
   privacy: Privacy | null;
 }
 
+export type PeakHours = Record<string, [number, number][]>;
+
 export interface PriceData {
   fetchedAt: string;
   sourceUrl: string;
@@ -65,6 +67,7 @@ export interface PriceData {
   sourceLang: string;
   monthlyCredit: number;
   monthlyCost: number;
+  peakHours: PeakHours;
   models: Model[];
   freeModels: FreeModel[];
 }

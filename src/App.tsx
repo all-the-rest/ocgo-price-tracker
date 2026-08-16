@@ -165,6 +165,7 @@ export default function App() {
           setCaps={setCaps}
           monthlyCredit={data.monthlyCredit}
           monthlyCost={data.monthlyCost}
+          peakHours={data.peakHours}
         />
         <FreeModelsTable
           freeModels={data.freeModels}

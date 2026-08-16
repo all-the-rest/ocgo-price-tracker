@@ -543,6 +543,81 @@ export function parsePrivacyNotes($) {
   return map;
 }
 
+function isPeakTier(tier) {
+  return /^(?:off[- ]?peak|peak)$/i.test(tier ?? "");
+}
+
+function sharedModelPrefix(a, b) {
+  const aWords = a.trim().split(/\s+/);
+  const bWords = b.trim().split(/\s+/);
+  let count = 0;
+  while (
+    count < aWords.length &&
+    count < bWords.length &&
+    normalizeName(aWords[count]) === normalizeName(bWords[count])
+  ) {
+    count += 1;
+  }
+  return count >= 2 ? normalizeName(aWords.slice(0, count).join(" ")) : "";
+}
+
+/**
+ * Parst die UTC-Peak-Zeitfenster aus dem Hinweis unter der Preistabelle. Die
+ * Modellnamen kommen aus den Peak-/Off-Peak-Zeilen, damit ein Hinweis wie
+ * "DeepSeek V4 Flash / Pro" beide Modell-IDs zuverlässig abdeckt.
+ */
+export function parsePeakHours($, models = []) {
+  const peakModels = [...new Set(models.filter((m) => isPeakTier(m.tier)).map((m) => m.name))];
+  if (peakModels.length === 0) return {};
+
+  const peakText = $("main p, main li")
+    .map((_, el) => $(el).text().replace(/\s+/g, " ").trim())
+    .get()
+    .find((text) => /\bpeak\b|spitzenzeiten|stoßzeiten/i.test(text) && /UTC\b/i.test(text));
+  if (!peakText) {
+    throw new ScrapeError("Peak-/Off-Peak-Modelle gefunden, aber kein UTC-Zeitfenster im Dokument");
+  }
+
+  const ranges = [];
+  const rangePattern = /(\d{1,2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?/g;
+  for (const match of peakText.matchAll(rangePattern)) {
+    const startMinute = match[2] === undefined ? 0 : Number(match[2]);
+    const endMinute = match[4] === undefined ? 0 : Number(match[4]);
+    const start = Number(match[1]);
+    const end = Number(match[3]);
+    if (
+      startMinute !== 0 ||
+      endMinute !== 0 ||
+      start < 0 ||
+      start > 23 ||
+      end < 1 ||
+      end > 24 ||
+      start >= end
+    ) {
+      throw new ScrapeError(`Peak-Zeitfenster unparsebar: "${match[0]}"`);
+    }
+    ranges.push([start, end]);
+  }
+  if (ranges.length === 0) {
+    throw new ScrapeError(`Keine gültigen UTC-Peak-Zeitfenster gefunden: "${peakText}"`);
+  }
+
+  const subject = normalizeName(peakText.split(":", 1)[0]);
+  const matched = peakModels.filter((name) => {
+    const norm = normalizeName(name);
+    if (subject.includes(norm)) return true;
+    return peakModels.some((other) => {
+      if (other === name) return false;
+      const prefix = sharedModelPrefix(name, other);
+      return prefix !== "" && subject.includes(prefix);
+    });
+  });
+  if (matched.length === 0) {
+    throw new ScrapeError(`Peak-Zeitfenster konnte keinem Modell zugeordnet werden: "${peakText}"`);
+  }
+  return Object.fromEntries(matched.map((name) => [normalizeName(name), ranges]));
+}
+
 /**
  * Extrahiert die Modelle aus dem HTML einer OpenCode-Go-Dokumentationsseite.
  * Wirft ScrapeError bei strukturellen Parsing-Fehlern.
@@ -976,6 +1051,17 @@ const SnapshotSchema = z.object({
   sourceLang: z.string(),
   monthlyCredit: z.number().positive(),
   monthlyCost: z.number().positive(),
+  peakHours: z.record(
+    z.string().min(1),
+    z.array(
+      z
+        .tuple([
+          z.number().int().min(0).max(23),
+          z.number().int().min(1).max(24),
+        ])
+        .refine(([start, end]) => start < end)
+    ).min(1)
+  ),
   models: z.array(ModelSchema).min(1),
   freeModels: z.array(FreeModelSchema),
 });
@@ -1074,6 +1160,7 @@ async function main() {
     const html = await response.text();
     const docs$ = cheerio.load(html);
     const models = parseHtml(html);
+    const peakHours = parsePeakHours(docs$, models);
     const landing$ = await fetchGoLanding();
     const usageBonuses = parseUsageBonuses(landing$);
     applyUsageBonuses(models, usageBonuses);
@@ -1147,6 +1234,7 @@ async function main() {
       sourceLang: SOURCE_LANG,
       monthlyCredit,
       monthlyCost: monthlyCostFinal,
+      peakHours,
       models,
       freeModels,
     };

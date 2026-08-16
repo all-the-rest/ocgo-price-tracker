@@ -39,6 +39,7 @@ aktualisiert dabei `data/latest.json`, `data/history.json`, `CHANGELOG.json` und
   - `multiplier` = 60 / usage
   - `effective*` = Preis × multiplier
   - `pattern` = Token-Muster pro Anfrage (Pflicht, wird per zod validiert)
+  - `peakHours` = UTC-Zeitfenster je normalisierter Modell-ID; Peak-/Off-Peak-Modelle stehen als getrennte `tier`-Zeilen in `models`
   - `freeModels` = kostenlose Zen-Modelle mit `availableFrom`
 - `data/history.json` — Chronologie aller Snapshots (`{ "snapshots": [...] }`)
 - `CHANGELOG.json` — strukturierte Änderungs-Events (neuer + alter Preis bei Preisänderungen), wird per CI committet → Git-History

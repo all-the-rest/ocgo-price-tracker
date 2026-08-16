@@ -1,11 +1,33 @@
 {
-  "fetchedAt": "2026-08-16T14:22:03.228Z",
+  "fetchedAt": "2026-08-16T17:13:33.753Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
   "sourceLang": "de",
   "monthlyCredit": 60,
   "monthlyCost": 10,
+  "peakHours": {
+    "deepseekv4pro": [
+      [
+        1,
+        4
+      ],
+      [
+        6,
+        10
+      ]
+    ],
+    "deepseekv4flash": [
+      [
+        1,
+        4
+      ],
+      [
+        6,
+        10
+      ]
+    ]
+  },
   "models": [
     {
       "name": "Grok 4.5",
@@ -717,10 +739,10 @@
     },
     {
       "name": "DeepSeek V4 Pro",
-      "tier": null,
-      "input": 0.435,
-      "output": 0.87,
-      "cachedRead": 0.003625,
+      "tier": "Off-Peak",
+      "input": 0.66,
+      "output": 1.98,
+      "cachedRead": 0.022,
       "cachedWrite": null,
       "usage": 15,
       "pattern": {
@@ -739,9 +761,9 @@
         "toolCall": true
       },
       "multiplier": 4,
-      "effectiveInput": 1.74,
-      "effectiveOutput": 3.48,
-      "effectiveCachedRead": 0.0145,
+      "effectiveInput": 2.64,
+      "effectiveOutput": 7.92,
+      "effectiveCachedRead": 0.088,
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
@@ -750,17 +772,17 @@
       }
     },
     {
-      "name": "DeepSeek V4 Flash",
-      "tier": null,
-      "input": 0.14,
-      "output": 0.28,
-      "cachedRead": 0.0028,
+      "name": "DeepSeek V4 Pro",
+      "tier": "Peak",
+      "input": 1.32,
+      "output": 3.96,
+      "cachedRead": 0.044,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": 15,
       "pattern": {
-        "input": 790,
-        "cachedRead": 68000,
-        "output": 280
+        "input": 750,
+        "cachedRead": 82000,
+        "output": 290
       },
       "capabilities": {
         "input": [
@@ -772,10 +794,78 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.14,
-      "effectiveOutput": 0.28,
-      "effectiveCachedRead": 0.0028,
+      "multiplier": 4,
+      "effectiveInput": 5.28,
+      "effectiveOutput": 15.84,
+      "effectiveCachedRead": 0.176,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": 0,
+        "validUntil": null
+      }
+    },
+    {
+      "name": "DeepSeek V4 Flash",
+      "tier": "Off-Peak",
+      "input": 0.22,
+      "output": 0.66,
+      "cachedRead": 0.007,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 410,
+        "cachedRead": 71300,
+        "output": 310
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 0.88,
+      "effectiveOutput": 2.64,
+      "effectiveCachedRead": 0.028,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": 0,
+        "validUntil": "2026-08-31"
+      }
+    },
+    {
+      "name": "DeepSeek V4 Flash",
+      "tier": "Peak",
+      "input": 0.44,
+      "output": 1.32,
+      "cachedRead": 0.014,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 410,
+        "cachedRead": 71300,
+        "output": 310
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 1.76,
+      "effectiveOutput": 5.28,
+      "effectiveCachedRead": 0.056,
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,

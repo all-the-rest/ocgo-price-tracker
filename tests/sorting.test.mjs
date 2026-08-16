@@ -89,14 +89,14 @@ for (const basis of BASES) {
   }
 }
 
-test("paid-Basis input asc: Effektivpreis entscheidet, nicht der rohe Listenpreis (Regression MiMo vs. DeepSeek V4 Flash)", () => {
-  const mimo = models.find((m) => m.name === "MiMo V2.5");
-  const flash = models.find((m) => m.name === "DeepSeek V4 Flash");
-  assert.ok(mimo && flash, "MiMo V2.5 und DeepSeek V4 Flash sind im Datensatz");
-  assert.equal(mimo.input, flash.input, "rohe Input-Preise sind identisch (0.14)");
+test("paid-Basis input asc: Effektivpreis entscheidet, nicht der rohe Listenpreis (Regression GLM-5.2 vs. GLM-5.3)", () => {
+  const glm52 = models.find((m) => m.name === "GLM-5.2");
+  const glm53 = models.find((m) => m.name === "GLM-5.3");
+  assert.ok(glm52 && glm53, "GLM-5.2 und GLM-5.3 sind im Datensatz");
+  assert.equal(glm52.input, glm53.input, "rohe Input-Preise sind identisch (1.40)");
   assert.ok(
-    displayedValue(flash, "input", "paid") < displayedValue(mimo, "input", "paid"),
-    "Effektivpreis (paid) von DeepSeek V4 Flash ist halb so hoch"
+    displayedValue(glm52, "input", "paid") < displayedValue(glm53, "input", "paid"),
+    "Effektivpreis (paid) von GLM-5.2 ist wegen der höheren Nutzung niedriger"
   );
   const names = extractRowNames(
     ssr.renderPriceTable(models, {
@@ -109,7 +109,7 @@ test("paid-Basis input asc: Effektivpreis entscheidet, nicht der rohe Listenprei
     })
   );
   assert.ok(
-    names.indexOf("DeepSeek V4 Flash") < names.indexOf("MiMo V2.5"),
-    "DeepSeek V4 Flash muss vor MiMo V2.5 stehen"
+    names.indexOf("GLM-5.2") < names.indexOf("GLM-5.3"),
+    "GLM-5.2 muss vor GLM-5.3 stehen"
   );
 });

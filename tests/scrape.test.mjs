@@ -25,6 +25,7 @@ import {
   parseMonthlyCost,
   parseCreditFactor,
   parseMonthlyPricing,
+  parsePeakHours,
 } from "../scripts/scrape.mjs";
 
 const fixture = readFileSync(
@@ -71,6 +72,22 @@ test("parseHtml: DeepSeek V4 Flash mit $60-Nutzung und ×1", () => {
   assert.equal(flash.usage, 60);
   assert.equal(flash.multiplier, 1);
   assert.equal(flash.effectiveInput, 0.14);
+});
+
+test("parsePeakHours: ordnet den gemeinsamen Flash/Pro-Hinweis beiden Modellen zu", () => {
+  const $ = cheerio.load(
+    "<main><p><strong>DeepSeek V4 Flash / Pro:</strong> Peak hours are 01:00-04:00 and 06:00-10:00 UTC; all other hours are Off-Peak.</p></main>"
+  );
+  const models = [
+    { name: "DeepSeek V4 Flash", tier: "Off-Peak" },
+    { name: "DeepSeek V4 Flash", tier: "Peak" },
+    { name: "DeepSeek V4 Pro", tier: "Off-Peak" },
+    { name: "DeepSeek V4 Pro", tier: "Peak" },
+  ];
+  assert.deepEqual(parsePeakHours($, models), {
+    deepseekv4flash: [[1, 4], [6, 10]],
+    deepseekv4pro: [[1, 4], [6, 10]],
+  });
 });
 
 test("parseHtml: MiMo V2.5 Pro mit kleinen Preisen und ×4", () => {
@@ -653,6 +670,7 @@ test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () =
     sourceLang: "de",
     monthlyCredit: 60,
     monthlyCost: 10,
+    peakHours: {},
     models: parseHtml(fixture),
     freeModels: [
       {
