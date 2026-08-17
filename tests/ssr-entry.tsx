@@ -4,7 +4,7 @@ import type { Basis, Model } from "../src/types";
 import type { SortField } from "../src/sort";
 import { i18n, type Lang } from "../src/i18n";
 
-export { fieldPrice, requestCost } from "../src/weighted";
+export { fieldPrice, requestCost, requestsPerMonth } from "../src/weighted";
 
 export interface RenderOptions {
   basis: Basis;

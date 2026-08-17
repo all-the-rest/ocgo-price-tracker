@@ -65,6 +65,10 @@ export const i18n = {
     per1m: "$/1M Tokens",
     colWeighted: "≈ $/Anfrage",
     perReq: "pro Anfrage",
+    colRequests: "Anfragen/Monat",
+    perMonth: "pro Monat",
+    requestsTooltip:
+      "Basierend auf den durchschnittlichen Anfragekosten.",
     tooltipWeighted:
       "Kosten pro Anfrage = Modellpreis × dokumentiertes Anfragemuster (Input-Tokens: 5% Input-Preis + 95% Cached-Write-Preis, Cached-Tokens: Cached-Read-Preis, Output-Tokens: Output-Preis — Heuristik). Fehlender Cached-Write („-“) zählt wie der Input-Preis. Details im Tooltip der Zeile.",
     patternTooltip: "Muster: {input} Input · {cached} Cached · {output} Output Tokens/Anfrage",
@@ -147,6 +151,10 @@ export const i18n = {
     per1m: "$/1M tokens",
     colWeighted: "≈ $/request",
     perReq: "per request",
+    colRequests: "Requests/mo",
+    perMonth: "per month",
+    requestsTooltip:
+      "Based on average request costs.",
     tooltipWeighted:
       "Cost per request = model price × documented request pattern (input tokens: 5% input price + 95% cache write price, cached tokens: cached read price, output tokens: output price — heuristic). Missing cache write (\"-\") counts as the input price. Details in the row tooltip.",
     patternTooltip: "Pattern: {input} input · {cached} cached · {output} output tokens/request",

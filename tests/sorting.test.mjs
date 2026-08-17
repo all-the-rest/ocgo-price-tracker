@@ -9,7 +9,7 @@ import * as cheerio from "cheerio";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "tests", ".ssr");
-const FIELDS = ["input", "output", "cachedRead", "cachedWrite", "cost"];
+const FIELDS = ["input", "output", "cachedRead", "cachedWrite", "cost", "requests"];
 const BASES = ["list", "full", "paid"];
 const CREDIT = 60;
 const COST = 10;
@@ -41,7 +41,9 @@ before(async () => {
 });
 
 const displayedValue = (m, field, basis) =>
-  field === "cost" ? ssr.requestCost(m, basis, COST) : ssr.fieldPrice(m, field, basis, COST);
+  field === "cost" ? ssr.requestCost(m, basis, COST)
+  : field === "requests" ? ssr.requestsPerMonth(m, basis, CREDIT, COST)
+  : ssr.fieldPrice(m, field, basis, COST);
 
 const extractRowNames = (html) => {
   const $ = cheerio.load(html);

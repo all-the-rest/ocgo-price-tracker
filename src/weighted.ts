@@ -52,6 +52,22 @@ export function requestCost(m: Model, basis: Basis, monthlyCost: number): number
   );
 }
 
+/**
+ * Anzahl der Anfragen pro Monat, die das jeweilige Monatsbudget (Guthaben bzw.
+ * tatsächlich gezahlter Preis) bei den Kosten pro Anfrage des Modells erlaubt:
+ * volles Guthaben → monthlyCredit, „was du zahlst“ → monthlyCost.
+ */
+export function requestsPerMonth(m: Model, basis: Basis, monthlyCredit: number, monthlyCost: number): number | null {
+  const cost = requestCost(m, basis, monthlyCost);
+  if (cost === null || cost <= 0) return null;
+  const budget = basis === "paid" ? monthlyCost : monthlyCredit;
+  return budget / cost;
+}
+
+export function formatReqPerMonth(n: number, lang: "de" | "en"): string {
+  return new Intl.NumberFormat(lang === "de" ? "de-DE" : "en-US", { maximumFractionDigits: 0 }).format(n);
+}
+
 export function formatTokens(n: number, lang: "de" | "en"): string {
   return new Intl.NumberFormat(lang === "de" ? "de-DE" : "en-US").format(n);
 }

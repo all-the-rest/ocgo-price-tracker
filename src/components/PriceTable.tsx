@@ -2,7 +2,7 @@ import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import type { Translation } from "../i18n";
 import type { Basis, Model, PeakHours } from "../types";
 import { fmt, fmtPricing } from "../util";
-import { fieldPrice, formatTokens, requestCost } from "../weighted";
+import { fieldPrice, formatTokens, formatReqPerMonth, requestCost, requestsPerMonth } from "../weighted";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import { setupDragScroll } from "../dragscroll";
 import Tooltip from "./Tooltip";
@@ -48,6 +48,8 @@ export default function PriceTable(props: PriceTableProps) {
 
   const sortValue = (m: Model, f: SortField): number | string | null => {
     if (f === "cost") return requestCost(m, props.basis, props.monthlyCost);
+    if (f === "requests")
+      return requestsPerMonth(m, props.basis, props.monthlyCredit, props.monthlyCost);
     if (f === "name") return m.name.toLowerCase();
     if (f === "input" || f === "output" || f === "cachedRead" || f === "cachedWrite") {
       return fieldPrice(m, f, props.basis, props.monthlyCost);
@@ -204,6 +206,7 @@ export default function PriceTable(props: PriceTableProps) {
               {thSort("cachedWrite", props.t.colCachedWrite, true)}
               {thSort("usage", props.t.colUsage, true)}
               {thSort("cost", props.t.colWeighted, true, props.t.tooltipWeighted)}
+              {thSort("requests", props.t.colRequests, true, props.t.requestsTooltip)}
             </tr>
             <tr>
               <th></th>
@@ -214,6 +217,7 @@ export default function PriceTable(props: PriceTableProps) {
               <th class="text-right font-normal text-base-content/70">{props.t.per1m}</th>
               <th></th>
               <th class="text-right font-normal text-base-content/70">{props.t.perReq}</th>
+              <th class="text-right font-normal text-base-content/70">{props.t.perMonth}</th>
             </tr>
           </thead>
           <tbody>
@@ -277,6 +281,14 @@ export default function PriceTable(props: PriceTableProps) {
                       <Tooltip tip={patternTooltip(m)} class="block">
                         {priceCell(requestCost(m, props.basis, props.monthlyCost))}
                       </Tooltip>
+                    </Show>
+                  </td>
+                  <td class="text-right tabular-nums whitespace-nowrap">
+                    <Show
+                      when={requestsPerMonth(m, props.basis, props.monthlyCredit, props.monthlyCost)}
+                      fallback={priceCell(null)}
+                    >
+                      {(rpm) => <span>{formatReqPerMonth(rpm(), props.lang)}</span>}
                     </Show>
                   </td>
                 </tr>
