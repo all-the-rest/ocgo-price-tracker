@@ -72,7 +72,7 @@ export default function App() {
   const [basis, setBasis] = createSignal<Basis>(
     params.basis ?? "full"
   );
-  const [sort, setSort] = createSignal<SortState>(params.sort ?? { field: "cost", dir: 1 });
+  const [sort, setSort] = createSignal<SortState>(params.sort ?? { field: "requests", dir: -1 });
   const [freeSort, setFreeSort] = createSignal<FreeSortState>(
     params.fsort ?? { field: "availableFrom", dir: -1 }
   );
