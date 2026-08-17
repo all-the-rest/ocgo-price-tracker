@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-16T17:13:33.753Z",
+  "fetchedAt": "2026-08-17T20:34:59.653Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -812,7 +812,7 @@
       "output": 0.66,
       "cachedRead": 0.007,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": 30,
       "pattern": {
         "input": 410,
         "cachedRead": 71300,
@@ -828,10 +828,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 0.88,
-      "effectiveOutput": 2.64,
-      "effectiveCachedRead": 0.028,
+      "multiplier": 2,
+      "effectiveInput": 0.44,
+      "effectiveOutput": 1.32,
+      "effectiveCachedRead": 0.014,
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
@@ -846,7 +846,7 @@
       "output": 1.32,
       "cachedRead": 0.014,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": 30,
       "pattern": {
         "input": 410,
         "cachedRead": 71300,
@@ -862,10 +862,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 1.76,
-      "effectiveOutput": 5.28,
-      "effectiveCachedRead": 0.056,
+      "multiplier": 2,
+      "effectiveInput": 0.88,
+      "effectiveOutput": 2.64,
+      "effectiveCachedRead": 0.028,
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
