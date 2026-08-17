@@ -87,7 +87,7 @@ export default function PeakIndicator(props: PeakIndicatorProps) {
     <Tooltip tip={tooltip()} class="inline-flex items-center gap-1">
       <span class="icon-[material-symbols--schedule] h-4 w-4" aria-hidden="true" />
       <span>{props.tier}</span>
-      <span class="tabular-nums text-base-content/60">· {countdown()}</span>
+      <span class="tabular-nums text-base-content/70">· {countdown()}</span>
     </Tooltip>
   );
 }

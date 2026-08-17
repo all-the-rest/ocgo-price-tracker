@@ -13,7 +13,7 @@ export default function Hero(props: HeroProps) {
   return (
     <section>
       <h1 class="text-2xl font-bold tracking-tight">{props.t.title}</h1>
-      <p class="text-base-content/60">{pricing(props.t.subtitle)}</p>
+      <p class="text-base-content/70">{pricing(props.t.subtitle)}</p>
       <p class="mt-3 max-w-3xl text-sm leading-relaxed text-base-content/70">{pricing(props.t.intro)}</p>
 
       <div class="stats stats-vertical mt-6 w-full shadow sm:stats-horizontal sm:w-auto">

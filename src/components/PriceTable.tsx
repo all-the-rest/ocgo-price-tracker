@@ -90,7 +90,7 @@ export default function PriceTable(props: PriceTableProps) {
             {(tip) => (
               <Tooltip tip={tip()} class="inline-flex">
                 <svg
-                  class="h-3.5 w-3.5 text-base-content/50"
+                  class="h-3.5 w-3.5 text-base-content/70"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -122,8 +122,8 @@ export default function PriceTable(props: PriceTableProps) {
   };
 
   const usageBadge = (usage: number) => {
-    if (usage / props.monthlyCost <= 1) return "bg-red-800 border-red-800 text-red-100";
-    if (usage > props.monthlyCredit) return "bg-green-800 border-green-800 text-green-100";
+    if (usage / props.monthlyCost <= 1) return "badge-error";
+    if (usage > props.monthlyCredit) return "badge-success";
     if (usage < props.monthlyCredit) return usage < props.monthlyCredit / 2 ? "badge-error" : "badge-warning";
     return "badge-success";
   };
@@ -186,7 +186,7 @@ export default function PriceTable(props: PriceTableProps) {
           </button>
         </div>
         <Show when={props.basis === "full" || props.basis === "paid"}>
-          <span class="text-sm text-base-content/60">{factorNote()}</span>
+          <span class="text-sm text-base-content/70">{factorNote()}</span>
         </Show>
       </div>
 
@@ -208,12 +208,12 @@ export default function PriceTable(props: PriceTableProps) {
             <tr>
               <th></th>
               <th></th>
-              <th class="text-right font-normal text-base-content/60">{props.t.per1m}</th>
-              <th class="text-right font-normal text-base-content/60">{props.t.per1m}</th>
-              <th class="text-right font-normal text-base-content/60">{props.t.per1m}</th>
-              <th class="text-right font-normal text-base-content/60">{props.t.per1m}</th>
+              <th class="text-right font-normal text-base-content/70">{props.t.per1m}</th>
+              <th class="text-right font-normal text-base-content/70">{props.t.per1m}</th>
+              <th class="text-right font-normal text-base-content/70">{props.t.per1m}</th>
+              <th class="text-right font-normal text-base-content/70">{props.t.per1m}</th>
               <th></th>
-              <th class="text-right font-normal text-base-content/60">{props.t.perReq}</th>
+              <th class="text-right font-normal text-base-content/70">{props.t.perReq}</th>
             </tr>
           </thead>
           <tbody>
@@ -233,9 +233,9 @@ export default function PriceTable(props: PriceTableProps) {
                       {(tier) => (
                         <Show
                           when={isPeakTier(tier()) && peakRangesFor(props.peakHours, m.name).length > 0}
-                          fallback={<span class="block text-xs font-normal text-base-content/60">{tier()}</span>}
+                          fallback={<span class="block text-xs font-normal text-base-content/70">{tier()}</span>}
                         >
-                          <span class="block text-xs font-normal text-base-content/60">
+                          <span class="block text-xs font-normal text-base-content/70">
                             <PeakIndicator
                               tier={tier()}
                               ranges={peakRangesFor(props.peakHours, m.name)}
