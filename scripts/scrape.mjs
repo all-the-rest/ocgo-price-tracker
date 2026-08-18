@@ -943,8 +943,12 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
     // Nutzungsänderung am (Off-Peak = Normal-)Modell wird als ein einziges
     // `price_changed` gemeldet, nicht als zusätzliches `usage_changed`.
     if (offPeak && from.usage !== to.usage) {
-      const priceEvt = splitChange({ key, from, to }).find((e) => e.type === "price_changed");
-      if (priceEvt) changes.push(priceEvt);
+      const events = splitChange({ key, from, to });
+      // Preis- UND Nutzungsänderung: ein einziges `price_changed` (usage steckt
+      // im to-Pricing, in der UI fett). Reine Nutzungsänderung (Preise gleich):
+      // kein `price_changed` vorhanden → stattdessen das `usage_changed` melden,
+      // sonst verlöre die Off-Peak-Zeile ihr Event.
+      changes.push(events.find((e) => e.type === "price_changed") ?? events.find((e) => e.type === "usage_changed"));
     } else {
       changes.push(...splitChange({ key, from, to }));
     }

@@ -387,6 +387,24 @@ test("buildChanges: Off-Peak mit Preis- UND Nutzungsänderung wird zu EINEM pric
   ]);
 });
 
+test("buildChanges: Off-Peak mit NUR Nutzungsänderung erzeugt usage_changed (kein Event-Verlust)", () => {
+  // Gleiches Token-Budget pro Anfrage, nur die Nutzung ändert sich 15 → 30:
+  // Peak UND Off-Peak müssen beide ein `usage_changed` bekommen (Regression: 2026-08-17).
+  const prev = [
+    { name: "Delta", tier: "Off-Peak", usage: 15, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Delta", tier: "Peak", usage: 15, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
+  ];
+  const next = [
+    { name: "Delta", tier: "Off-Peak", usage: 30, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Delta", tier: "Peak", usage: 30, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
+  ];
+  const changes = buildChanges(prev, next, [], []);
+  assert.deepEqual(changes, [
+    { type: "usage_changed", model: "Delta", from: 15, to: 30 },
+    { type: "usage_changed", model: "Delta (Peak)", from: 15, to: 30 },
+  ]);
+});
+
 test("buildChanges: Modell hinzugefügt (mit Pricing) und Nutzung verschlechtert", () => {
   const next = [
     { ...base[0], usage: 15 },
