@@ -98,8 +98,14 @@ jobs:
         env:
           DISPATCH_TOKEN: ${{ secrets.AI10USD_DISPATCH_TOKEN }}
         run: |
-          curl -sS -X POST \
+          status=$(curl -sS -o /tmp/ai10usd-dispatch.json -w '%{http_code}' -X POST \
             -H "Authorization: Bearer $DISPATCH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/reisi007/ai-10-usd/dispatches \
-            -d '{"event_type":"source-updated","client_payload":{"source":"${{ github.repository }}","sha":"${{ github.sha }}"}}'
+            -d '{"event_type":"source-updated","client_payload":{"source":"${{ github.repository }}","sha":"${{ github.sha }}"}}')
+          echo "ai-10-usd dispatch returned HTTP $status"
+          cat /tmp/ai10usd-dispatch.json
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::Dispatch to ai-10-usd failed (HTTP $status) — AI10USD_DISPATCH_TOKEN lacks access to reisi007/ai-10-usd"
+            exit 1
+          fi
