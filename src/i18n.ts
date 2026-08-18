@@ -8,6 +8,9 @@ export const i18n = {
     intro:
       "Einmal täglich von der offiziellen OpenCode-Dokumentation abgerufen. Preise pro 1M Tokens. Effektivpreise: volles Guthaben = Listenpreis × ({creditNum} / inkl. Nutzung), was du zahlst = Listenpreis × ({costNum} / inkl. Nutzung). Die Kosten pro Anfrage nutzen das in der Doku dokumentierte Anfragemuster des jeweiligen Modells (Details im Tooltip).",
     goCta: "OpenCode Go holen",
+    goTitle: "OpenCode Go",
+    goBadge: "+$5 Guthaben",
+    goBenefit: "Einmalig zusätzlich $5 Nutzungsguthaben bei Anmeldung über diesen Link.",
     goRefHint: "Empfehlungscode: PKTZTZE0P0",
     headingPrices: "Preise",
     headingChangelog: "Changelog",
@@ -96,6 +99,9 @@ export const i18n = {
     intro:
       "Fetched daily from the official OpenCode documentation. Prices per 1M tokens. Effective prices: full credit = list price × ({creditNum} / included usage), what you pay = list price × ({costNum} / included usage). Cost per request uses each model's documented request pattern (details in the tooltip).",
     goCta: "Get OpenCode Go",
+    goTitle: "OpenCode Go",
+    goBadge: "+$5 credit",
+    goBenefit: "Additional $5 usage credit (one-time) when you sign up through this link.",
     goRefHint: "Referral code: PKTZTZE0P0",
     headingPrices: "Prices",
     headingChangelog: "Changelog",
