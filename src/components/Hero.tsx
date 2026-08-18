@@ -16,6 +16,18 @@ export default function Hero(props: HeroProps) {
       <p class="text-base-content/70">{pricing(props.t.subtitle)}</p>
       <p class="mt-3 max-w-3xl text-sm leading-relaxed text-base-content/70">{pricing(props.t.intro)}</p>
 
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <a
+          href="https://opencode.ai/go?ref=PKTZTZE0P0"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-sm"
+        >
+          {props.t.goCta}
+        </a>
+        <span class="text-xs text-base-content/70">{props.t.goRefHint}</span>
+      </div>
+
       <div class="stats stats-vertical mt-6 w-full shadow sm:stats-horizontal sm:w-auto">
         <div class="stat">
           <div class="stat-title">{props.t.statsCreditTitle}</div>
