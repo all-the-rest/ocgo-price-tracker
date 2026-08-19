@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 # install-cron.sh — Install/update ocgo-price-tracker external cron on a remote server.
-# Runs locally, applies changes via a single SSH connection (one password).
+# Runs locally; reads the server state over one SSH connection, applies over one.
+#
+# Token handling (the PAT lives on the server, not locally):
+#   • Server already has a token (/etc/ocgo-tracker.env) → update mode:
+#     the stored token is read from the server and reused — no local token needed.
+#   • GITHUB_PAT set in the environment → explicit token, stored on the server
+#     (replaces an existing one, e.g. rotation after expiry).
+#   • Otherwise → first install: interactive prompt; the token is stored on the
+#     server (root-only, 0600) and reused from then on.
 #
 # Usage:
-#   ./scripts/install-cron.sh                          # prompts for PAT
-#   GITHUB_PAT=ghp_xxx ./scripts/install-cron.sh      # non-interactive
-#   SERVER=root@myserver ./scripts/install-cron.sh     # custom server
+#   ./scripts/install-cron.sh                       # update, or first install (prompts only if no server token)
+#   GITHUB_PAT=ghp_xxx ./scripts/install-cron.sh    # explicit token (replaces the one on the server)
+#   SERVER=root@myserver ./scripts/install-cron.sh  # custom server
 #
-# Requires: curl, ssh
+# Requires: curl (local, for token verify + test dispatch), ssh
 
 set -euo pipefail
 
@@ -30,10 +38,35 @@ info()  { echo -e "${GREEN}✓${NC} $*"; }
 warn()  { echo -e "${YELLOW}!${NC} $*"; }
 error() { echo -e "${RED}✗${NC} $*" >&2; }
 
-# --- 1. Get token ---
-if [[ -z "${GITHUB_PAT:-}" ]]; then
+# --- 1. Token: server first, prompt only as fallback ---
+MODE="install"
+if [[ -n "${GITHUB_PAT:-}" ]]; then
+  # Explicit token from the environment: stored on the server (replaces an old one).
+  info "Using GITHUB_PAT from environment (will be stored on ${SERVER})"
+else
+  # Try the token already stored on the server (update mode) — the secret never
+  # needs to exist locally. "__NO_TOKEN__" = reachable server without a token
+  # file; a failing ssh (unreachable server) aborts the script here.
+  echo -n "Checking ${SERVER} for existing token... "
+  READ_OUT=$(ssh "$SERVER" "if [ -f ${TOKEN_FILE} ] && grep -q '^GH_PAT=' ${TOKEN_FILE}; then grep '^GH_PAT=' ${TOKEN_FILE} | cut -d= -f2; else echo '__NO_TOKEN__'; fi" 2>&1) || {
+    error "Cannot reach ${SERVER} via SSH:"
+    echo "$READ_OUT" >&2
+    exit 1
+  }
+  if [[ "$READ_OUT" == "__NO_TOKEN__" || -z "$READ_OUT" ]]; then
+    MODE="install"
+    warn "No token on ${SERVER} yet — first install"
+  else
+    MODE="update"
+    GITHUB_PAT="$READ_OUT"
+    info "Token found on ${SERVER} (${TOKEN_FILE}) — update mode, no local token needed"
+  fi
+fi
+
+# First install: prompt for a PAT (stored on the server, never locally)
+if [[ "$MODE" == "install" && -z "${GITHUB_PAT:-}" ]]; then
   echo ""
-  echo "=== ocgo-price-tracker — Cron Setup ==="
+  echo "=== ocgo-price-tracker — Cron Setup (first install) ==="
   echo ""
   echo "You need a GitHub Personal Access Token (fine-grained) with"
   echo "these repository permissions on ${REPO}:"
@@ -52,14 +85,15 @@ if [[ -z "${GITHUB_PAT:-}" ]]; then
   echo "      Contents: Read and Write"
   echo "  → Generate token"
   echo ""
+  echo "The token will be stored on ${SERVER} (${TOKEN_FILE}, root-only)."
+  echo "Afterwards this script only refreshes the schedule — no token needed."
+  echo ""
   read -rsp "Paste your GitHub PAT: " GITHUB_PAT
   echo ""
   if [[ -z "$GITHUB_PAT" ]]; then
     error "No token provided. Exiting."
     exit 1
   fi
-else
-  info "Using GITHUB_PAT from environment"
 fi
 
 # --- 2. Verify token ---
@@ -70,7 +104,13 @@ HTTP_CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
   "https://api.github.com/repos/${REPO}")
 
 if [[ "$HTTP_CODE" != "200" ]]; then
-  error "Token verification failed (HTTP $HTTP_CODE). Check your token."
+  error "Token verification failed (HTTP $HTTP_CODE)."
+  if [[ "$MODE" == "update" ]]; then
+    error "The token on ${SERVER} (${TOKEN_FILE}) seems invalid or expired."
+    error "Replace it via: GITHUB_PAT=xxx ./scripts/install-cron.sh"
+  else
+    error "Check your token."
+  fi
   exit 1
 fi
 info "Token is valid"
@@ -118,12 +158,24 @@ PATH=/usr/local/bin:/usr/bin:/bin
 30 22  * * *    root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
 CRON
 
-# --- 5. Apply to server (single SSH, one password) ---
+# --- 5. Apply to server (single SSH connection, one password) ---
 echo -n "Applying to ${SERVER}... "
-ssh "$SERVER" "if [ -f ${TOKEN_FILE} ]; then echo 'Token already configured — reusing'; else echo 'GH_PAT=${GITHUB_PAT}' > ${TOKEN_FILE} && chmod 600 ${TOKEN_FILE} && echo 'Token stored'; fi && cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}" < "$CRON_TMP"
+if [[ "$MODE" == "update" ]]; then
+  # Update: token stays untouched on the server, only the schedule is refreshed.
+  ssh "$SERVER" "cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}" < "$CRON_TMP"
+else
+  # Install: token + schedule in the same connection (token = first stdin line,
+  # cron content follows) — the PAT never appears on the command line.
+  { printf 'GH_PAT=%s\n' "$GITHUB_PAT"; cat "$CRON_TMP"; } | ssh "$SERVER" "IFS= read -r TOKEN_LINE && printf '%s\n' \"\$TOKEN_LINE\" > ${TOKEN_FILE} && chmod 600 ${TOKEN_FILE} && echo 'Token stored' && cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}"
+fi
 
 info "Installed on ${SERVER}"
 echo ""
+if [[ "$MODE" == "update" ]]; then
+  echo "Schedule updated (token on ${SERVER} reused)."
+else
+  echo "Schedule installed, token stored on ${SERVER}."
+fi
 echo "Schedule (server local time = Europe/Vienna):"
 echo "  Weekdays:  every 2h from 06:00–20:00"
 echo "  Weekends:  06:00 and 14:00"
