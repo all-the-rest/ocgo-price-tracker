@@ -29,73 +29,90 @@ info()  { echo -e "${GREEN}✓${NC} $*"; }
 warn()  { echo -e "${YELLOW}!${NC} $*"; }
 error() { echo -e "${RED}✗${NC} $*" >&2; }
 
-# --- 1. Get token ---
-if [[ -z "${GITHUB_PAT:-}" ]]; then
-  echo ""
-  echo "=== ocgo-price-tracker — Cron Setup ==="
-  echo ""
-  echo "You need a GitHub Personal Access Token (fine-grained) with"
-  echo "these repository permissions on reisi007/ocgo-price-tracker:"
-  echo ""
-  echo "  • Metadata:        Read (default)"
-  echo "  • Actions:         Read and Write"
-  echo "  • Contents:        Read and Write"
-  echo ""
-  echo "Create one at:"
-  echo "  https://github.com/settings/tokens?type=beta"
-  echo ""
-  echo "  → Repository access → Only select repositories → ocgo-price-tracker"
-  echo "  → Permissions → Repository permissions:"
-  echo "      Metadata: Read (default)"
-  echo "      Actions:  Read and Write"
-  echo "      Contents: Read and Write"
-  echo "  → Generate token"
-  echo ""
-  read -rsp "Paste your GitHub PAT: " GITHUB_PAT
-  echo ""
-  if [[ -z "$GITHUB_PAT" ]]; then
-    error "No token provided. Exiting."
+# --- 1. Detect existing token (update mode) ---
+TOKEN_FILE="/etc/ocgo-tracker.env"
+UPDATE_MODE=0
+if [[ -f "$TOKEN_FILE" ]]; then
+  EXISTING_TOKEN=$(grep '^GH_PAT=' "$TOKEN_FILE" | cut -d= -f2)
+  if [[ -n "$EXISTING_TOKEN" ]]; then
+    info "Token already configured at ${TOKEN_FILE} — reusing (update mode: only refreshing schedule)"
+    set -a
+    # shellcheck disable=SC1090
+    source "$TOKEN_FILE"
+    set +a
+    GITHUB_PAT="$GH_PAT"
+    UPDATE_MODE=1
+  fi
+fi
+
+# --- 2. Get/verify token (skipped when already configured) ---
+if [[ "$UPDATE_MODE" -eq 0 ]]; then
+  if [[ -z "${GITHUB_PAT:-}" ]]; then
+    echo ""
+    echo "=== ocgo-price-tracker — Cron Setup ==="
+    echo ""
+    echo "You need a GitHub Personal Access Token (fine-grained) with"
+    echo "these repository permissions on reisi007/ocgo-price-tracker:"
+    echo ""
+    echo "  • Metadata:        Read (default)"
+    echo "  • Actions:         Read and Write"
+    echo "  • Contents:        Read and Write"
+    echo ""
+    echo "Create one at:"
+    echo "  https://github.com/settings/tokens?type=beta"
+    echo ""
+    echo "  → Repository access → Only select repositories → ocgo-price-tracker"
+    echo "  → Permissions → Repository permissions:"
+    echo "      Metadata: Read (default)"
+    echo "      Actions:  Read and Write"
+    echo "      Contents: Read and Write"
+    echo "  → Generate token"
+    echo ""
+    read -rsp "Paste your GitHub PAT: " GITHUB_PAT
+    echo ""
+    if [[ -z "$GITHUB_PAT" ]]; then
+      error "No token provided. Exiting."
+      exit 1
+    fi
+  else
+    info "Using GITHUB_PAT from environment"
+  fi
+
+  # --- 3. Verify token ---
+  echo -n "Verifying token... "
+  HTTP_CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
+    -H "Authorization: Bearer ${GITHUB_PAT}" \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/${REPO}")
+
+  if [[ "$HTTP_CODE" != "200" ]]; then
+    error "Token verification failed (HTTP $HTTP_CODE). Check your token."
     exit 1
   fi
-else
-  info "Using GITHUB_PAT from environment"
+  info "Token is valid"
+
+  # --- 4. Test trigger ---
+  echo -n "Testing workflow dispatch... "
+  HTTP_CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
+    -X POST \
+    -H "Authorization: Bearer ${GITHUB_PAT}" \
+    -H "Accept: application/vnd.github+json" \
+    "$API_URL" \
+    -d '{"ref":"main"}')
+
+  if [[ "$HTTP_CODE" != "204" ]]; then
+    error "Dispatch failed (HTTP $HTTP_CODE). Check token has Actions:write scope."
+    exit 1
+  fi
+  info "Workflow triggered successfully (HTTP 204)"
+
+  # --- 5. Store token securely ---
+  echo "GH_PAT=${GITHUB_PAT}" > "$TOKEN_FILE"
+  chmod 600 "$TOKEN_FILE"
+  info "Token stored in ${TOKEN_FILE} (mode 600)"
 fi
 
-# --- 2. Verify token ---
-echo -n "Verifying token... "
-HTTP_CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
-  -H "Authorization: Bearer ${GITHUB_PAT}" \
-  -H "Accept: application/vnd.github+json" \
-  "https://api.github.com/repos/${REPO}")
-
-if [[ "$HTTP_CODE" != "200" ]]; then
-  error "Token verification failed (HTTP $HTTP_CODE). Check your token."
-  exit 1
-fi
-info "Token is valid"
-
-# --- 3. Test trigger ---
-echo -n "Testing workflow dispatch... "
-HTTP_CODE=$(curl -sS -o /dev/null -w '%{http_code}' \
-  -X POST \
-  -H "Authorization: Bearer ${GITHUB_PAT}" \
-  -H "Accept: application/vnd.github+json" \
-  "$API_URL" \
-  -d '{"ref":"main"}')
-
-if [[ "$HTTP_CODE" != "204" ]]; then
-  error "Dispatch failed (HTTP $HTTP_CODE). Check token has Actions:write scope."
-  exit 1
-fi
-info "Workflow triggered successfully (HTTP 204)"
-
-# --- 4. Store token securely ---
-TOKEN_FILE="/etc/ocgo-tracker.env"
-echo "GH_PAT=${GITHUB_PAT}" > "$TOKEN_FILE"
-chmod 600 "$TOKEN_FILE"
-info "Token stored in ${TOKEN_FILE} (mode 600)"
-
-# --- 5. Write cron file ---
+# --- 6. Write cron file ---
 # Using /etc/cron.d/ for system-wide cron (survives reboots, no crontab -e needed)
 # Format: minute hour day month day-of-week command
 cat > "$CRON_FILE" << CRON
@@ -125,7 +142,7 @@ CRON
 chmod 644 "$CRON_FILE"
 info "Cron file written to ${CRON_FILE}"
 
-# --- 6. Set timezone ---
+# --- 7. Set timezone ---
 if timedatectl show 2>/dev/null | grep -q "Timezone=Europe/Vienna"; then
   info "Timezone already set to Europe/Vienna"
 else
