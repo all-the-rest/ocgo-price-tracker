@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-19T05:28:46.514Z",
+  "fetchedAt": "2026-08-19T08:04:54.490Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -71,7 +71,7 @@
       "output": 1.2,
       "cachedRead": 0.02,
       "cachedWrite": 0.25,
-      "usage": 30,
+      "usage": 15,
       "pattern": {
         "input": 1000,
         "cachedRead": 50000,
@@ -89,11 +89,11 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 2,
-      "effectiveInput": 0.4,
-      "effectiveOutput": 2.4,
-      "effectiveCachedRead": 0.04,
-      "effectiveCachedWrite": 0.5,
+      "multiplier": 4,
+      "effectiveInput": 0.8,
+      "effectiveOutput": 4.8,
+      "effectiveCachedRead": 0.08,
+      "effectiveCachedWrite": 1,
       "privacy": {
         "training": false,
         "retentionDays": 30,
@@ -107,7 +107,7 @@
       "output": 1.8,
       "cachedRead": 0.04,
       "cachedWrite": 0.5,
-      "usage": 30,
+      "usage": 15,
       "pattern": {
         "input": 1000,
         "cachedRead": 50000,
@@ -125,11 +125,11 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 2,
-      "effectiveInput": 0.8,
-      "effectiveOutput": 3.6,
-      "effectiveCachedRead": 0.08,
-      "effectiveCachedWrite": 1,
+      "multiplier": 4,
+      "effectiveInput": 1.6,
+      "effectiveOutput": 7.2,
+      "effectiveCachedRead": 0.16,
+      "effectiveCachedWrite": 2,
       "privacy": {
         "training": false,
         "retentionDays": 30,
@@ -523,7 +523,7 @@
       }
     },
     {
-      "name": "Muse Spark 1.2",
+      "name": "Muse Spark 1.2 Contributor",
       "tier": null,
       "input": 0.1,
       "output": 0.2,
@@ -535,20 +535,7 @@
         "cachedRead": 71400,
         "output": 300
       },
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video",
-          "pdf",
-          "audio"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
+      "capabilities": null,
       "multiplier": 1,
       "effectiveInput": 0.1,
       "effectiveOutput": 0.2,
