@@ -67,9 +67,14 @@ function toCapabilities(md) {
 
 /**
  * Ausnahmen für die Fähigkeiten-Zuordnung (normalisierter Modellname →
- * kanonische models.dev-ID). Für künftige Edge Cases; aktuell leer.
+ * kanonische models.dev-ID). Für künftige Edge Cases.
+ * Muse Spark 1.2 Contributor: Der Contributor-Tier ist nicht im opencode-Provider
+ * und nicht in den kanonischen models.dev-Metadaten gelistet (nur bei Drittanbietern
+ * wie openrouter/vercel) → auf den Parent `meta/muse-spark-1.2` abbilden.
  */
-const CAPABILITY_OVERRIDES = {};
+const CAPABILITY_OVERRIDES = {
+  "musespark1.2contributor": "meta/muse-spark-1.2",
+};
 
 function parsePrice(text) {
   const t = (text ?? "").trim();

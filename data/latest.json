@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-19T08:04:54.490Z",
+  "fetchedAt": "2026-08-19T09:10:39.383Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -535,7 +535,20 @@
         "cachedRead": 71400,
         "output": 300
       },
-      "capabilities": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf",
+          "audio"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
       "multiplier": 1,
       "effectiveInput": 0.1,
       "effectiveOutput": 0.2,
