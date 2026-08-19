@@ -12,6 +12,13 @@ interface ChangelogProps {
   monthlyCredit: number;
 }
 
+// Leitet aus einem Run-`id` (z.B. 2026-08-19T06-00-00Z) die Uhrzeit ab; für
+// Vorschema-Einträge (id = Datum) wird null geliefert (keine Zeitangabe).
+function entryTime(id: string): string | null {
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z$/.exec(id);
+  return m ? `${m[2]}:${m[3]} UTC` : null;
+}
+
 export default function Changelog(props: ChangelogProps) {
   const fmtPricing = (p: PricingType, fields: PriceField[], boldUsage = false) => {
     const order: PriceField[] = ["input", "output", "cachedRead"];
@@ -161,7 +168,12 @@ export default function Changelog(props: ChangelogProps) {
         <For each={props.entries}>
           {(entry) => (
             <div class="mt-4">
-              <h3 class="text-sm font-semibold text-base-content/70">{entry.date}</h3>
+              <h3 class="text-sm font-semibold text-base-content/70">
+                {entry.date}
+                <Show when={entryTime(entry.id) !== null}>
+                  <span class="ml-2 font-normal text-base-content/50">{entryTime(entry.id)}</span>
+                </Show>
+              </h3>
               <Show when={entry.changes.length > 0} fallback={<p class="mt-1">{props.t.chgNone}</p>}>
                 <ul class="mt-1 space-y-1">
                   <For each={entry.changes}>

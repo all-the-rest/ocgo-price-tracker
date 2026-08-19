@@ -70,6 +70,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/ensure-release.mjs --all
 
+      - name: Check changelog/release sync
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/check-release-sync.mjs
+
       - name: Setup Pages
         uses: actions/configure-pages@v6
 

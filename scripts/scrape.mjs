@@ -1022,9 +1022,10 @@ export function mergeFreeModels(prevFree, currentIds, today) {
 }
 
 /**
- * Mergt Events desselben Tages (2 Läufe/Tag): neu hinzukommende Events werden
- * angehängt, Events mit gleichem `type` + `model` werden durch das neueste
- * ersetzt (Dedupe, neuestes gewinnt). Für `text`-Events gilt `type` als Schlüssel.
+ * Dedupet Events innerhalb EINES Run-Eintrags (gleiche `type`+`model` → neuestes
+ * gewinnt). Seit der Umstellung auf Per-Run-Einträge wird das nur noch für
+ * idempotente Wiederholungen desselben Run-`id` genutzt — mehrere Läufe pro Tag
+ * erzeugen jeweils EIGENE Einträge (kein Day-Merge mehr).
  */
 export function mergeChanges(existing, incoming) {
   const key = (c) => `${c.type}:${c.model ?? ""}`;
@@ -1035,16 +1036,34 @@ export function mergeChanges(existing, incoming) {
   return [...map.values()];
 }
 
-export function upsertChangelogJson(existing, date, changes) {
+/**
+ * Fügt pro Run einen EIGENEN Changelog-Eintrag ein (Schlüssel = eindeutiges
+ * `id`, abgeleitet von `fetchedAt`). Mehrere Läufe/Tag → mehrere Einträge (kein
+ * Merge über den Tag hinweg). Ein Eintrag mit demselben `id` wird ersetzt
+ * (idempotent bei CI-Wiederholungen). `date` (`YYYY-MM-DD`) dient nur noch der
+ * Anzeige/Groupierung.
+ */
+export function upsertChangelogJson(existing, id, date, changes) {
   const entries = Array.isArray(existing?.entries) ? existing.entries : [];
   const keep = entries.filter((e) => Array.isArray(e.changes) && e.changes.length > 0);
   const hasChanges = Array.isArray(changes) && changes.length > 0;
   if (!hasChanges) return { entries: keep };
-  const rest = keep.filter((e) => e.date !== date);
-  const sameDate = keep.find((e) => e.date === date);
-  const merged = sameDate ? mergeChanges(sameDate.changes, changes) : changes;
-  rest.unshift({ date, changes: merged });
+  const rest = keep.filter((e) => e.id !== id);
+  const sameId = keep.find((e) => e.id === id);
+  const merged = sameId ? mergeChanges(sameId.changes, changes) : changes;
+  rest.unshift({ id, date, changes: merged });
   return { entries: rest };
+}
+
+/**
+ * Migration des Vorschemas (ein Eintrag pro Tag, kein `id`): weist fehlenden
+ * Einträgen `id = date` zu, damit bestehende GitHub-Releases (Tag = Datum)
+ * weiterhin zum Changelog passen. Neue Einträge bekommen ein `id` aus dem
+ * Run-Zeitstempel.
+ */
+export function normalizeChangelogIds(changelog) {
+  const entries = Array.isArray(changelog?.entries) ? changelog.entries : [];
+  return { entries: entries.map((e) => (e && e.id ? e : { ...e, id: e?.date })) };
 }
 
 const RequestPatternSchema = z.object({
@@ -1178,6 +1197,7 @@ const ChangeSchema = z.discriminatedUnion("type", [
 const ChangelogSchema = z.object({
   entries: z.array(
     z.object({
+      id: z.string().min(1),
       date: z.string(),
       changes: z.array(ChangeSchema).min(1),
     })
@@ -1249,6 +1269,8 @@ async function main() {
 
     const fetchedAt = new Date().toISOString();
     const date = fetchedAt.slice(0, 10);
+    // git-tag-sicheres `id` (kein `:`), z.B. 2026-08-19T06-00-00Z
+    const runId = fetchedAt.replace(/:/g, "-").replace(/\.\d{3}Z$/, "Z");
 
     const prevPath = join(ROOT, "data", "latest.json");
     const prev = existsSync(prevPath) ? JSON.parse(readFileSync(prevPath, "utf8")) : null;
@@ -1325,8 +1347,10 @@ async function main() {
     validateSnapshot(latest);
 
     const changelogPath = join(ROOT, "CHANGELOG.json");
-    const existingChangelog = existsSync(changelogPath) ? JSON.parse(readFileSync(changelogPath, "utf8")) : { entries: [] };
-    const changelog = upsertChangelogJson(existingChangelog, date, changes);
+    const existingChangelog = existsSync(changelogPath)
+      ? normalizeChangelogIds(JSON.parse(readFileSync(changelogPath, "utf8")))
+      : { entries: [] };
+    const changelog = upsertChangelogJson(existingChangelog, runId, date, changes);
     validateChangelog(changelog);
     const changelogJson = JSON.stringify(changelog) + "\n";
     writeFileSync(changelogPath, changelogJson);

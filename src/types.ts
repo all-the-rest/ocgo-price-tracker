@@ -92,6 +92,7 @@ export type Change =
   | { type: "free_removed"; model: string; availableFrom: string; until: string };
 
 export interface ChangelogEntry {
+  id: string;
   date: string;
   changes: Change[];
 }

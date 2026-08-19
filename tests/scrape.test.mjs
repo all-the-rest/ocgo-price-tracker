@@ -539,33 +539,38 @@ test("extractFreeModels: filtert free-Modelle und big-pickle", () => {
   assert.deepEqual(extractFreeModels(ids), ["big-pickle", "deepseek-v4-flash-free", "mimo-v2.5-free"]);
 });
 
-test("upsertChangelogJson: ersetzt Eintrag mit gleichem Datum und entfernt leere Einträge", () => {
+test("upsertChangelogJson: ersetzt Eintrag mit gleicher id und entfernt leere Einträge", () => {
   const existing = {
     entries: [
-      { date: "2026-08-06", changes: [] },
-      { date: "2026-08-05", changes: [{ type: "text", lang: { de: "Alt", en: "Old" } }] },
-      { date: "2026-08-04", changes: [] },
-      { date: "2026-08-03", changes: [{ type: "text", lang: { de: "Uralt", en: "Ancient" } }] },
+      { id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [] },
+      { id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "Alt", en: "Old" } }] },
+      { id: "2026-08-04T00-00-00Z", date: "2026-08-04", changes: [] },
+      { id: "2026-08-03T00-00-00Z", date: "2026-08-03", changes: [{ type: "text", lang: { de: "Uralt", en: "Ancient" } }] },
     ],
   };
-  const result = upsertChangelogJson(existing, "2026-08-05", [{ type: "text", lang: { de: "Neu", en: "New" } }]);
+  const result = upsertChangelogJson(existing, "2026-08-05T00-00-00Z", "2026-08-05", [
+    { type: "text", lang: { de: "Neu", en: "New" } },
+  ]);
   assert.equal(result.entries.length, 2);
-  assert.equal(result.entries[0].date, "2026-08-05");
+  assert.equal(result.entries[0].id, "2026-08-05T00-00-00Z");
   assert.deepEqual(result.entries[0].changes, [{ type: "text", lang: { de: "Neu", en: "New" } }]);
-  assert.equal(result.entries[1].date, "2026-08-03");
+  assert.equal(result.entries[1].id, "2026-08-03T00-00-00Z");
 });
 
 test("upsertChangelogJson: fügt bei leeren Änderungen keinen Eintrag hinzu", () => {
-  const existing = { entries: [{ date: "2026-08-05", changes: [{ type: "text", lang: { de: "x", en: "x" } }] }] };
-  const result = upsertChangelogJson(existing, "2026-08-06", []);
+  const existing = {
+    entries: [{ id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "x", en: "x" } }] }],
+  };
+  const result = upsertChangelogJson(existing, "2026-08-06T00-00-00Z", "2026-08-06", []);
   assert.equal(result.entries.length, 1);
-  assert.equal(result.entries[0].date, "2026-08-05");
+  assert.equal(result.entries[0].id, "2026-08-05T00-00-00Z");
 });
 
-test("upsertChangelogJson: leere Änderungen löschen den Eintrag des gleichen Datums nicht", () => {
+test("upsertChangelogJson: leere Änderungen ersetzen den Eintrag derselben id nicht", () => {
   const existing = {
     entries: [
       {
+        id: "2026-08-07T00-00-00Z",
         date: "2026-08-07",
         changes: [
           {
@@ -576,12 +581,12 @@ test("upsertChangelogJson: leere Änderungen löschen den Eintrag des gleichen D
           },
         ],
       },
-      { date: "2026-08-05", changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }] },
+      { id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }] },
     ],
   };
-  const result = upsertChangelogJson(existing, "2026-08-07", []);
+  const result = upsertChangelogJson(existing, "2026-08-07T00-00-00Z", "2026-08-07", []);
   assert.equal(result.entries.length, 2);
-  assert.equal(result.entries[0].date, "2026-08-07");
+  assert.equal(result.entries[0].id, "2026-08-07T00-00-00Z");
   assert.equal(result.entries[0].changes[0].model, "DeepSeek V4 Flash");
 });
 
@@ -589,10 +594,12 @@ test("validateChangelog: gültiger Changelog mit allen Event-Typen", () => {
   const changelog = {
     entries: [
       {
+        id: "2026-08-05T00-00-00Z",
         date: "2026-08-05",
         changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }],
       },
       {
+        id: "2026-08-06T00-00-00Z",
         date: "2026-08-06",
         changes: [
           {
@@ -645,6 +652,7 @@ test("validateChangelog: price_changed ohne fields bzw. usage_changed ungültig 
     validateChangelog({
       entries: [
         {
+          id: "2026-08-06T00-00-00Z",
           date: "2026-08-06",
           changes: [
             {
@@ -662,6 +670,7 @@ test("validateChangelog: price_changed ohne fields bzw. usage_changed ungültig 
     validateChangelog({
       entries: [
         {
+          id: "2026-08-06T00-00-00Z",
           date: "2026-08-06",
           changes: [
             { type: "price_changed", model: "X", from: {}, to: {}, fields: [] },
@@ -674,6 +683,7 @@ test("validateChangelog: price_changed ohne fields bzw. usage_changed ungültig 
     validateChangelog({
       entries: [
         {
+          id: "2026-08-06T00-00-00Z",
           date: "2026-08-06",
           changes: [{ type: "usage_changed", model: "X", from: -1, to: 60 }],
         },
@@ -698,47 +708,69 @@ test("mergeChanges: verschiedene Typen/Modelle bleiben erhalten, ersetzte behalt
   assert.deepEqual(mergeChanges([a, c], [b, d]), [a, d, b]);
 });
 
-test("upsertChangelogJson: Events desselben Datums werden gemerged (2 Läufe/Tag)", () => {
+test("upsertChangelogJson: verschiedene Run-ids → eigene Einträge (kein Day-Merge)", () => {
   const existing = {
     entries: [
       {
+        id: "2026-08-07T06-00-00Z",
         date: "2026-08-07",
         changes: [{ type: "usage_changed", model: "Alpha", from: 60, to: 120 }],
       },
     ],
   };
-  const result = upsertChangelogJson(existing, "2026-08-07", [
-    { type: "free_added", model: "big-pickle" },
-    { type: "usage_changed", model: "Alpha", from: 120, to: 60 },
+  const result = upsertChangelogJson(
+    existing,
+    "2026-08-07T14-00-00Z",
+    "2026-08-07",
+    [{ type: "free_added", model: "big-pickle" }, { type: "usage_changed", model: "Alpha", from: 120, to: 60 }]
+  );
+  assert.equal(result.entries.length, 2);
+  assert.equal(result.entries[0].id, "2026-08-07T14-00-00Z");
+  assert.equal(result.entries[1].id, "2026-08-07T06-00-00Z");
+});
+
+test("upsertChangelogJson: gleiche Run-id ersetzt den Eintrag idempotent (kein Duplikat)", () => {
+  const existing = {
+    entries: [
+      {
+        id: "2026-08-07T06-00-00Z",
+        date: "2026-08-07",
+        changes: [{ type: "usage_changed", model: "Alpha", from: 60, to: 120 }],
+      },
+    ],
+  };
+  // Wiederholung desselben Run-`id` mit identischen Änderungen → kein neuer
+  // Eintrag, keine Verdopplung der Events.
+  const result = upsertChangelogJson(existing, "2026-08-07T06-00-00Z", "2026-08-07", [
+    { type: "usage_changed", model: "Alpha", from: 60, to: 120 },
   ]);
   assert.equal(result.entries.length, 1);
-  assert.equal(result.entries[0].date, "2026-08-07");
-  assert.deepEqual(result.entries[0].changes, [
-    { type: "usage_changed", model: "Alpha", from: 120, to: 60 },
-    { type: "free_added", model: "big-pickle" },
-  ]);
+  assert.equal(result.entries[0].id, "2026-08-07T06-00-00Z");
+  assert.equal(result.entries[0].changes.length, 1);
+  assert.equal(result.entries[0].changes[0].type, "usage_changed");
 });
 
 test("validateChangelog: leere Einträge, unbekannte Typen und fehlende Felder brechen", () => {
-  assert.throws(() => validateChangelog({ entries: [{ date: "2026-08-06", changes: [] }] }));
+  assert.throws(() => validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [] }] }));
   assert.throws(() =>
-    validateChangelog({ entries: [{ date: "2026-08-06", changes: [{ type: "baseline", modelCount: 1 }] }] })
+    validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "baseline", modelCount: 1 }] }] })
   );
   assert.throws(() =>
-    validateChangelog({ entries: [{ date: "2026-08-06", changes: [{ type: "model_added", model: "X" }] }] })
+    validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "model_added", model: "X" }] }] })
   );
   assert.throws(() =>
-    validateChangelog({ entries: [{ date: "2026-08-06", changes: [{ type: "text", text: "no lang map" }] }] })
+    validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "text", text: "no lang map" }] }] })
   );
   assert.throws(() =>
     validateChangelog({
-      entries: [{ date: "2026-08-06", changes: [{ type: "model_removed", model: "X", days: -1 }] }],
+      entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "model_removed", model: "X", days: -1 }] }],
     })
   );
   assert.throws(() =>
     validateChangelog({
       entries: [
         {
+          id: "2026-08-06T00-00-00Z",
           date: "2026-08-06",
           changes: [
             { type: "capabilities_changed", model: "X", from: null, to: { input: ["text"] } },

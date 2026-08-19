@@ -56,24 +56,25 @@ function main() {
   if (all) {
     targets = entries;
   } else if (date) {
-    const entry = entries.find((e) => e.date === date);
-    if (!entry) {
+    const matched = entries.filter((e) => e.date === date);
+    if (matched.length === 0) {
       console.error(`no changelog entry for date ${date}`);
       process.exit(1);
     }
-    targets = [entry];
+    targets = matched;
   } else {
     targets = [entries[0]];
   }
 
-  const newestDate = entries[0].date;
+  // Einträge sind neueste-zuerst (unshift); der erste ist der "latest"-Release.
+  const newestId = entries[0].id;
   for (const entry of targets) {
     const notes = renderReleaseNotesForEntry(entry);
     if (notes === null) {
-      console.log(`entry ${entry.date}: no changes, skipping release`);
+      console.log(`entry ${entry.id}: no changes, skipping release`);
       continue;
     }
-    ensureRelease(entry.date, notes, { latest: entry.date === newestDate });
+    ensureRelease(entry.id, notes, { latest: entry.id === newestId });
   }
 }
 
