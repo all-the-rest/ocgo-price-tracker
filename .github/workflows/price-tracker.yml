@@ -1,9 +1,6 @@
 name: Price Tracker
 
 on:
-  schedule:
-    - cron: "0 8 * * 1-5"
-    - cron: "0 20 * * *"
   workflow_dispatch:
   push:
     branches:
@@ -23,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       changed: ${{ steps.commit.outputs.changed }}
+      fetchedAt: ${{ steps.stamp.outputs.fetchedAt }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -47,6 +45,10 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Read build stamp
+        id: stamp
+        run: echo "fetchedAt=$(node -e "console.log(require('./dist/data/latest.json').fetchedAt)")" >> "$GITHUB_OUTPUT"
 
       - name: Commit data changes
         id: commit
@@ -92,6 +94,26 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+      - name: Wait for Pages to serve new data
+        if: needs.build.outputs.changed == 'true'
+        env:
+          EXPECTED: ${{ needs.build.outputs.fetchedAt }}
+          SITE: https://ocgo-pricing.all-the.rest/data/latest.json
+          MAX_TRIES: "90"
+          SLEEP: "10"
+        run: |
+          for i in $(seq 1 "$MAX_TRIES"); do
+            served=$(curl -fsS "${SITE}?wait=${RANDOM}" | jq -r '.fetchedAt // empty')
+            if [ "$served" = "$EXPECTED" ]; then
+              echo "New data is live (fetchedAt=$served) after $i attempt(s)"
+              exit 0
+            fi
+            echo "Attempt $i/$MAX_TRIES: served fetchedAt='$served' (expected '$EXPECTED') — waiting for CDN propagation"
+            sleep "$SLEEP"
+          done
+          echo "::error::Pages did not serve new data within $((MAX_TRIES * SLEEP / 60)) min — aborting dispatch to avoid stale comparison"
+          exit 1
 
       - name: Notify ai-10-usd comparison site
         if: needs.build.outputs.changed == 'true' && env.DISPATCH_TOKEN != ''
