@@ -7,8 +7,11 @@ export type PrivacyTier = "training" | "retention" | "zdr" | null;
 export function privacyTier(p: Privacy | null | undefined): PrivacyTier {
   if (!p) return null;
   if (p.training) return "training";
-  if ((p.retentionDays ?? 0) > 0) return "retention";
-  return "zdr";
+  const r = p.retentionDays;
+  if (r === false) return "retention"; // Kein ZDR → Daten werden aufbewahrt (Dauer unbekannt)
+  if (typeof r === "number") return r > 0 ? "retention" : "zdr"; // 0 nur Alt-Daten (früheres Encoding)
+  if (r === true) return "zdr";
+  return null; // unbekannt
 }
 
 export const privacyRank = (p: Privacy | null | undefined): number => {
@@ -38,7 +41,10 @@ export function privacyBadgeClass(p: Privacy | null | undefined): string {
 export function privacyLabel(p: Privacy | null | undefined, t: Translation): string {
   const tier = privacyTier(p);
   if (tier === "training") return t.privacyTraining;
-  if (tier === "retention") return t.privacyRetention.replace("{days}", String(p?.retentionDays));
+  if (tier === "retention") {
+    if (p?.retentionDays === false) return t.privacyNoZdr;
+    return t.privacyRetention.replace("{days}", String(p?.retentionDays));
+  }
   if (tier === "zdr") return t.privacyZdr;
   return t.privacyUnknown;
 }

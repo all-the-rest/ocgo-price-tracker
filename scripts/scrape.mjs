@@ -450,15 +450,21 @@ function parseTraining(text) {
 }
 
 /**
- * Parst die Spalte "Datenaufbewahrung": "30 Tage" → 30, "0 Tage" → 0,
- * "–"/"-" → null.
+ * Parst die Spalte "Datenaufbewahrung":
+ * - "30 Tage" → 30 (bekannte Dauer in Tagen)
+ * - "0 Tage" → true (ZDR = Zero Data Retention)
+ * - "Kein ZDR" → false (keine ZDR-Vereinbarung: Daten werden aufbewahrt,
+ *   Dauer unbekannt — z. B. Muse Spark 1.2, Meta-Contributor-Tier)
+ * - "–"/"-" → undefined (unbekannt, Feld fehlt im JSON)
  */
 function parseRetentionDays(text) {
   const t = (text ?? "").trim();
-  if (t === "" || t === "-" || t === "—" || t === "–") return null;
+  if (t === "" || t === "-" || t === "—" || t === "–") return undefined;
+  if (/^kein(?:e)?\s+zdr$/i.test(t)) return false;
   const m = t.match(/^(\d+(?:[.,]\d+)?)\s*Tage?$/i);
   if (!m) throw new ScrapeError(`Datenaufbewahrung unparsebar: "${text}"`);
-  return Number(m[1].replace(",", "."));
+  const days = Number(m[1].replace(",", "."));
+  return days === 0 ? true : days;
 }
 
 const DE_MONTHS = {
@@ -809,8 +815,9 @@ export function enrichFreeModels(freeModels, opencodeModels, metadataModels) {
     f.capabilities = toCapabilities(resolve(f.id, f.id));
     // Kostenlose Zen-Modelle (inkl. big-pickle) werden von OpenCode fürs
     // Modelltraining genutzt (keine explizite Angabe in der Doku — Zen-Seite
-    // nennt lediglich das Feedback zur Modellverbesserung).
-    f.privacy = { training: true, retentionDays: null, validUntil: null };
+    // nennt lediglich das Feedback zur Modellverbesserung). Aufbewahrung ist
+    // unbekannt → Feld `retentionDays` bleibt weg (undefined).
+    f.privacy = { training: true, validUntil: null };
   }
   return freeModels;
 }
@@ -1050,7 +1057,9 @@ const CapabilitiesSchema = z.object({
 
 const PrivacySchema = z.object({
   training: z.boolean(),
-  retentionDays: z.number().nullable(),
+  // true = ZDR (0 Tage), false = kein ZDR (Daten aufbewahrt, Dauer unbekannt),
+  // number = N Tage Aufbewahrung, undefined/fehlend = unbekannt
+  retentionDays: z.union([z.boolean(), z.number()]).optional(),
   validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   fallback: z.boolean().optional(),
 });

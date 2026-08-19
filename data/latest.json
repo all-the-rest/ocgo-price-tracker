@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-17T20:34:59.653Z",
+  "fetchedAt": "2026-08-19T05:28:46.514Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -166,7 +166,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -200,7 +200,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -234,7 +234,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -270,7 +270,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -306,7 +306,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -342,7 +342,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -379,7 +379,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -413,7 +413,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -449,7 +449,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -483,7 +483,7 @@
       "effectiveCachedWrite": 0.375,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -517,9 +517,47 @@
       "effectiveCachedWrite": 0.375,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null,
         "fallback": true
+      }
+    },
+    {
+      "name": "Muse Spark 1.2",
+      "tier": null,
+      "input": 0.1,
+      "output": 0.2,
+      "cachedRead": 0.002,
+      "cachedWrite": null,
+      "usage": 60,
+      "pattern": {
+        "input": 620,
+        "cachedRead": 71400,
+        "output": 300
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf",
+          "audio"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 1,
+      "effectiveInput": 0.1,
+      "effectiveOutput": 0.2,
+      "effectiveCachedRead": 0.002,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": true,
+        "retentionDays": false,
+        "validUntil": null
       }
     },
     {
@@ -555,7 +593,7 @@
       "effectiveCachedWrite": 10,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -589,7 +627,7 @@
       "effectiveCachedWrite": 3.125,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -625,7 +663,7 @@
       "effectiveCachedWrite": 0.5,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -661,7 +699,7 @@
       "effectiveCachedWrite": 1.5,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -697,7 +735,7 @@
       "effectiveCachedWrite": 0.625,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -733,7 +771,7 @@
       "effectiveCachedWrite": 2.5,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -767,7 +805,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -801,7 +839,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     },
@@ -835,7 +873,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": "2026-08-31"
       }
     },
@@ -869,7 +907,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": "2026-08-31"
       }
     },
@@ -903,7 +941,7 @@
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": 0,
+        "retentionDays": true,
         "validUntil": null
       }
     }
@@ -924,7 +962,6 @@
       },
       "privacy": {
         "training": true,
-        "retentionDays": null,
         "validUntil": null
       }
     },
@@ -943,7 +980,6 @@
       },
       "privacy": {
         "training": true,
-        "retentionDays": null,
         "validUntil": null
       }
     },
@@ -962,7 +998,6 @@
       },
       "privacy": {
         "training": true,
-        "retentionDays": null,
         "validUntil": null
       }
     },
@@ -981,7 +1016,6 @@
       },
       "privacy": {
         "training": true,
-        "retentionDays": null,
         "validUntil": null
       }
     },
@@ -1003,7 +1037,6 @@
       },
       "privacy": {
         "training": true,
-        "retentionDays": null,
         "validUntil": null
       }
     },
@@ -1022,7 +1055,6 @@
       },
       "privacy": {
         "training": true,
-        "retentionDays": null,
         "validUntil": null
       }
     },
@@ -1041,7 +1073,6 @@
       },
       "privacy": {
         "training": true,
-        "retentionDays": null,
         "validUntil": null
       }
     }

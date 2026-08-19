@@ -13,7 +13,13 @@ export interface Capabilities {
 
 export interface Privacy {
   training: boolean;
-  retentionDays: number | null;
+  /**
+   * true = ZDR (0 Tage / Zero Data Retention)
+   * false = kein ZDR (Daten werden aufbewahrt, Dauer unbekannt)
+   * number = bekannte Aufbewahrungsdauer in Tagen
+   * undefined/fehlend = unbekannt ("–" in der Doku)
+   */
+  retentionDays?: boolean | number;
   validUntil: string | null;
   fallback?: boolean;
 }
