@@ -130,6 +130,13 @@ pnpm typecheck        # nur tsc --noEmit
 - Pipeline: install (`--frozen-lockfile`) → `pnpm test` → `pnpm scrape` → `pnpm build` → Commit (CHANGELOG.json + data + src/data, `github-actions[bot]`, nur bei Änderungen) → Release (`node scripts/ensure-release.mjs --all` → `gh release create`/`edit` mit Tag = Changelog-Datum, damit Watcher per E-Mail und RSS-Reader via `releases.atom` benachrichtigt werden) → `upload-pages-artifact` (dist) + `upload-artifact` (dist-Zip) → `deploy-pages`.
 - `scripts/release-notes.mjs` rendert Changelog-Einträge als **rein englisches Markdown mit nur den Fakten** (Titel + Event-Liste — keine Links zu Site/RSS, kein Watch-Hinweis). `scripts/ensure-release.mjs` stellt **pro Changelog-Datum genau eine Release** sicher und läuft bei **jedem** Workflow-Lauf (nicht mehr nur bei `changed=true`): `--all` prüft alle Einträge, erstellt fehlende Releases nach (Backfill, `--latest=false` für alte Daten) und editiert bestehende nur bei geänderten Notizen; Tag = Eintragsdatum → Morgen- und Abend-Lauf desselben Tages **mergen in eine Release** (Abend editiert, falls `mergeChanges` den Eintrag ergänzt hat). Manueller Backfill: `node scripts/ensure-release.mjs --all` bzw. `--date YYYY-MM-DD`. Bestehende Releases werden bei einem Lauf mit geänderten Notizen automatisch nachgezogen.
 - Nach einem Daten-Commit (`changed=true`) benachrichtigt der Deploy-Job das Vergleichs-Projekt `reisi007/ai-10-usd` per `repository_dispatch` (`event_type=source-updated`, POST auf `/repos/reisi007/ai-10-usd/dispatches`). Secret: `AI10USD_DISPATCH_TOKEN` (PAT mit `repo`-Scope bzw. fine-grained mit Contents read/write auf `ai-10-usd`, in **beiden** Tracker-Repos). Fehlt das Secret → Step übersprungen (grün); vorhanden → der Step prüft den HTTP-Status und bricht bei ≠ 2xx **rot** ab (kein stiller Verlust wie beim alten `curl -sS` ohne `-f`).
+- **Lokale Daten-Commits (Push statt CI-Commit):** Wird eine Datenänderung lokal committet und per Push auf `main` gebracht — statt vom CI-Job (der `changed=true` erzeugt und committet) —, feuert der automatische Dispatch **nicht**: Der Scrape im CI findet dann keine Diffs (`changed=false`), der Notify-Step wird übersprungen. Das Vergleichs-Projekt dann manuell triggern:
+  ```bash
+  gh api -X POST repos/reisi007/ai-10-usd/dispatches --input - <<'EOF'
+  {"event_type":"source-updated","client_payload":{"source":"reisi007/ocgo-price-tracker","sha":"<SHA>"}}
+  EOF
+  ```
+  `<SHA>` = committeter Datenstand (z. B. `git rev-parse HEAD`). Verifikation: `gh run list -R reisi007/ai-10-usd` → neuer `repository_dispatch`-Lauf (`source-updated`) wird grün.
 - Ein fehlgeschlagenes `pnpm scrape` bricht die Pipeline ab (kein Commit/Deploy, Lauf rot).
 
 ## Tests
