@@ -28,6 +28,15 @@ CRON_FILE="/etc/cron.d/ocgo-price-tracker"
 TOKEN_FILE="/etc/ocgo-tracker.env"
 SERVER="${SERVER:-root@reisinger.pictures}"
 
+# SSH connection reuse: token read (step 1) and apply (step 5) share ONE master
+# connection, so the run needs only a single password prompt. The socket lives
+# in a per-run temp dir and is closed explicitly at the end (ControlPersist is
+# the 5-minute fallback if the script dies earlier).
+SSH_CTL_DIR=$(mktemp -d "${TMPDIR:-/tmp}/ocgo-tracker-ssh.XXXXXX")
+SSH_CTL="$SSH_CTL_DIR/control"
+SSH_OPTS=(-o ControlMaster=auto -o ControlPath="$SSH_CTL" -o ControlPersist=300)
+trap 'rm -rf "$SSH_CTL_DIR"' EXIT
+
 # --- Colors ---
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -48,7 +57,7 @@ else
   # needs to exist locally. "__NO_TOKEN__" = reachable server without a token
   # file; a failing ssh (unreachable server) aborts the script here.
   echo -n "Checking ${SERVER} for existing token... "
-  READ_OUT=$(ssh "$SERVER" "if [ -f ${TOKEN_FILE} ] && grep -q '^GH_PAT=' ${TOKEN_FILE}; then grep '^GH_PAT=' ${TOKEN_FILE} | cut -d= -f2; else echo '__NO_TOKEN__'; fi" 2>&1) || {
+  READ_OUT=$(ssh "${SSH_OPTS[@]}" "$SERVER" "if [ -f ${TOKEN_FILE} ] && grep -q '^GH_PAT=' ${TOKEN_FILE}; then grep '^GH_PAT=' ${TOKEN_FILE} | cut -d= -f2; else echo '__NO_TOKEN__'; fi" 2>&1) || {
     error "Cannot reach ${SERVER} via SSH:"
     echo "$READ_OUT" >&2
     exit 1
@@ -132,7 +141,7 @@ info "Workflow triggered successfully (HTTP 204)"
 
 # --- 4. Generate cron file content locally ---
 CRON_TMP=$(mktemp)
-trap 'rm -f "$CRON_TMP"' EXIT
+trap 'rm -f "$CRON_TMP"; rm -rf "$SSH_CTL_DIR"' EXIT
 
 cat << CRON > "$CRON_TMP"
 # ocgo-price-tracker — External schedule (no GitHub Actions cron limit)
@@ -162,11 +171,11 @@ CRON
 echo -n "Applying to ${SERVER}... "
 if [[ "$MODE" == "update" ]]; then
   # Update: token stays untouched on the server, only the schedule is refreshed.
-  ssh "$SERVER" "cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}" < "$CRON_TMP"
+  ssh "${SSH_OPTS[@]}" "$SERVER" "cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}" < "$CRON_TMP"
 else
   # Install: token + schedule in the same connection (token = first stdin line,
   # cron content follows) — the PAT never appears on the command line.
-  { printf 'GH_PAT=%s\n' "$GITHUB_PAT"; cat "$CRON_TMP"; } | ssh "$SERVER" "IFS= read -r TOKEN_LINE && printf '%s\n' \"\$TOKEN_LINE\" > ${TOKEN_FILE} && chmod 600 ${TOKEN_FILE} && echo 'Token stored' && cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}"
+  { printf 'GH_PAT=%s\n' "$GITHUB_PAT"; cat "$CRON_TMP"; } | ssh "${SSH_OPTS[@]}" "$SERVER" "IFS= read -r TOKEN_LINE && printf '%s\n' \"\$TOKEN_LINE\" > ${TOKEN_FILE} && chmod 600 ${TOKEN_FILE} && echo 'Token stored' && cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}"
 fi
 
 info "Installed on ${SERVER}"
@@ -183,3 +192,6 @@ echo "  Daily:     22:30 (end-of-day capture, before midnight)"
 echo ""
 echo "To uninstall:"
 echo "  ./scripts/uninstall-cron.sh"
+
+# Close the shared SSH master connection (idempotent; ControlPersist would time out anyway).
+ssh -O exit "${SSH_OPTS[@]}" "$SERVER" 2>/dev/null || true
