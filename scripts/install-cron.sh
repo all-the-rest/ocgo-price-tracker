@@ -20,7 +20,7 @@
 set -euo pipefail
 
 # --- Configuration ---
-REPO="reisi007/ocgo-price-tracker"
+REPO="all-the-rest/ocgo-price-tracker"
 WORKFLOW="price-tracker.yml"
 API_URL="https://api.github.com/repos/${REPO}/actions/workflows/${WORKFLOW}/dispatches"
 CRON_MARKER="# ocgo-price-tracker"
@@ -87,7 +87,7 @@ if [[ "$MODE" == "install" && -z "${GITHUB_PAT:-}" ]]; then
   echo "Create one at:"
   echo "  https://github.com/settings/tokens?type=beta"
   echo ""
-  echo "  → Repository access → Only select repositories → ocgo-price-tracker"
+  echo "  → Repository access → Only select repositories → all-the-rest/ocgo-price-tracker"
   echo "  → Permissions → Repository permissions:"
   echo "      Metadata: Read (default)"
   echo "      Actions:  Read and Write"

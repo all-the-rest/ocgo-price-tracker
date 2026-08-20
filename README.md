@@ -73,20 +73,20 @@ GITHUB_PAT=ghp_yyy ./scripts/install-cron.sh
 
 Setup:
 
-1. Repo anlegen: `reisi007/ocgo-price-tracker`
+1. Repo anlegen: `all-the-rest/ocgo-price-tracker`
 2. Lokal initialisieren und pushen:
 
    ```bash
    git init -b main
    git add .
    git commit -m "Initial commit"
-   git remote add origin git@github.com:reisi007/ocgo-price-tracker.git
+   git remote add origin git@github.com:all-the-rest/ocgo-price-tracker.git
    git push -u origin main
    ```
 
 3. Im GitHub-Repo: Settings → Pages → Source "GitHub Actions", Custom domain
    `ocgo-pricing.all-the.rest` setzen.
-4. DNS: CNAME `ocgo-pricing.all-the.rest` → `reisi007.github.io`
+4. DNS: CNAME `ocgo-pricing.all-the.rest` → `all-the-rest.github.io`
 
 ## Hinweise
 

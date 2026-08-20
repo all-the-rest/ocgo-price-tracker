@@ -7,7 +7,7 @@
 set -uo pipefail
 
 TOKEN_FILE="/etc/ocgo-tracker.env"
-API_URL="https://api.github.com/repos/reisi007/ocgo-price-tracker/actions/workflows/price-tracker.yml/dispatches"
+API_URL="https://api.github.com/repos/all-the-rest/ocgo-price-tracker/actions/workflows/price-tracker.yml/dispatches"
 LOG_FILE="/var/log/ocgo-price-tracker.log"
 
 # Random delay: 0–600 seconds (0–10 minutes)

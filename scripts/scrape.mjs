@@ -24,7 +24,7 @@ const DEFAULT_MONTHLY_CREDIT = 60;
 const DEFAULT_MONTHLY_COST = 10;
 const FLOAT_TOLERANCE = 1e-9;
 const USER_AGENT =
-  "ocgo-price-tracker/0.1.0 (+https://github.com/reisi007/ocgo-price-tracker)";
+  "ocgo-price-tracker/0.1.0 (+https://github.com/all-the-rest/ocgo-price-tracker)";
 
 class ScrapeError extends Error {}
 
