@@ -1,6 +1,10 @@
 name: Price Tracker
 
 on:
+  schedule:
+    # Safety-net: one daily run ~22:28 Vienna time (20:28 UTC CEST / 21:28 UTC CET)
+    # Catches any changes the server cron missed.
+    - cron: "28 20 * * *"
   workflow_dispatch:
   push:
     branches:

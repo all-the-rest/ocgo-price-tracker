@@ -143,39 +143,47 @@ info "Workflow triggered successfully (HTTP 204)"
 CRON_TMP=$(mktemp)
 trap 'rm -f "$CRON_TMP"; rm -rf "$SSH_CTL_DIR"' EXIT
 
+WRAPPER="/usr/local/bin/ocgo-dispatch.sh"
+
 cat << CRON > "$CRON_TMP"
 # ocgo-price-tracker — External schedule (no GitHub Actions cron limit)
 # All times in server local time (set to Europe/Vienna)
+# Dispatch wrapper has built-in ±10 min random delay.
 SHELL=/bin/bash
 PATH=/usr/local/bin:/usr/bin:/bin
 
 # ─── Weekdays (Mon-Fri): every 2h, 06:00–20:00 ───
-0  6  * * 1-5  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
-0  8  * * 1-5  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
-0 10  * * 1-5  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
-0 12  * * 1-5  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
-0 14  * * 1-5  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
-0 16  * * 1-5  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
-0 18  * * 1-5  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
-0 20  * * 1-5  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
+0  6  * * 1-5  root  ${WRAPPER} ${CRON_MARKER}
+0  8  * * 1-5  root  ${WRAPPER} ${CRON_MARKER}
+0 10  * * 1-5  root  ${WRAPPER} ${CRON_MARKER}
+0 12  * * 1-5  root  ${WRAPPER} ${CRON_MARKER}
+0 14  * * 1-5  root  ${WRAPPER} ${CRON_MARKER}
+0 16  * * 1-5  root  ${WRAPPER} ${CRON_MARKER}
+0 18  * * 1-5  root  ${WRAPPER} ${CRON_MARKER}
+0 20  * * 1-5  root  ${WRAPPER} ${CRON_MARKER}
 
 # ─── Weekends (Sat-Sun): 06:00 and 14:00 ───
-0  6  * * 6,0  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
-0 14  * * 6,0  root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
+0  6  * * 6,0  root  ${WRAPPER} ${CRON_MARKER}
+0 14  * * 6,0  root  ${WRAPPER} ${CRON_MARKER}
 
-# ─── Daily: 22:30 (end-of-day capture, before midnight) ───
-30 22  * * *    root  curl -fsSL -X POST -H "Authorization: Bearer \$(cat ${TOKEN_FILE} | cut -d= -f2)" -H "Accept: application/vnd.github+json" ${API_URL} -d '{\"ref\":\"main\"}' ${CRON_MARKER}
+# ─── Daily 22:30 REMOVED — replaced by GitHub Actions schedule at 20:28 UTC ───
 CRON
 
-# --- 5. Apply to server (single SSH connection, one password) ---
+# --- 5. Upload dispatch wrapper + apply cron (single SSH connection, one password) ---
 echo -n "Applying to ${SERVER}... "
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# Upload wrapper script via scp (reuses SSH ControlMaster — no extra password).
+scp "${SSH_OPTS[@]}" "$SCRIPT_DIR/dispatch-cron.sh" "${SERVER}:${WRAPPER}" 2>/dev/null
+ssh "${SSH_OPTS[@]}" "$SERVER" "chmod 755 ${WRAPPER}" 2>/dev/null
+
 if [[ "$MODE" == "update" ]]; then
-  # Update: token stays untouched on the server, only the schedule is refreshed.
+  # Update: token stays untouched, only refresh schedule + restart crond.
   ssh "${SSH_OPTS[@]}" "$SERVER" "cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}" < "$CRON_TMP"
 else
-  # Install: token + schedule in the same connection (token = first stdin line,
-  # cron content follows) — the PAT never appears on the command line.
-  { printf 'GH_PAT=%s\n' "$GITHUB_PAT"; cat "$CRON_TMP"; } | ssh "${SSH_OPTS[@]}" "$SERVER" "IFS= read -r TOKEN_LINE && printf '%s\n' \"\$TOKEN_LINE\" > ${TOKEN_FILE} && chmod 600 ${TOKEN_FILE} && echo 'Token stored' && cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}"
+  # Install: token (first stdin line) + schedule + restart crond.
+  { printf 'GH_PAT=%s\n' "$GITHUB_PAT"; cat "$CRON_TMP"; } | \
+    ssh "${SSH_OPTS[@]}" "$SERVER" "IFS= read -r TOKEN_LINE && printf '%s\n' \"\$TOKEN_LINE\" > ${TOKEN_FILE} && chmod 600 ${TOKEN_FILE} && echo 'Token stored' && cat > ${CRON_FILE} && chmod 644 ${CRON_FILE} && timedatectl set-timezone Europe/Vienna 2>/dev/null || true && systemctl restart crond 2>/dev/null || service crond restart 2>/dev/null || true && echo '=== Schedule applied ===' && grep -n 'Daily' ${CRON_FILE}"
 fi
 
 info "Installed on ${SERVER}"
@@ -188,7 +196,7 @@ fi
 echo "Schedule (server local time = Europe/Vienna):"
 echo "  Weekdays:  every 2h from 06:00–20:00"
 echo "  Weekends:  06:00 and 14:00"
-echo "  Daily:     22:30 (end-of-day capture, before midnight)"
+echo "  Daily 22:30: handled by GitHub Actions schedule (20:28 UTC)"
 echo ""
 echo "To uninstall:"
 echo "  ./scripts/uninstall-cron.sh"
