@@ -5,3 +5,4 @@ dist/
 tests/.ssr/
 test-results/
 playwright-report/
+output-tmp-txt
