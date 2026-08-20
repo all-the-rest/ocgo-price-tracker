@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-19T17:19:50.058Z",
+  "fetchedAt": "2026-08-20T05:08:03.309Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -523,6 +523,44 @@
       }
     },
     {
+      "name": "Muse Spark 1.2 Contributor",
+      "tier": null,
+      "input": 0.1,
+      "output": 0.2,
+      "cachedRead": 0.002,
+      "cachedWrite": null,
+      "usage": 60,
+      "pattern": {
+        "input": 620,
+        "cachedRead": 71400,
+        "output": 300
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf",
+          "audio"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 1,
+      "effectiveInput": 0.1,
+      "effectiveOutput": 0.2,
+      "effectiveCachedRead": 0.002,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": true,
+        "retentionDays": false,
+        "validUntil": null
+      }
+    },
+    {
       "name": "Qwen3.8 Max",
       "tier": null,
       "input": 2,
@@ -990,6 +1028,28 @@
           "image",
           "audio",
           "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "muse-spark-1.2-contributor-free",
+      "availableFrom": "2026-08-20",
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf",
+          "audio"
         ],
         "output": [
           "text"
