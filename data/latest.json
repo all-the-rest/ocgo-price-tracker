@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-20T05:08:03.309Z",
+  "fetchedAt": "2026-08-20T18:01:00.464Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1093,6 +1093,15 @@
         "reasoning": true,
         "toolCall": true
       },
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "x-preview-f-free",
+      "availableFrom": "2026-08-20",
+      "capabilities": null,
       "privacy": {
         "training": true,
         "validUntil": null
