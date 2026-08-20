@@ -48,10 +48,28 @@ aktualisiert dabei `data/latest.json`, `data/history.json`, `CHANGELOG.json` und
 ## Deployment
 
 GitHub Pages über den Workflow in `.github/workflows/price-tracker.yml`.
-Läuft täglich per Cron `0 5 * * *` (UTC) und kann manuell über
-`workflow_dispatch` im Actions-Tab angestoßen werden.
+Ein schedule-Cron (`20:28 UTC` ≈ 22:28 MEZ/MESZ) läuft täglich als Safety-Net.
+Zusätzlich feuert ein externer Server-Cron alle 2h (06:00–20:00 Wochentage,
+06:00+14:00 Wochenende) den Workflow via `workflow_dispatch`. Manuell über
+`workflow_dispatch` im Actions-Tab oder `./scripts/install-cron.sh` anstoßen.
 
 Custom Domain: `ocgo-pricing.all-the.rest` (CNAME-Datei in `public/`).
+
+### Externer Cron (Server)
+
+```bash
+# Erstinstallation (token wird auf dem Server gespeichert):
+GITHUB_PAT=ghp_xxx ./scripts/install-cron.sh
+
+# Token erneuern (z.B. nach Ablauf):
+GITHUB_PAT=ghp_yyy ./scripts/install-cron.sh
+
+# Schedule aktualisieren (token wird vom Server wiederverwendet):
+./scripts/install-cron.sh
+
+# Deinstallieren:
+./scripts/uninstall-cron.sh
+```
 
 Setup:
 
