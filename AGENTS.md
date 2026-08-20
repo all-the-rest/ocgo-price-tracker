@@ -35,6 +35,38 @@ pnpm preview          # dist/ lokal serven
 pnpm typecheck        # nur tsc --noEmit
 ```
 
+## CodeGraph (Code-Intelligenz)
+
+CodeGraph ist ein lokaler Code-Index (Wissensgraph) mit SQLite-Backend. Der Index
+liegt im Repo unter `.codegraph/` (via File-Watcher auto-sync ~1 s nach Schreiben).
+Bei Code-Fragen/Edits **vor** grep/Read nutzen — eine `explore`-Abfrage liefert die
+Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
+
+- **Binary:** `~/.local/bin/codegraph` (auf dem PATH).
+- **Shell (immer verfügbar):**
+  ```bash
+  codegraph explore "<symbolnamen oder Frage>"   # gleiche Ausgabe wie das MCP-Tool
+  codegraph status                                # Index-Statistik
+  codegraph init          # Index (neu) bauen, falls .codegraph/ fehlt
+  codegraph index         # kompletten Index neu bauen
+  codegraph sync          # nur Änderungen seit letztem Index
+  codegraph query "<term>" # reine Symbolsuche
+  ```
+- **MCP-Server (für den Agenten):** als lokaler stdio-Server eingebunden.
+  Wiring (idempotent, schreibt nach `opencode.json` im Projekt-Root):
+  ```bash
+  opencode2 mcp add codegraph -- codegraph serve --mcp
+  ```
+  Das erzeugt:
+  ```json
+  { "mcp": { "servers": { "codegraph": { "type": "local", "command": ["codegraph", "serve", "--mcp"] } } } }
+  ```
+  Das MCP-Tool heißt `codegraph_explore` (eine Abfrage = Verbatim-Source + Call-Paths).
+  Nach dem (Neu-)Hinzufügen/Ändern eines MCP-Servers **Session neu starten**, damit
+  der Server aktiv wird (`opencode.json` wird beim Start gelesen; `touch` reicht nicht).
+- **Wenn kein `.codegraph/`:** CodeGraph komplett überspringen (kein grep/Read-Ersatz
+  nötig) — das Indexieren ist alleinige Entscheidung des Users (ggf. `codegraph init`).
+
 > **Changelog-Git-History:** `CHANGELOG.json` (strukturierte Änderungs-Events) wird bei Änderungen vom CI committet und gepusht
 > (`git add CHANGELOG.json data src/data`) → vollständige Git-History der Preisänderungen. Ein Lauf **ohne** Änderungen erzeugt
 > **keinen Commit** (keine Daten-Diffs, `data/latest.json`/`data/history.json` bleiben unangetastet); die Website wird trotzdem täglich deployed.

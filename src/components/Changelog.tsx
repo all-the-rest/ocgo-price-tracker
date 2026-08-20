@@ -15,7 +15,7 @@ interface ChangelogProps {
 // Leitet aus einem Run-`id` (z.B. 2026-08-19T06-00-00Z) die Uhrzeit ab (MEZ/MESZ); für
 // Vorschema-Einträge (id = Datum) wird null geliefert (keine Zeitangabe).
 function entryTime(id: string): string | null {
-  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2})-(\d{2})-(\d{2})Z$/.exec(id);
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})Z$/.exec(id);
   if (!m) return null;
   const date = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]));
   return date.toLocaleTimeString([], {
