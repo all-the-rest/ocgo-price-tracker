@@ -31,6 +31,14 @@ export default function Changelog(props: ChangelogProps) {
   const fmtPricing = (p: PricingType, fields: PriceField[], boldUsage = false) => {
     const order: PriceField[] = ["input", "output", "cachedRead"];
     if (p.cachedWrite !== null) order.push("cachedWrite");
+    const usage =
+      p.usage === null ? (
+        <span>∞</span>
+      ) : boldUsage ? (
+        <strong class="font-bold">{fmt(p.usage)}</strong>
+      ) : (
+        fmt(p.usage)
+      );
     return (
       <>
         {order.map((f, i) => (
@@ -39,7 +47,7 @@ export default function Changelog(props: ChangelogProps) {
             {fields.includes(f) ? <strong class="font-bold">{fmt(p[f])}</strong> : <span>{fmt(p[f])}</span>}
           </>
         ))}{" "}
-        @ {boldUsage ? <strong class="font-bold">{fmt(p.usage)}</strong> : fmt(p.usage)}
+        @ {usage}
       </>
     );
   };
@@ -47,11 +55,11 @@ export default function Changelog(props: ChangelogProps) {
   const fmtPricingString = (p: PricingType) => {
     const parts = [fmt(p.input), fmt(p.output), fmt(p.cachedRead)];
     if (p.cachedWrite !== null) parts.push(fmt(p.cachedWrite));
-    return `${parts.join(" / ")} @ $${p.usage}`;
+    return `${parts.join(" / ")} @ ${p.usage === null ? "∞" : `$${p.usage}`}`;
   };
 
   const priceEffective = (p: PricingType): number => {
-    const mult = props.monthlyCredit / p.usage;
+    const mult = p.usage === null ? 0 : props.monthlyCredit / p.usage;
     const val = (x: number | null) => (x === null ? 0 : x * mult);
     return val(p.input) + val(p.output) + val(p.cachedRead) + val(p.cachedWrite);
   };
@@ -72,6 +80,8 @@ export default function Changelog(props: ChangelogProps) {
         return <span class={`${baseCls} badge-ghost`}>≈</span>;
       }
       case "usage_changed": {
+        if (c.to === null) return <span class={`${baseCls} badge-success`}>↓</span>;
+        if (c.from === null) return <span class={`${baseCls} badge-error`}>↑</span>;
         if (c.to > c.from) return <span class={`${baseCls} badge-success`}>↓</span>;
         if (c.to < c.from) return <span class={`${baseCls} badge-error`}>↑</span>;
         return <span class={`${baseCls} badge-ghost`}>≈</span>;
@@ -124,11 +134,12 @@ export default function Changelog(props: ChangelogProps) {
           .split("{model}:")[1]
           ?.split("{from}")[0]
           ?.trim();
+        const fmtUsage = (u: number | null) => (u === null ? "∞" : fmt(u));
         return (
           <span>
             {c.model}: {phrase}{" "}
-            <strong class="font-bold">{fmt(c.from)}</strong> →{" "}
-            <strong class="font-bold">{fmt(c.to)}</strong>
+            <strong class="font-bold">{fmtUsage(c.from)}</strong> →{" "}
+            <strong class="font-bold">{fmtUsage(c.to)}</strong>
           </span>
         );
       }

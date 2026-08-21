@@ -66,6 +66,7 @@ export const i18n = {
     colCachedRead: "Cache-Lesen",
     colCachedWrite: "Cache-Schreiben",
     colUsage: "Inkl. Nutzung",
+    usageUnlimited: "Unbegrenzte Nutzung (kostenloses Modell)",
     usageTooltip:
       "Inkl. Nutzung: ${usage} = {mult}× vom ${paid}/Monat, den du zahlst ({pct}% vom ${credit}-Guthaben). Farben: ≤ 1× dunkelrot · unter halbem Guthaben rot · bis zum Guthaben gelb · Guthaben grün · darüber dunkelgrün",
     per1m: "$/1M Tokens",
@@ -159,6 +160,7 @@ export const i18n = {
     colCachedRead: "Cached Read",
     colCachedWrite: "Cached Write",
     colUsage: "Included usage",
+    usageUnlimited: "Unlimited usage (free model)",
     usageTooltip:
       "Included usage: ${usage} = {mult}× of the ${paid}/mo you pay ({pct}% of the ${credit} credit). Colors: ≤ 1× dark red · below half the credit red · up to the credit yellow · at the credit green · above dark green",
     per1m: "$/1M tokens",

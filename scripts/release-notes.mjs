@@ -22,7 +22,7 @@ function fmtPrice(n) {
 function pricingLine(p) {
   const parts = [fmtPrice(p.input), fmtPrice(p.output), fmtPrice(p.cachedRead)];
   if (p.cachedWrite !== null) parts.push(fmtPrice(p.cachedWrite));
-  return `${parts.join(" / ")} @ $${p.usage}`;
+  return `${parts.join(" / ")} @ ${p.usage === null ? "∞ (unlimited)" : `$${p.usage}`}`;
 }
 
 function fmtCaps(c) {
@@ -57,8 +57,10 @@ function renderChange(c) {
       const fields = c.fields.map((f) => PRICE_FIELD_NAMES[f] ?? f).join(", ");
       return `- **${c.model}** — price change (${fields}): ${pricingLine(c.from)} → ${pricingLine(c.to)}`;
     }
-    case "usage_changed":
-      return `- **${c.model}** — usage: $${c.from} → $${c.to}`;
+    case "usage_changed": {
+      const fmtU = (u) => (u === null ? "∞ (unlimited)" : `$${u}`);
+      return `- **${c.model}** — usage: ${fmtU(c.from)} → ${fmtU(c.to)}`;
+    }
     case "capabilities_changed":
       return `- **${c.model}** — capabilities: ${fmtCaps(c.from)} → ${fmtCaps(c.to)}`;
     case "privacy_changed":

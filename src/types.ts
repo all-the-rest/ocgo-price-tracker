@@ -29,7 +29,8 @@ export interface PricingType {
   output: number | null;
   cachedRead: number | null;
   cachedWrite: number | null;
-  usage: number;
+  /** null = unbegrenzte Nutzung (kostenlose Modelle) */
+  usage: number | null;
 }
 
 export interface RequestPattern {
@@ -52,8 +53,8 @@ export interface Model {
   output: number | null;
   cachedRead: number | null;
   cachedWrite: number | null;
-  usage: number;
-  multiplier: number;
+  usage: number | null;
+  multiplier: number | null;
   effectiveInput: number | null;
   effectiveOutput: number | null;
   effectiveCachedRead: number | null;
@@ -85,7 +86,7 @@ export type Change =
   | { type: "model_added"; model: string; pricing: PricingType }
   | { type: "model_removed"; model: string; days: number; pricing: PricingType }
   | { type: "price_changed"; model: string; from: PricingType; to: PricingType; fields: PriceField[] }
-  | { type: "usage_changed"; model: string; from: number; to: number }
+  | { type: "usage_changed"; model: string; from: number | null; to: number | null }
   | { type: "capabilities_changed"; model: string; from: Capabilities | null; to: Capabilities | null }
   | { type: "privacy_changed"; model: string; from: Privacy | null; to: Privacy | null }
   | { type: "free_added"; model: string }

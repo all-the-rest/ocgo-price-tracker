@@ -52,6 +52,7 @@ export default function PriceTable(props: PriceTableProps) {
     if (f === "requests")
       return requestsPerMonth(m, props.basis, props.monthlyCredit, props.monthlyCost);
     if (f === "name") return m.name.toLowerCase();
+    if (f === "usage") return m.usage ?? Infinity; // unbegrenzte Nutzung = bester Wert
     if (f === "input" || f === "output" || f === "cachedRead" || f === "cachedWrite") {
       return fieldPrice(m, f, props.basis, props.monthlyCost);
     }
@@ -135,7 +136,7 @@ export default function PriceTable(props: PriceTableProps) {
 
   const factorNote = createMemo(() => {
     if (props.basis === "list") return "";
-    const usages = [...new Set(props.models.map((m) => m.usage))].sort((a, b) => a - b);
+    const usages = [...new Set(props.models.map((m) => m.usage))].filter((u): u is number => u !== null).sort((a, b) => a - b);
     if (props.basis === "paid") {
       const rows = usages
         .map((u) => `$${u} → ${factorPhrase(u / props.monthlyCost, props.lang, "value")}`)
@@ -260,22 +261,33 @@ export default function PriceTable(props: PriceTableProps) {
                   <td>{priceCell(fieldPrice(m, "cachedRead", props.basis, props.monthlyCost))}</td>
                   <td>{priceCell(fieldPrice(m, "cachedWrite", props.basis, props.monthlyCost))}</td>
                   <td class="text-right whitespace-nowrap">
-                    <Tooltip
-                      tip={props.t.usageTooltip
-                        .replace("{pct}", String(usagePct(m.usage)))
-                        .replace("{usage}", String(m.usage))
-                        .replace("{credit}", String(props.monthlyCredit))
-                        .replace("{mult}", formatMult(m.usage / props.monthlyCost, props.lang))
-                        .replace("{paid}", String(props.monthlyCost))}
-                      class="inline-block"
+                    <Show
+                      when={m.usage}
+                      fallback={
+                        <Tooltip tip={props.t.usageUnlimited} class="inline-block">
+                          <span class="badge badge-sm badge-success font-bold">∞</span>
+                        </Tooltip>
+                      }
                     >
-                      <span
-                        class={`badge badge-sm ${usageBadge(m.usage)}`}
-                        classList={{ "font-bold": m.usage > props.monthlyCredit }}
-                      >
-                        ${m.usage} · {formatMult(m.usage / props.monthlyCost, props.lang)}×
-                      </span>
-                    </Tooltip>
+                      {(usage) => (
+                        <Tooltip
+                          tip={props.t.usageTooltip
+                            .replace("{pct}", String(usagePct(usage())))
+                            .replace("{usage}", String(usage()))
+                            .replace("{credit}", String(props.monthlyCredit))
+                            .replace("{mult}", formatMult(usage() / props.monthlyCost, props.lang))
+                            .replace("{paid}", String(props.monthlyCost))}
+                          class="inline-block"
+                        >
+                          <span
+                            class={`badge badge-sm ${usageBadge(usage())}`}
+                            classList={{ "font-bold": usage() > props.monthlyCredit }}
+                          >
+                            ${usage()} · {formatMult(usage() / props.monthlyCost, props.lang)}×
+                          </span>
+                        </Tooltip>
+                      )}
+                    </Show>
                   </td>
                   <td>
                     <Show when={m.pattern} fallback={priceCell(null)}>

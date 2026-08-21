@@ -85,8 +85,13 @@ function parsePrice(text) {
   return value;
 }
 
+/**
+ * Parst die Nutzung-Spalte. "-" (kein Nutzungslimit, z. B. kostenlose Modelle
+ * wie Ox Alpha Free) → null = unbegrenzte Nutzung; sonst `$15` → 15.
+ */
 function parseUsage(text) {
   const t = (text ?? "").trim();
+  if (t === "" || t === "-" || t === "—" || t === "–") return null;
   const cleaned = t.replace(/[\$,\s]/g, "");
   const value = Number(cleaned);
   if (!Number.isFinite(value)) throw new ScrapeError(`Nutzung unparsebar: "${text}"`);
@@ -390,6 +395,16 @@ function parseModel(cells, colMap) {
  * Wert wird das Fallback-Guthaben (`DEFAULT_MONTHLY_CREDIT`) verwendet.
  */
 function recomputeUsageDerived(model, monthlyCredit = DEFAULT_MONTHLY_CREDIT) {
+  // usage = null (unbegrenzte Nutzung, kostenlose Modelle) → keine Multiplikator-
+  // Rechnung; die Effektivpreise sind hier ohnehin null (keine Listenpreise).
+  if (model.usage === null) {
+    model.multiplier = null;
+    model.effectiveInput = null;
+    model.effectiveOutput = null;
+    model.effectiveCachedRead = null;
+    model.effectiveCachedWrite = null;
+    return;
+  }
   const multiplier = monthlyCredit / model.usage;
   const effective = (price) => (price === null ? null : price * multiplier);
   model.multiplier = multiplier;
@@ -717,6 +732,7 @@ export function applyUsageBonuses(models, bonuses, monthlyCredit = DEFAULT_MONTH
   for (const m of models) {
     const factor = bonuses.get(normalizeName(m.name));
     if (!factor || factor <= 0) continue;
+    if (m.usage === null) continue; // unbegrenzte Nutzung — kein Bonus anwendbar
     m.usage = m.usage * factor;
     recomputeUsageDerived(m, monthlyCredit);
   }
@@ -1106,23 +1122,33 @@ const PrivacySchema = z.object({
   fallback: z.boolean().optional(),
 });
 
-const ModelSchema = z.object({
-  name: z.string().min(1),
-  tier: z.string().nullable(),
-  input: z.number().nullable(),
-  output: z.number().nullable(),
-  cachedRead: z.number().nullable(),
-  cachedWrite: z.number().nullable(),
-  usage: z.number().positive(),
-  multiplier: z.number().positive(),
-  effectiveInput: z.number().nullable(),
-  effectiveOutput: z.number().nullable(),
-  effectiveCachedRead: z.number().nullable(),
-  effectiveCachedWrite: z.number().nullable(),
-  pattern: RequestPatternSchema,
-  capabilities: CapabilitiesSchema.nullable(),
-  privacy: PrivacySchema.nullable(),
-});
+const ModelSchema = z
+  .object({
+    name: z.string().min(1),
+    tier: z.string().nullable(),
+    input: z.number().nullable(),
+    output: z.number().nullable(),
+    cachedRead: z.number().nullable(),
+    cachedWrite: z.number().nullable(),
+    // null = unbegrenzte Nutzung (kostenlose Modelle, "-" in der Doku)
+    usage: z.number().positive().nullable(),
+    multiplier: z.number().positive().nullable(),
+    effectiveInput: z.number().nullable(),
+    effectiveOutput: z.number().nullable(),
+    effectiveCachedRead: z.number().nullable(),
+    effectiveCachedWrite: z.number().nullable(),
+    pattern: RequestPatternSchema.nullable(),
+    capabilities: CapabilitiesSchema.nullable(),
+    privacy: PrivacySchema.nullable(),
+  })
+  .superRefine((m, ctx) => {
+    // Modelle MIT Preisen/Nutzung müssen ein Anfragemuster haben; ausschließlich
+    // kostenlose Zeilen (alles "-") dürfen ohne Muster durchgehen.
+    const hasPricing = m.usage !== null || m.input !== null || m.output !== null || m.cachedRead !== null;
+    if (hasPricing && m.pattern === null) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pattern"], message: "pattern fehlt (Preise vorhanden)" });
+    }
+  });
 
 const FreeModelSchema = z.object({
   id: z.string().min(1),
@@ -1159,7 +1185,7 @@ const PricingTypeSchema = z.object({
   output: z.number().nullable(),
   cachedRead: z.number().nullable(),
   cachedWrite: z.number().nullable(),
-  usage: z.number().positive(),
+  usage: z.number().positive().nullable(),
 });
 
 const ChangeSchema = z.discriminatedUnion("type", [
@@ -1188,8 +1214,8 @@ const ChangeSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("usage_changed"),
     model: z.string().min(1),
-    from: z.number().positive(),
-    to: z.number().positive(),
+    from: z.number().positive().nullable(),
+    to: z.number().positive().nullable(),
   }),
   z.object({
     type: z.literal("capabilities_changed"),
@@ -1231,8 +1257,9 @@ export function validateChangelog(changelog) {
 }
 
 /**
- * Validiert einen kompletten Snapshot (zod). Jedes Modell MUSS Token-Stats
- * (`pattern`) haben — ein fehlendes Muster bricht den Lauf rot ab.
+ * Validiert einen kompletten Snapshot (zod). Modelle MIT Preisen/Nutzung müssen
+ * Token-Stats (`pattern`) haben — ein fehlendes Muster bricht den Lauf rot ab.
+ * Ausnahme: vollständig kostenlose Zeilen (alle Preise "-", Nutzung "-").
  */
 export function validateSnapshot(snapshot) {
   return SnapshotSchema.parse(snapshot);

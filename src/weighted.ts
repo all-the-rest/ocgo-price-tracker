@@ -19,7 +19,10 @@ const EFFECTIVE_FIELD: Record<PriceField, keyof Model> = {
 export function fieldPrice(m: Model, f: PriceField, basis: Basis, monthlyCost: number): number | null {
   const raw = m[f];
   if (basis === "list") return raw;
-  if (basis === "paid") return raw === null ? null : raw * (monthlyCost / m.usage);
+  if (basis === "paid") {
+    if (raw === null || m.usage === null) return null;
+    return raw * (monthlyCost / m.usage);
+  }
   return (m[EFFECTIVE_FIELD[f]] ?? raw) as number | null;
 }
 
@@ -57,7 +60,15 @@ export function requestCost(m: Model, basis: Basis, monthlyCost: number): number
  * $‑Betrag für das Modell) ÷ Kosten pro Anfrage zum Listenpreis. Unabhängig von
  * der gewählten Preisbasis immer auf Basis des Listenpreises gerechnet.
  */
+/**
+ * Anzahl der Anfragen pro Monat: inkl. Nutzung (usage, der im Plan enthaltene
+ * $‑Betrag für das Modell) ÷ Kosten pro Anfrage zum Listenpreis. Unabhängig von
+ * der gewählten Preisbasis immer auf Basis des Listenpreises gerechnet.
+ * Unbegrenzte Nutzung (usage = null, kostenlose Modelle) → Infinity
+ * (sortiert bei absteigender Sortierung ganz nach oben).
+ */
 export function requestsPerMonth(m: Model, basis: Basis, monthlyCredit: number, monthlyCost: number): number | null {
+  if (m.usage === null) return Infinity;
   const cost = requestCost(m, "list", monthlyCost);
   if (cost === null || cost <= 0) return null;
   return m.usage / cost;
