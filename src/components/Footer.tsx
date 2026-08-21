@@ -35,6 +35,14 @@ export default function Footer(props: FooterProps) {
             {props.t.sourceCaps}
           </a>
           <a
+            href="https://ai-10-usd.all-the.rest"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="underline"
+          >
+            {props.t.sourceAi10}
+          </a>
+          <a
             href="https://github.com/all-the-rest/ocgo-price-tracker/releases.atom"
             target="_blank"
             rel="noopener noreferrer"

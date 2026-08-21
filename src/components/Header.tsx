@@ -1,4 +1,5 @@
-import type { Lang } from "../i18n";
+import { For } from "solid-js";
+import type { Lang, Translation } from "../i18n";
 
 interface HeaderProps {
   lang: Lang;
@@ -6,9 +7,17 @@ interface HeaderProps {
   dark: boolean;
   setDark: (v: boolean) => void;
   onReset: () => void;
+  t: Translation;
 }
 
 export default function Header(props: HeaderProps) {
+  // Single source of truth für die Cross-Links — einmal definiert und sowohl
+  // in der Desktop-Zeile (≥ md) als auch im Mobile-Burger (< md) gerendert,
+  // damit die beiden Darstellungen nicht auseinanderlaufen.
+  const crossLinks = () => [
+    { href: "https://ai-10-usd.all-the.rest/", label: props.t.sourceAi10, badge: "comparison" },
+  ];
+
   return (
     <header class="navbar sticky top-0 z-10 bg-base-200 px-6 shadow-sm">
       <div class="navbar-start">
@@ -41,7 +50,57 @@ export default function Header(props: HeaderProps) {
           </span>
         </a>
       </div>
-      <div class="navbar-end gap-2">
+      <div class="navbar-end gap-2 sm:gap-4">
+        {/* Desktop (≥ md): Cross-Links inline */}
+        <div class="hidden items-center gap-4 md:flex">
+          <For each={crossLinks()}>
+            {(link) => (
+              <a
+                class="link link-hover inline-flex items-center gap-1"
+                href={link.href}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {link.label}
+                <span class="badge badge-ghost badge-xs whitespace-nowrap">{link.badge}</span>
+                <span aria-hidden="true">↗</span>
+              </a>
+            )}
+          </For>
+        </div>
+        {/* Mobile (< md): Burger-Dropdown mit denselben Links */}
+        <div class="dropdown dropdown-end md:hidden">
+          <div
+            tabindex="0"
+            role="button"
+            class="btn btn-ghost btn-circle btn-sm"
+            aria-label={props.lang === "de" ? "Weitere Links" : "More links"}
+          >
+            <svg
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </div>
+          <ul tabindex="0" class="menu dropdown-content z-20 mt-2 w-60 rounded-box bg-base-100 p-2 shadow-lg">
+            <For each={crossLinks()}>
+              {(link) => (
+                <li>
+                  <a href={link.href} target="_blank" rel="noreferrer">
+                    {link.label} <span aria-hidden="true">↗</span>
+                  </a>
+                </li>
+              )}
+            </For>
+          </ul>
+        </div>
         <div class="join">
           <button
             class="join-item btn btn-sm"
