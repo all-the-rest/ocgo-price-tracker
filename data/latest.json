@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-21T11:14:58.800Z",
+  "fetchedAt": "2026-08-21T13:39:31.219Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -18,6 +18,16 @@
       ]
     ],
     "deepseekv4flash": [
+      [
+        1,
+        4
+      ],
+      [
+        6,
+        10
+      ]
+    ],
+    "deepseekv4flashvisionexp": [
       [
         1,
         4
@@ -909,6 +919,76 @@
         "training": false,
         "retentionDays": true,
         "validUntil": "2026-08-31"
+      }
+    },
+    {
+      "name": "DeepSeek V4 Flash Vision Exp",
+      "tier": "Off-Peak",
+      "input": 0.22,
+      "output": 0.66,
+      "cachedRead": 0.007,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 410,
+        "cachedRead": 71300,
+        "output": 310
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 0.88,
+      "effectiveOutput": 2.64,
+      "effectiveCachedRead": 0.028,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      }
+    },
+    {
+      "name": "DeepSeek V4 Flash Vision Exp",
+      "tier": "Peak",
+      "input": 0.44,
+      "output": 1.32,
+      "cachedRead": 0.014,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 410,
+        "cachedRead": 71300,
+        "output": 310
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 1.76,
+      "effectiveOutput": 5.28,
+      "effectiveCachedRead": 0.056,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
       }
     },
     {
