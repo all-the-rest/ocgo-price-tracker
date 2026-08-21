@@ -91,8 +91,8 @@ export type Change =
   | { type: "usage_changed"; model: string; from: number | null; to: number | null }
   | { type: "capabilities_changed"; model: string; from: Capabilities | null; to: Capabilities | null }
   | { type: "privacy_changed"; model: string; from: Privacy | null; to: Privacy | null }
-  | { type: "free_added"; model: string }
-  | { type: "free_removed"; model: string; availableFrom: string; until: string };
+  | { type: "free_added"; model: string; name?: string }
+  | { type: "free_removed"; model: string; name?: string; availableFrom: string; until: string };
 
 export interface ChangelogEntry {
   id: string;

@@ -1038,10 +1038,18 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
   const prevIds = prevFree.map((f) => f.id);
   const nextIds = nextFree.map((f) => f.id);
   for (const f of nextFree.filter((f) => !prevIds.includes(f.id))) {
-    changes.push({ type: "free_added", model: f.id });
+    // Optionaler Anzeigename (models.dev, z. B. x-preview-f-free → „Ox Alpha
+    // Free") — die rohe Zen-ID bleibt als `model` erhalten (Diff/Referenz).
+    changes.push({ type: "free_added", model: f.id, ...(f.name ? { name: f.name } : {}) });
   }
   for (const f of prevFree.filter((f) => !nextIds.includes(f.id))) {
-    changes.push({ type: "free_removed", model: f.id, availableFrom: f.availableFrom, until: today });
+    changes.push({
+      type: "free_removed",
+      model: f.id,
+      ...(f.name ? { name: f.name } : {}),
+      availableFrom: f.availableFrom,
+      until: today,
+    });
   }
 
   for (const f of nextFree) {
@@ -1261,10 +1269,11 @@ const ChangeSchema = z.discriminatedUnion("type", [
     from: PrivacySchema.nullable(),
     to: PrivacySchema.nullable(),
   }),
-  z.object({ type: z.literal("free_added"), model: z.string().min(1) }),
+  z.object({ type: z.literal("free_added"), model: z.string().min(1), name: z.string().min(1).optional() }),
   z.object({
     type: z.literal("free_removed"),
     model: z.string().min(1),
+    name: z.string().min(1).optional(),
     availableFrom: z.string(),
     until: z.string(),
   }),

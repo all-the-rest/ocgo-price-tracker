@@ -511,11 +511,13 @@ test("buildChanges: kostenlose Modelle hinzugefügt/entfernt", () => {
   const prevFree = [{ id: "a-free", availableFrom: "2026-08-01" }];
   const nextFree = [
     { id: "a-free", availableFrom: "2026-08-01" },
-    { id: "big-pickle", availableFrom: "2026-08-05" },
+    { id: "big-pickle", availableFrom: "2026-08-05", name: "Big Pickle" },
   ];
+  // Mit models.dev-Namen → `name` im Event (z. B. x-preview-f-free → „Ox Alpha Free").
   const added = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
-  assert.deepEqual(added, [{ type: "free_added", model: "big-pickle" }]);
+  assert.deepEqual(added, [{ type: "free_added", model: "big-pickle", name: "Big Pickle" }]);
 
+  // Ohne Namen → kein `name`-Feld (Rückfall in der UI auf die pretty ID).
   const removed = buildChanges(base, base, prevFree, [], "2026-08-06");
   assert.deepEqual(removed, [
     { type: "free_removed", model: "a-free", availableFrom: "2026-08-01", until: "2026-08-06" },

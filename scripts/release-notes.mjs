@@ -66,9 +66,9 @@ function renderChange(c) {
     case "privacy_changed":
       return `- **${c.model}** — privacy: ${fmtPrivacy(c.from)} → ${fmtPrivacy(c.to)}`;
     case "free_added":
-      return `- **${c.model}** — new free model`;
+      return `- **${c.name ?? c.model}** — new free model`;
     case "free_removed":
-      return `- **${c.model}** — free model removed (since ${c.availableFrom})`;
+      return `- **${c.name ?? c.model}** — free model removed (since ${c.availableFrom})`;
     default:
       return `- ${c.type}: ${JSON.stringify(c)}`;
   }
