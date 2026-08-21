@@ -71,6 +71,18 @@ for (const route of routes) {
         // the config outputDir — build the absolute path explicitly.
         await page.screenshot({ path: out(state, viewport, `${route.name}.png`), fullPage: true });
         await captureSections(page, state, viewport, route.name);
+        // Focused, element-scoped captures for "notice areas" (Hinweis-Bereiche)
+        // — e.g. the privacy table or the changelog — so the vision review can
+        // judge them at readable resolution without full-page downscaling.
+        for (const sel of route.elements ?? []) {
+          const slug = sel.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
+          const locator = page.locator(sel);
+          if ((await locator.count()) > 0) {
+            await locator.first().screenshot({
+              path: out(state, viewport, `${route.name}-${slug}.png`),
+            });
+          }
+        }
       });
     }
   }
