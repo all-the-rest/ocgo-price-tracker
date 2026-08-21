@@ -1,8 +1,8 @@
-import { For, Show } from "solid-js";
+import { For, Show, createSignal, onMount } from "solid-js";
 import type { Lang, Translation } from "../i18n";
 import Heading, { AnchorLink } from "./Heading";
 import type { Change, ChangelogEntry, PriceField, PricingType } from "../types";
-import { fmt, formatModelName } from "../util";
+import { fmt, formatFreeModelName } from "../util";
 import { capCount, fmtCaps } from "../capabilities";
 import { privacyLabelWithValidUntil, privacyRank } from "../privacy";
 
@@ -12,6 +12,9 @@ interface ChangelogProps {
   lang: Lang;
   monthlyCredit: number;
 }
+
+// Einträge pro Changelog-Seite (Pagination).
+const PAGE_SIZE = 20;
 
 // Leitet aus einem Run-`id` (z.B. 2026-08-19T06-00-00Z) die Uhrzeit ab (MEZ/MESZ); für
 // Vorschema-Einträge (id = Datum) wird null geliefert (keine Zeitangabe).
@@ -28,6 +31,21 @@ function entryTime(id: string): string | null {
 }
 
 export default function Changelog(props: ChangelogProps) {
+  const totalPages = () => Math.max(1, Math.ceil(props.entries.length / PAGE_SIZE));
+  const [page, setPage] = createSignal(1);
+
+  // Deep-Link auf einen Eintrag (#<entry-id>): direkt auf die passende Seite.
+  onMount(() => {
+    const hash = window.location.hash.slice(1);
+    const idx = props.entries.findIndex((e) => e.id === hash);
+    if (idx >= 0) setPage(Math.floor(idx / PAGE_SIZE) + 1);
+  });
+
+  // Klemmt die Seite, falls `entries` schrumpft (z. B. nach Daten-Patch).
+  const clampedPage = () => Math.min(Math.max(1, page()), totalPages());
+  const visibleEntries = () =>
+    props.entries.slice((clampedPage() - 1) * PAGE_SIZE, clampedPage() * PAGE_SIZE);
+
   const fmtPricing = (p: PricingType, fields: PriceField[], boldUsage = false) => {
     const order: PriceField[] = ["input", "output", "cachedRead"];
     if (p.cachedWrite !== null) order.push("cachedWrite");
@@ -162,7 +180,11 @@ export default function Changelog(props: ChangelogProps) {
           </span>
         );
       case "free_added":
-        return <span>{props.t.chgFreeAdded.replace("{model}", formatModelName(c.model))}</span>;
+        return (
+          <span>
+            {props.t.chgFreeAdded.replace("{model}", formatFreeModelName({ id: c.model, name: c.name }))}
+          </span>
+        );
       case "free_removed": {
         const days = Math.max(
           0,
@@ -171,7 +193,7 @@ export default function Changelog(props: ChangelogProps) {
         return (
           <span>
             {props.t.chgFreeRemoved
-              .replace("{model}", formatModelName(c.model))
+              .replace("{model}", formatFreeModelName({ id: c.model, name: c.name }))
               .replace("{days}", String(days))
               .replace("{from}", c.availableFrom)}
           </span>
@@ -184,7 +206,7 @@ export default function Changelog(props: ChangelogProps) {
     <section id="changelog" class="mt-10">
       <Heading anchor="changelog">{props.t.headingChangelog}</Heading>
       <div class="mt-2 max-w-3xl text-sm leading-relaxed text-base-content/80">
-        <For each={props.entries}>
+        <For each={visibleEntries()}>
           {(entry) => (
             <div id={entry.id} class="mt-4 scroll-mt-24">
               <h3 class="text-sm font-semibold text-base-content/70">
@@ -210,6 +232,29 @@ export default function Changelog(props: ChangelogProps) {
           )}
         </For>
       </div>
+      <Show when={totalPages() > 1}>
+        <nav class="mt-6 flex items-center justify-center gap-2" aria-label="Changelog pagination">
+          <button
+            type="button"
+            class="btn btn-sm"
+            disabled={clampedPage() <= 1}
+            onClick={() => setPage(clampedPage() - 1)}
+          >
+            ‹ {props.t.chgPrev}
+          </button>
+          <span class="text-sm text-base-content/60">
+            {props.t.chgPage.replace("{page}", String(clampedPage())).replace("{total}", String(totalPages()))}
+          </span>
+          <button
+            type="button"
+            class="btn btn-sm"
+            disabled={clampedPage() >= totalPages()}
+            onClick={() => setPage(clampedPage() + 1)}
+          >
+            {props.t.chgNext} ›
+          </button>
+        </nav>
+      </Show>
     </section>
   );
 }
