@@ -2,7 +2,7 @@ import { createMemo, For, Show } from "solid-js";
 import type { Translation } from "../i18n";
 import Heading from "./Heading";
 import type { FreeModel } from "../types";
-import { fmtDateOnly, formatModelName } from "../util";
+import { fmtDateOnly, formatFreeModelName } from "../util";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import type { FreeSortField, FreeSortState } from "../sort";
 
@@ -70,7 +70,7 @@ export default function FreeModelsTable(props: FreeModelsTableProps) {
               <For each={sortedFree()}>
                 {(f) => (
                   <tr>
-                    <td class="font-medium">{formatModelName(f.id)}</td>
+                    <td class="font-medium">{formatFreeModelName(f)}</td>
                     <td>
                       <CapabilityBadges m={f} t={props.t} />
                     </td>

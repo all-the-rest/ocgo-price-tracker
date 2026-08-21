@@ -174,6 +174,16 @@ const PRIVACY_FALLBACKS = {
 };
 
 /**
+ * Manuelle Datenschutz-Angaben für einzelne kostenlose Zen-Modelle (models.dev
+ * führt keine Datenschutz-Felder): x-preview-f-free ist Ox Alpha Free (laut
+ * models.dev der Zen-Eintrag „Ox Alpha Free (Unlimited)“) und hat wie das
+ * Doku-Modell ZDR. Eintrag kann entfallen, sobald die Quelle selbst listet.
+ */
+const FREE_MODEL_PRIVACY_OVERRIDES = {
+  "xpreviewffree": { training: false, retentionDays: true, validUntil: null },
+};
+
+/**
  * Filtert aus einer Liste von OpenCode-Zen-Modell-IDs die kostenlosen Modelle
  * ("free" im Namen) sowie "big-pickle" heraus, dedupliziert und sortiert.
  */
@@ -767,16 +777,24 @@ export const privacyStatusEqual = (a, b) => {
 
 /**
  * Baut die Lookups für die models.dev-Zuordnung auf: opencode-Provider
- * (normalisierte ID und Name) plus kanonische Metadaten (normalisierter Name,
- * bei Kollisionen exakter Normalized-ID-Treffer, sonst erste nach ID sortiert).
+ * (normalisierte ID und Name), kanonische Metadaten (normalisierter Name,
+ * bei Kollisionen exakter Normalized-ID-Treffer, sonst erste nach ID sortiert),
+ * danach opencode-go als Lückenfüller (nur Treffer, die weder im Zen-Provider
+ * noch kanonisch existieren — dessen Einträge sind teils weniger gepflegt).
  * `resolve(id, name)` liefert das passende models.dev-Modell oder null.
  */
-function buildModelsDevLookup(opencodeModels, metadataModels) {
+function buildModelsDevLookup(opencodeModels, metadataModels, goModels = {}) {
   const opencodeById = new Map();
   const opencodeByName = new Map();
   for (const m of Object.values(opencodeModels)) {
     opencodeById.set(normalizeName(m.id), m);
     opencodeByName.set(normalizeName(m.name), m);
+  }
+  const goById = new Map();
+  const goByName = new Map();
+  for (const m of Object.values(goModels)) {
+    goById.set(normalizeName(m.id), m);
+    goByName.set(normalizeName(m.name), m);
   }
 
   const canonByName = new Map();
@@ -799,7 +817,13 @@ function buildModelsDevLookup(opencodeModels, metadataModels) {
 
   const resolve = (id, name) => {
     const norm = normalizeName(id);
-    return opencodeById.get(norm) ?? opencodeByName.get(norm) ?? (name ? resolveCanon(name) : null);
+    return (
+      opencodeById.get(norm) ??
+      opencodeByName.get(norm) ??
+      (name ? resolveCanon(name) : null) ??
+      goById.get(norm) ??
+      (name ? goByName.get(normalizeName(name)) ?? null : null)
+    );
   };
 
   return { resolve };
@@ -809,8 +833,8 @@ function buildModelsDevLookup(opencodeModels, metadataModels) {
  * Reichert jedes Modell mit einem `capabilities`-Objekt aus den models.dev-Daten
  * an (opencode-Provider zuerst, dann kanonische Metadaten, sonst null).
  */
-export function enrichCapabilities(models, opencodeModels, metadataModels) {
-  const { resolve } = buildModelsDevLookup(opencodeModels, metadataModels);
+export function enrichCapabilities(models, opencodeModels, metadataModels, goModels = {}) {
+  const { resolve } = buildModelsDevLookup(opencodeModels, metadataModels, goModels);
   for (const m of models) {
     const norm = normalizeName(m.name);
     let md = null;
@@ -826,19 +850,25 @@ export function enrichCapabilities(models, opencodeModels, metadataModels) {
 }
 
 /**
- * Reichert die kostenlosen Zen-Modelle mit `capabilities` an. Zuordnung über die
- * models.dev-ID des opencode-Providers (normalisiert), Fallback auf die
- * kanonischen Metadaten über den normalisierten ID-Slug.
+ * Reichert die kostenlose Zen-Modelle mit `name` (öffentlicher Name aus
+ * models.dev, Klammer-Zusätze wie „(Unlimited)“ werden entfernt — nur
+ * informativ, Namensänderungen erzeugen keine Changelog-Events), `capabilities`
+ * (models.dev: opencode-go zuerst, Fallback opencode-zen, dann kanonische
+ * Metadaten) und `privacy` an.
+ *
+ * Standard-privacy: „fürs Training genutzt“ (keine explizite Angabe in der Doku
+ * — Zen-Seite nennt lediglich das Feedback zur Modellverbesserung;
+ * Aufbewahrung unbekannt → `retentionDays` bleibt weg). Ausnahmen siehe
+ * FREE_MODEL_PRIVACY_OVERRIDES.
  */
-export function enrichFreeModels(freeModels, opencodeModels, metadataModels) {
-  const { resolve } = buildModelsDevLookup(opencodeModels, metadataModels);
+export function enrichFreeModels(freeModels, providerModels, metadataModels, goModels = {}) {
+  const { resolve } = buildModelsDevLookup(providerModels, metadataModels, goModels);
   for (const f of freeModels) {
-    f.capabilities = toCapabilities(resolve(f.id, f.id));
-    // Kostenlose Zen-Modelle (inkl. big-pickle) werden von OpenCode fürs
-    // Modelltraining genutzt (keine explizite Angabe in der Doku — Zen-Seite
-    // nennt lediglich das Feedback zur Modellverbesserung). Aufbewahrung ist
-    // unbekannt → Feld `retentionDays` bleibt weg (undefined).
-    f.privacy = { training: true, validUntil: null };
+    const md = resolve(f.id, f.id);
+    f.capabilities = toCapabilities(md);
+    const publicName = md?.name?.replace(/\s*\([^)]*\)\s*$/, "").trim();
+    if (publicName) f.name = publicName;
+    f.privacy = FREE_MODEL_PRIVACY_OVERRIDES[normalizeName(f.id)] ?? { training: true, validUntil: null };
   }
   return freeModels;
 }
@@ -1152,6 +1182,8 @@ const ModelSchema = z
 
 const FreeModelSchema = z.object({
   id: z.string().min(1),
+  // optionaler Anzeigename (bei Alias-IDs wie x-preview-f-free = Ox Alpha Free)
+  name: z.string().min(1).optional(),
   availableFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   capabilities: CapabilitiesSchema.nullable(),
   privacy: PrivacySchema,
@@ -1310,7 +1342,12 @@ async function main() {
     for (const m of models) recomputeUsageDerived(m, monthlyCredit);
 
     const { providers: mdProviders, models: mdModels, source: mdSource } = await loadModelsDev();
-    enrichCapabilities(models, mdProviders.opencode?.models ?? {}, mdModels);
+    // Reihenfolge: opencode (Zen) → kanonische Metadaten → opencode-go (nur
+    // Lückenfüller; die Go-Einträge sind teils weniger gepflegt, z. B. fehlende
+    // Modalitäten bei qwen3.8-max/mimo-v2-omni).
+    const zenModels = mdProviders.opencode?.models ?? {};
+    const goModels = mdProviders["opencode-go"]?.models ?? {};
+    enrichCapabilities(models, zenModels, mdModels, goModels);
 
     const fetchedAt = new Date().toISOString();
     const date = fetchedAt.slice(0, 10);
@@ -1324,8 +1361,9 @@ async function main() {
     const currentIds = await fetchZenFreeModels(prevFree.map((f) => f.id));
     const freeModels = enrichFreeModels(
       mergeFreeModels(prevFree, currentIds, date),
-      mdProviders.opencode?.models ?? {},
-      mdModels
+      zenModels,
+      mdModels,
+      goModels
     );
 
     const historyPath = join(ROOT, "data", "history.json");

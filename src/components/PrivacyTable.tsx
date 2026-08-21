@@ -2,7 +2,7 @@ import { createMemo, For, Show } from "solid-js";
 import type { Translation } from "../i18n";
 import Heading from "./Heading";
 import type { FreeModel, Model, Privacy } from "../types";
-import { fmtDateOnly, formatModelName } from "../util";
+import { fmtDateOnly, formatFreeModelName } from "../util";
 import { privacyBadgeClass, privacyLabel, privacySortKey, privacyTier } from "../privacy";
 import type { PrivacySortField, PrivacySortState } from "../sort";
 
@@ -30,7 +30,7 @@ export default function PrivacyTable(props: PrivacyTableProps) {
       out.push({ name: m.name, privacy: m.privacy });
     }
     for (const f of props.freeModels) {
-      out.push({ name: formatModelName(f.id), privacy: f.privacy });
+      out.push({ name: formatFreeModelName(f), privacy: f.privacy });
     }
     return out;
   });

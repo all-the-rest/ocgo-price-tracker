@@ -41,6 +41,8 @@ export interface RequestPattern {
 
 export interface FreeModel {
   id: string;
+  /** optionaler Anzeigename (bei Alias-IDs wie x-preview-f-free = Ox Alpha Free) */
+  name?: string;
   availableFrom: string;
   capabilities: Capabilities | null;
   privacy: Privacy;

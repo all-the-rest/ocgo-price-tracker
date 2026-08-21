@@ -196,7 +196,7 @@ export default function Changelog(props: ChangelogProps) {
               </h3>
               <Show when={entry.changes.length > 0} fallback={<p class="mt-1">{props.t.chgNone}</p>}>
                 <ul class="mt-1 space-y-1">
-                  <For each={entry.changes}>
+                  <For each={[...entry.changes].reverse()}>
                     {(c) => (
                       <li class="flex items-center gap-2">
                         {changeBadge(c)}

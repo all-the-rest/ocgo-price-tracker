@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-21T10:37:37.271Z",
+  "fetchedAt": "2026-08-21T11:14:58.800Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -954,7 +954,18 @@
       "cachedWrite": null,
       "usage": null,
       "pattern": null,
-      "capabilities": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
       "multiplier": null,
       "effectiveInput": null,
       "effectiveOutput": null,
@@ -981,6 +992,7 @@
         "reasoning": true,
         "toolCall": true
       },
+      "name": "Big Pickle",
       "privacy": {
         "training": true,
         "validUntil": null
@@ -999,6 +1011,7 @@
         "reasoning": true,
         "toolCall": true
       },
+      "name": "DeepSeek V4 Flash Free",
       "privacy": {
         "training": true,
         "validUntil": null
@@ -1017,6 +1030,7 @@
         "reasoning": true,
         "toolCall": true
       },
+      "name": "Hy3 Free",
       "privacy": {
         "training": true,
         "validUntil": null
@@ -1035,6 +1049,7 @@
         "reasoning": true,
         "toolCall": true
       },
+      "name": "Laguna S 2.1 Free",
       "privacy": {
         "training": true,
         "validUntil": null
@@ -1056,6 +1071,7 @@
         "reasoning": true,
         "toolCall": true
       },
+      "name": "MiMo V2.5 Free",
       "privacy": {
         "training": true,
         "validUntil": null
@@ -1078,6 +1094,7 @@
         "reasoning": true,
         "toolCall": true
       },
+      "name": "Muse Spark 1.2 Free",
       "privacy": {
         "training": true,
         "validUntil": null
@@ -1096,6 +1113,7 @@
         "reasoning": true,
         "toolCall": true
       },
+      "name": "Nemotron 3 Ultra Free",
       "privacy": {
         "training": true,
         "validUntil": null
@@ -1114,6 +1132,7 @@
         "reasoning": true,
         "toolCall": true
       },
+      "name": "Nemotron 3.5 Lightning Free",
       "privacy": {
         "training": true,
         "validUntil": null
@@ -1134,8 +1153,10 @@
         "reasoning": true,
         "toolCall": true
       },
+      "name": "Ox Alpha Free",
       "privacy": {
-        "training": true,
+        "training": false,
+        "retentionDays": true,
         "validUntil": null
       }
     }

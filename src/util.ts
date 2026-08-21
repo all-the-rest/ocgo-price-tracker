@@ -42,3 +42,11 @@ export function formatModelName(id: string): string {
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 }
+
+/**
+ * Anzeigename für ein kostenloses Zen-Modell: optionaler öffentlicher Name aus
+ * models.dev (z. B. x-preview-f-free → „Ox Alpha Free“), sonst pretty-printed ID.
+ */
+export function formatFreeModelName(f: { id: string; name?: string }): string {
+  return f.name ?? formatModelName(f.id);
+}
