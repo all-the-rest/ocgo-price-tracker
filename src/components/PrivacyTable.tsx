@@ -1,5 +1,6 @@
 import { createMemo, For, Show } from "solid-js";
 import type { Translation } from "../i18n";
+import Heading from "./Heading";
 import type { FreeModel, Model, Privacy } from "../types";
 import { fmtDateOnly, formatModelName } from "../util";
 import { privacyBadgeClass, privacyLabel, privacySortKey, privacyTier } from "../privacy";
@@ -75,8 +76,8 @@ export default function PrivacyTable(props: PrivacyTableProps) {
   };
 
   return (
-    <section class="mt-10">
-      <h2 class="text-lg font-bold tracking-tight">{props.t.headingPrivacy}</h2>
+    <section id="privacy" class="mt-10">
+      <Heading anchor="privacy">{props.t.headingPrivacy}</Heading>
       <p class="mt-1 text-sm text-base-content/90">{props.t.privacyNote}</p>
       <div class="mt-4 max-w-full overflow-x-auto">
         <table class="table table-sm table-zebra">
