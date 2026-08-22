@@ -831,7 +831,24 @@ function buildModelsDevLookup(opencodeModels, metadataModels, goModels = {}) {
     );
   };
 
-  return { resolve };
+  /**
+   * Liefert die OpenCode-Modell-ID als kopierbare `provider/id`-Zeichenkette:
+   *  - bevorzugt den `opencode-go`-Provider (die bezahlten Go-Modelle)
+   *    → `opencode-go/<id>`
+   *  - sonst der `opencode`-Provider (Zen/free sowie überschneidende Go-Modelle)
+   *    → `opencode/<id>`
+   *  - null, wenn in keinem der beiden Provider gelistet.
+   */
+  const resolveOpencodeId = (id, name) => {
+    const norm = normalizeName(id);
+    const go = goById.get(norm)?.id ?? goByName.get(norm)?.id;
+    if (go) return `opencode-go/${go}`;
+    const oc = opencodeById.get(norm)?.id ?? opencodeByName.get(norm)?.id;
+    if (oc) return `opencode/${oc}`;
+    return null;
+  };
+
+  return { resolve, resolveOpencodeId };
 }
 
 /**
@@ -839,7 +856,7 @@ function buildModelsDevLookup(opencodeModels, metadataModels, goModels = {}) {
  * an (opencode-Provider zuerst, dann kanonische Metadaten, sonst null).
  */
 export function enrichCapabilities(models, opencodeModels, metadataModels, goModels = {}) {
-  const { resolve } = buildModelsDevLookup(opencodeModels, metadataModels, goModels);
+  const { resolve, resolveOpencodeId } = buildModelsDevLookup(opencodeModels, metadataModels, goModels);
   for (const m of models) {
     const norm = normalizeName(m.name);
     let md = null;
@@ -850,6 +867,9 @@ export function enrichCapabilities(models, opencodeModels, metadataModels, goMod
     if (!md) md = resolve(m.name, m.name);
 
     m.capabilities = toCapabilities(md);
+    // Modell-ID für OpenCode (`opencode/<id>`), null wenn nicht im
+    // opencode-Provider gelistet → UI zeigt die Zeile ohne ID an.
+    m.id = resolveOpencodeId(m.name, m.name);
   }
   return models;
 }
@@ -1169,6 +1189,9 @@ const ModelSchema = z
   .object({
     name: z.string().min(1),
     tier: z.string().nullable(),
+    // Modell-ID für OpenCode (`opencode/<id>`), null wenn nicht im
+    // opencode-Provider (models.dev) gelistet
+    id: z.string().min(1).nullable().optional(),
     input: z.number().nullable(),
     output: z.number().nullable(),
     cachedRead: z.number().nullable(),
@@ -1448,6 +1471,16 @@ async function main() {
     const monthlyPricingChanged =
       prev !== null && (prev.monthlyCredit !== monthlyCredit || prev.monthlyCost !== monthlyCostFinal);
 
+    // Modell-IDs befüllt/geändert (`opencode(-go)/<id>` für die UI):
+    // Daten-Dateien schreiben, aber KEINE Changelog-Events — reine Anreicherung.
+    const prevIds = new Map((prev?.models ?? []).map((m) => [modelKey(m), m.id ?? null]));
+    const modelIdsPopulated =
+      prev !== null &&
+      models.some((m) => {
+        const before = prevIds.get(modelKey(m)) ?? null;
+        return (m.id ?? null) !== before; // null↔Wert oder Wert↔Wert (Präfix-Änderung)
+      });
+
     validateSnapshot(latest);
 
     const changelogPath = join(ROOT, "CHANGELOG.json");
@@ -1461,7 +1494,7 @@ async function main() {
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
 
-    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || monthlyPricingChanged) {
+    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || monthlyPricingChanged || modelIdsPopulated) {
       history.snapshots.push(latest);
       writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
       writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
@@ -1470,7 +1503,7 @@ async function main() {
     const enriched = models.filter((m) => m.capabilities !== null).length;
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
     const privacyCovered = models.filter((m) => m.privacy !== null).length;
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Monatsguthaben $${monthlyCredit} / Monatspreis $${monthlyCostFinal} (${pricingFallback ? "Fallback 60/10" : "dynamisch"})${monthlyPricingChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}.`);
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Monatsguthaben $${monthlyCredit} / Monatspreis $${monthlyCostFinal} (${pricingFallback ? "Fallback 60/10" : "dynamisch"})${monthlyPricingChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

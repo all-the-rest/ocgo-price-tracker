@@ -7,6 +7,7 @@ import { fieldPrice, formatTokens, formatReqPerMonth, requestCost, requestsPerMo
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import { setupDragScroll } from "../dragscroll";
 import Tooltip from "./Tooltip";
+import ModelId from "./ModelId";
 import PeakIndicator, { isPeakTier, isTierActive, peakRangesFor, usePeakClock } from "./PeakIndicator";
 import type { SortField, SortState } from "../sort";
 
@@ -234,7 +235,12 @@ export default function PriceTable(props: PriceTableProps) {
                   }}
                 >
                   <th class="font-medium">
-                    <span class="block">{m.name}</span>
+                    <span class="block">
+                      {m.name}
+                      <Show when={m.id}>
+                        {(id) => <ModelId id={id()} t={props.t} />}
+                      </Show>
+                    </span>
                     <Show when={m.tier}>
                       {(tier) => (
                         <Show

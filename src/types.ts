@@ -51,6 +51,8 @@ export interface FreeModel {
 export interface Model {
   name: string;
   tier: string | null;
+  /** Modell-ID für OpenCode (`opencode/<id>`); null/fehlend = nicht im opencode-Provider gelistet */
+  id?: string | null;
   input: number | null;
   output: number | null;
   cachedRead: number | null;

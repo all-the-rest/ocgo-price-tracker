@@ -8,6 +8,7 @@ interface TooltipProps {
   tip: string;
   children: JSX.Element;
   class?: string;
+  side?: "bottom" | "right";
 }
 
 /**
@@ -16,7 +17,7 @@ interface TooltipProps {
  * und keine vertikale Scrollbar durch dauerhaft positionierte Pseudo-Elemente.
  */
 export default function Tooltip(props: TooltipProps) {
-  const [pos, setPos] = createSignal<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = createSignal<{ top: number; left: number; transform: string } | null>(null);
 
   const show = (el: HTMLElement) => {
     const r = el.getBoundingClientRect();
@@ -29,10 +30,19 @@ export default function Tooltip(props: TooltipProps) {
     const h = probe.offsetHeight;
     document.body.removeChild(probe);
 
-    const left = Math.min(Math.max(r.left + r.width / 2, w / 2 + pad), window.innerWidth - w / 2 - pad);
-    let top = r.bottom + pad;
-    if (top + h > window.innerHeight - pad) top = r.top - h - pad;
-    setPos({ top: Math.max(pad, top), left });
+    let top: number, left: number, transform: string;
+    if (props.side === "right") {
+      left = r.right + pad;
+      top = r.top + r.height / 2;
+      transform = "translateY(-50%)";
+    } else {
+      left = Math.min(Math.max(r.left + r.width / 2, w / 2 + pad), window.innerWidth - w / 2 - pad);
+      let t = r.bottom + pad;
+      if (t + h > window.innerHeight - pad) t = r.top - h - pad;
+      top = Math.max(pad, t);
+      transform = "translateX(-50%)";
+    }
+    setPos({ top: Math.max(pad, top), left, transform });
   };
 
   const hide = () => setPos(null);
@@ -48,7 +58,7 @@ export default function Tooltip(props: TooltipProps) {
             <div
               role="tooltip"
               class={`${BUBBLE} pointer-events-none fixed z-50`}
-              style={{ top: `${p().top}px`, left: `${p().left}px`, transform: "translateX(-50%)" }}
+              style={{ top: `${p().top}px`, left: `${p().left}px`, transform: p().transform }}
             >
               {props.tip}
             </div>

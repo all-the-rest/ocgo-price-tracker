@@ -4,6 +4,7 @@ import Heading from "./Heading";
 import type { FreeModel } from "../types";
 import { fmtDateOnly, formatFreeModelName } from "../util";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
+import ModelId from "./ModelId";
 import type { FreeSortField, FreeSortState } from "../sort";
 
 interface FreeModelsTableProps {
@@ -70,7 +71,10 @@ export default function FreeModelsTable(props: FreeModelsTableProps) {
               <For each={sortedFree()}>
                 {(f) => (
                   <tr>
-                    <td class="font-medium">{formatFreeModelName(f)}</td>
+                    <td class="font-medium">
+                      {formatFreeModelName(f)}
+                      <ModelId id={`opencode/${f.id}`} t={props.t} />
+                    </td>
                     <td>
                       <CapabilityBadges m={f} t={props.t} />
                     </td>
