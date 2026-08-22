@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-21T13:39:31.219Z",
+  "fetchedAt": "2026-08-22T08:09:28.015Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1028,10 +1028,10 @@
     {
       "name": "Ox Alpha Free",
       "tier": null,
-      "input": null,
-      "output": null,
-      "cachedRead": null,
-      "cachedWrite": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
       "usage": null,
       "pattern": null,
       "capabilities": {
@@ -1047,10 +1047,10 @@
         "toolCall": true
       },
       "multiplier": null,
-      "effectiveInput": null,
-      "effectiveOutput": null,
-      "effectiveCachedRead": null,
-      "effectiveCachedWrite": null,
+      "effectiveInput": 0,
+      "effectiveOutput": 0,
+      "effectiveCachedRead": 0,
+      "effectiveCachedWrite": 0,
       "privacy": {
         "training": false,
         "retentionDays": true,

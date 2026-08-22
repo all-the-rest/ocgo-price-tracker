@@ -404,15 +404,20 @@ function parseModel(cells, colMap) {
  * (dynamisch gefetchten) Monatsguthabens erneut aufgerufen. Ohne expliziten
  * Wert wird das Fallback-Guthaben (`DEFAULT_MONTHLY_CREDIT`) verwendet.
  */
-function recomputeUsageDerived(model, monthlyCredit = DEFAULT_MONTHLY_CREDIT) {
+export function recomputeUsageDerived(model, monthlyCredit = DEFAULT_MONTHLY_CREDIT) {
   // usage = null (unbegrenzte Nutzung, kostenlose Modelle) → keine Multiplikator-
-  // Rechnung; die Effektivpreise sind hier ohnehin null (keine Listenpreise).
+  // Rechnung. Kostenlose Zeilen ("-" in der Doku) bekommen Token-Preise 0 statt
+  // null — gratis ist ein bekannter Preis, kein fehlender.
   if (model.usage === null) {
     model.multiplier = null;
-    model.effectiveInput = null;
-    model.effectiveOutput = null;
-    model.effectiveCachedRead = null;
-    model.effectiveCachedWrite = null;
+    model.input ??= 0;
+    model.output ??= 0;
+    model.cachedRead ??= 0;
+    model.cachedWrite ??= 0;
+    model.effectiveInput = model.input;
+    model.effectiveOutput = model.output;
+    model.effectiveCachedRead = model.cachedRead;
+    model.effectiveCachedWrite = model.cachedWrite;
     return;
   }
   const multiplier = monthlyCredit / model.usage;
@@ -1180,9 +1185,10 @@ const ModelSchema = z
     privacy: PrivacySchema.nullable(),
   })
   .superRefine((m, ctx) => {
-    // Modelle MIT Preisen/Nutzung müssen ein Anfragemuster haben; ausschließlich
-    // kostenlose Zeilen (alles "-") dürfen ohne Muster durchgehen.
-    const hasPricing = m.usage !== null || m.input !== null || m.output !== null || m.cachedRead !== null;
+    // Modelle MIT Preisen/Nutzung müssen ein Anfragemuster haben; kostenlose
+    // Zeilen ("-" → Preise 0, Nutzung null) dürfen ohne Muster durchgehen.
+    const hasPricing =
+      m.usage !== null || [m.input, m.output, m.cachedRead].some((v) => v !== null && v > 0);
     if (hasPricing && m.pattern === null) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pattern"], message: "pattern fehlt (Preise vorhanden)" });
     }

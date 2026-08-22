@@ -29,6 +29,7 @@ export function fieldPrice(m: Model, f: PriceField, basis: Basis, monthlyCost: n
 /**
  * Kosten pro Anfrage für ein Modell: dokumentiertes Anfragemuster des Modells
  * (Input/Cached/Output Tokens pro Anfrage) × Modellpreis pro 1M Tokens.
+ * Kostenlose Modelle (usage = null, kein Muster) → 0.
  *
  * Preiszuordnung (Heuristik): Input-Tokens → 5% Input-Preis + 95% Cached-Write-
  * Preis, Cached-Tokens → Cached-Read-Preis, Output-Tokens → Output-Preis. Ein
@@ -41,7 +42,11 @@ export function fieldPrice(m: Model, f: PriceField, basis: Basis, monthlyCost: n
  * den reinen Input-Preis.
  */
 export function requestCost(m: Model, basis: Basis, monthlyCost: number): number | null {
-  if (!m.pattern) return null;
+  if (!m.pattern) {
+    // Kostenlose Modelle (Preise 0, kein dokumentiertes Anfragemuster):
+    // Kosten pro Anfrage = 0 statt "-".
+    return m.usage === null ? 0 : null;
+  }
   const input = fieldPrice(m, "input", basis, monthlyCost);
   const cached = fieldPrice(m, "cachedRead", basis, monthlyCost);
   const writeRaw = fieldPrice(m, "cachedWrite", basis, monthlyCost);

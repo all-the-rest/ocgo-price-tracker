@@ -290,7 +290,7 @@ export default function PriceTable(props: PriceTableProps) {
                     </Show>
                   </td>
                   <td>
-                    <Show when={m.pattern} fallback={priceCell(null)}>
+                    <Show when={m.pattern} fallback={priceCell(requestCost(m, props.basis, props.monthlyCost))}>
                       <Tooltip tip={patternTooltip(m)} class="block">
                         {priceCell(requestCost(m, props.basis, props.monthlyCost))}
                       </Tooltip>

@@ -26,6 +26,7 @@ import {
   parseCreditFactor,
   parseMonthlyPricing,
   parsePeakHours,
+  recomputeUsageDerived,
 } from "../scripts/scrape.mjs";
 
 const fixture = readFileSync(
@@ -828,6 +829,67 @@ test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung",
     freeModels: [],
   };
   assert.throws(() => validateSnapshot(snapshot));
+});
+
+test("recomputeUsageDerived: kostenlose Zeile (alles '-') bekommt Preise 0 statt null", () => {
+  const model = {
+    name: "Ox Alpha Free",
+    tier: null,
+    input: null,
+    output: null,
+    cachedRead: null,
+    cachedWrite: null,
+    usage: null,
+    multiplier: null,
+    effectiveInput: null,
+    effectiveOutput: null,
+    effectiveCachedRead: null,
+    effectiveCachedWrite: null,
+  };
+  recomputeUsageDerived(model, 60);
+  assert.equal(model.multiplier, null);
+  assert.deepEqual(
+    [model.input, model.output, model.cachedRead, model.cachedWrite],
+    [0, 0, 0, 0]
+  );
+  assert.deepEqual(
+    [model.effectiveInput, model.effectiveOutput, model.effectiveCachedRead, model.effectiveCachedWrite],
+    [0, 0, 0, 0]
+  );
+});
+
+test("validateSnapshot: kostenlose Zeile (Preise 0) ohne Token-Stats ist gültig", () => {
+  const snapshot = {
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/zen/v1/models",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    monthlyCredit: 60,
+    monthlyCost: 10,
+    peakHours: {},
+    models: [
+      {
+        name: "Ox Alpha Free",
+        tier: null,
+        input: 0,
+        output: 0,
+        cachedRead: 0,
+        cachedWrite: 0,
+        usage: null,
+        multiplier: null,
+        effectiveInput: 0,
+        effectiveOutput: 0,
+        effectiveCachedRead: 0,
+        effectiveCachedWrite: 0,
+        pattern: null,
+        capabilities: null,
+        privacy: { training: true, validUntil: null },
+      },
+    ],
+    freeModels: [],
+  };
+  assert.doesNotThrow(() => validateSnapshot(snapshot));
 });
 
 test("enrichCapabilities: löst über den opencode-Provider auf", () => {
