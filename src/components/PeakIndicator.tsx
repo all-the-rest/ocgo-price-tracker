@@ -2,6 +2,7 @@ import { createSignal, onCleanup, onMount } from "solid-js";
 import type { Translation } from "../i18n";
 import type { PeakHours } from "../types";
 import Tooltip from "./Tooltip";
+import { PEAK_PRICING_RULES, isBeijingWeekend } from "../config/peakPricing";
 
 export const normalizePeakModel = (name: string) => name.toLowerCase().replace(/[\s-]+/g, "");
 
@@ -9,10 +10,18 @@ export const isPeakTier = (tier: string | null): boolean => /^(?:off[- ]?peak|pe
 
 export const isPeakNamedTier = (tier: string | null): boolean => /^peak$/i.test(tier ?? "");
 
-export function isPeakActive(now: number, ranges: [number, number][]): boolean {
+/** Reine UTC-Stunden-Prüfung gegen die Peak-Fenster (alte Logik). */
+function inUtcWindows(now: number, ranges: [number, number][]): boolean {
   const date = new Date(now);
   const hour = date.getUTCHours() + date.getUTCMinutes() / 60;
   return ranges.some(([start, end]) => hour >= start && hour < end);
+}
+
+export function isPeakActive(now: number, ranges: [number, number][]): boolean {
+  if (ranges.length === 0) return false;
+  // Am Wochenende (Sa/So, Peking-Zeit) gilt ab effectiveFrom durchgehend Off-Peak.
+  if (now >= PEAK_PRICING_RULES.effectiveFromMs && isBeijingWeekend(now)) return false;
+  return inUtcWindows(now, ranges);
 }
 
 export function isTierActive(
@@ -28,14 +37,36 @@ export function isTierActive(
 function nextTransition(now: number, ranges: [number, number][]): number | null {
   if (ranges.length === 0) return null;
   const date = new Date(now);
-  const candidates = ranges.flatMap(([start, end]) => [
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), start),
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), end),
-  ]);
-  const next = candidates.find((timestamp) => timestamp > now);
-  if (next !== undefined) return next;
-  const [start] = ranges[0];
-  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1, start);
+  const currentUtcMidnight = Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate(),
+  );
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const HOUR_MS = 60 * 60 * 1000;
+  // Kandidaten für die nächsten ~8 Tage: Fenster-Grenzen (start/end jeder Range ab UTC-Mitternacht)
+  // plus 16:00 UTC jedes Tages (= Peking-Mitternacht: Sa 00:00 Peking = Fr 16:00 UTC,
+  // Mo 00:00 Peking = So 16:00 UTC — deckt beide Wochenendgrenzen ab).
+  const candidates: number[] = [];
+  for (let d = 0; d <= 8; d++) {
+    const dayStart = currentUtcMidnight + d * DAY_MS;
+    for (const [start, end] of ranges) {
+      candidates.push(dayStart + start * HOUR_MS);
+      candidates.push(dayStart + end * HOUR_MS);
+    }
+    candidates.push(dayStart + 16 * HOUR_MS);
+  }
+  if (now < PEAK_PRICING_RULES.effectiveFromMs) {
+    candidates.push(PEAK_PRICING_RULES.effectiveFromMs);
+  }
+  const sorted = candidates.filter((timestamp) => timestamp > now).sort((a, b) => a - b);
+  const currentState = isPeakActive(now, ranges);
+  // Erster Kandidat, bei dem sich der Peak-Zustand tatsächlich ändert (Wochenend-Grenzen
+  // erzeugen während des Pekinger Wochenends keine echten Zustandswechsel → werden rausgefiltert).
+  for (const t of sorted) {
+    if (isPeakActive(t, ranges) !== currentState) return t;
+  }
+  return null;
 }
 
 function formatDuration(milliseconds: number): string {
@@ -81,7 +112,8 @@ export default function PeakIndicator(props: PeakIndicatorProps) {
       .replace("{phase}", phase())
       .replace("{utc}", formatUtcRange(props.ranges))
       .replace("{local}", formatLocalRange(props.ranges, props.now))
-      .replace("{countdown}", countdown());
+      .replace("{countdown}", countdown())
+      .replace("{weekend}", props.t.peakWeekendNote);
 
   return (
     <Tooltip tip={tooltip()} class="inline-flex items-center gap-1">
