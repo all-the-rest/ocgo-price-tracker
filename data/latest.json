@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-22T11:38:06.656Z",
+  "fetchedAt": "2026-08-24T12:02:26.269Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -364,6 +364,41 @@
         "validUntil": null
       },
       "id": "opencode-go/kimi-k2.6"
+    },
+    {
+      "name": "LongCat-2.0",
+      "tier": null,
+      "input": 0.3,
+      "output": 1.2,
+      "cachedRead": 0.006,
+      "cachedWrite": null,
+      "usage": 60,
+      "pattern": {
+        "input": 920,
+        "cachedRead": 88900,
+        "output": 200
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 1,
+      "effectiveInput": 0.3,
+      "effectiveOutput": 1.2,
+      "effectiveCachedRead": 0.006,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "id": "opencode-go/longcat-2.0"
     },
     {
       "name": "MiMo V2.5",
