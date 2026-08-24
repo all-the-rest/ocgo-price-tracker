@@ -233,12 +233,15 @@ const CREDIT_FACTOR_WORDS = {
 
 /**
  * Parst den laufenden Monatspreis (`$10/Monat`) aus einer Seite. Bevorzugt das
- * semantische `[data-slot="cta-price-old"]`-Element der Go-Landingpage, sonst
- * die Prosa `$N/Monat` (Doku-Seite). Existiert das CTA-Element, ist sein Text
- * aber unparsebar → ScrapeError; existiert gar kein Kandidat → null (Fallback).
+ * semantische `[data-slot="cta-price-old"]`-Element der Go-Landingpage (der
+ * reguläre Preis, falls wieder ein Einführungspreis als `cta-price-new`
+ * danebensteht), sonst das CTA-Element selbst (`cta-price`), sonst die Prosa
+ * `$N/Monat` (Doku-Seite). Existiert ein CTA-Kandidat, ist sein Text aber
+ * unparsebar → ScrapeError; existiert gar keiner → null (Fallback).
  */
 export function parseMonthlyCost($) {
-  const cta = $("[data-slot='cta-price-old']").first();
+  let cta = $("[data-slot='cta-price-old']").first();
+  if (cta.length === 0) cta = $("[data-slot='cta-price']").first();
   if (cta.length > 0) {
     const text = cta.text().trim();
     const m = text.match(/\$(\d+(?:[.,]\d+)?)\s*\/\s*Monat/i);

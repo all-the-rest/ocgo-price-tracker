@@ -300,6 +300,18 @@ test("parseMonthlyCost: existierendes, aber unparsebares CTA-Element wirft", () 
   assert.throws(() => parseMonthlyCost($), /unparsebar/);
 });
 
+test("parseMonthlyCost: cta-price-old (regulärer Preis) schlägt cta-price-new (Einführungspreis)", () => {
+  const $ = cheerio.load(
+    '<span data-slot="cta-price"><span data-slot="cta-price-old">$10/Monat</span><span data-slot="cta-price-new">$5 im ersten Monat</span></span>'
+  );
+  assert.equal(parseMonthlyCost($), 10);
+});
+
+test("parseMonthlyCost: schlankes cta-price ohne old/new-Children wird geparst", () => {
+  const $ = cheerio.load('<span data-slot="cta-price">$10/Monat</span>');
+  assert.equal(parseMonthlyCost($), 10);
+});
+
 test("parseCreditFactor: numerischer Faktor (das 6-fache) wird geparst", () => {
   const $ = cheerio.load("<p>unser Ziel ist, dir dafür das 6-fache dieses Betrags zu bieten.</p>");
   assert.equal(parseCreditFactor($), 6);
