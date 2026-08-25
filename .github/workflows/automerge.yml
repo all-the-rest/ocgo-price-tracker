@@ -80,4 +80,6 @@ jobs:
         if: steps.should-merge.outputs.decision == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch
+        # --repo ist Pflicht: der Job checkt nichts aus (kein lokales Git),
+        # daher kann gh das Repository nicht aus dem Arbeitsverzeichnis ableiten.
+        run: gh pr merge "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --squash --delete-branch
