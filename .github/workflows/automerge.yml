@@ -1,0 +1,72 @@
+name: Dependabot Auto-Merge
+
+# Keine Branch Protection vorhanden -> der Workflow wartet selbst auf grüne
+# CI-Checks (lewagon/wait-on-check-action), bevor er mergt.
+# pull_request_target wird nur mit striktem Actor-Gate auf dependabot[bot]
+# verwendet; es wird KEIN untrusted PR-Code ausgecheckt oder ausgeführt
+# (nur Metadaten lesen + API-merge), daher im Repo vertretbar.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, labeled]
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: dependabot-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  automerge:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Determine whether to merge
+        id: should-merge
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const updateType = '${{ steps.metadata.outputs.update-type }}';
+            // output ist `dependency-group` (singular): ein PR hängt an maximal
+            // EINER Dependabot-Gruppe (leer, wenn keine Gruppe aktiv ist)
+            const dependencyGroup = '${{ steps.metadata.outputs.dependency-group }}';
+
+            // Minor/Patch-Gruppen sind per Konstruktion sicher (dependabot.yml
+            // matcht dort nur update-types minor+patch) - auch wenn die
+            // Update-Type-Erkennung bei gruppierten PRs leer bleibt.
+            const safeGroup = dependencyGroup === 'minor-and-patch';
+            const safeIndividual = ['version-update:semver-minor', 'version-update:semver-patch'].includes(updateType);
+            // Docker-Images haben keine zuverlässige semver-Klassifikation
+            // und werden bewusst NIE auto-gemergt (hier: kein Docker-Ecosystem,
+            // Guard bleibt als Defense-in-depth).
+            const notDocker = !dependencyGroup.includes('docker');
+
+            const result = (safeGroup || safeIndividual) && notDocker;
+            core.setOutput('result', String(result));
+
+      - name: Wait for CI checks
+        if: steps.should-merge.outputs.result == 'true'
+        uses: lewagon/wait-on-check-action@v1.9.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 60
+          # Build-Job des Price-Trackers dauert wenige Minuten - Timeout
+          # großzügig (Sekunden)
+          timeout: 1800
+          allowed-conclusions: success
+
+      - name: Merge Dependabot PR
+        if: steps.should-merge.outputs.result == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch
