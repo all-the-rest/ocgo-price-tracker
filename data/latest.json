@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-25T18:03:23.191Z",
+  "fetchedAt": "2026-08-25T21:01:09.782Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -73,7 +73,7 @@
         "retentionDays": 30,
         "validUntil": null
       },
-      "id": "opencode/grok-4.6"
+      "id": "opencode-go/grok-4.6"
     },
     {
       "name": "Grok 4.6",
@@ -109,7 +109,7 @@
         "retentionDays": 30,
         "validUntil": null
       },
-      "id": "opencode/grok-4.6"
+      "id": "opencode-go/grok-4.6"
     },
     {
       "name": "GPT 5.6 Luna",
