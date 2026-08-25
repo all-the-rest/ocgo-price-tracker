@@ -1,0 +1,41 @@
+name: CI Debug
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  repro:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set output via github-script v9
+        id: should-merge
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const updateType = 'version-update:semver-patch';
+            const dependencyGroup = 'minor-and-patch';
+            const safeGroup = dependencyGroup === 'minor-and-patch';
+            const safeIndividual = ['version-update:semver-minor', 'version-update:semver-patch'].includes(updateType);
+            const notDocker = !dependencyGroup.includes('docker');
+            const result = (safeGroup || safeIndividual) && notDocker;
+            core.notice('computed result=' + String(result));
+            core.setOutput('result', String(result));
+
+      - name: Read output back
+        run: echo "result=[${{ steps.should-merge.outputs.result }}]"
+
+      - name: Gated by output == 'true'
+        if: steps.should-merge.outputs.result == 'true'
+        run: echo "GATE PASSED"
+
+      - name: Plain setOutput control group
+        id: plain
+        uses: actions/github-script@v9
+        with:
+          script: core.setOutput('flag', 'true');
+
+      - name: Control group gate
+        if: steps.plain.outputs.flag == 'true'
+        run: echo "CONTROL PASSED"
