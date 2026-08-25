@@ -46,40 +46,44 @@ jobs:
             const safeGroup = dependencyGroup === 'minor-and-patch';
             const safeIndividual = ['version-update:semver-minor', 'version-update:semver-patch'].includes(updateType);
             // Docker-Images haben keine zuverlässige semver-Klassifikation
-            // und werden bewusst NIE auto-gemergt (hier: kein Docker-Ecosystem,
-            // Guard bleibt als Defense-in-depth).
+            // und werden bewusst NIE auto-gemergt
             const notDocker = !dependencyGroup.includes('docker');
 
-            const result = (safeGroup || safeIndividual) && notDocker;
-            // WICHTIG: NICHT `setOutput('result', ...)` verwenden - github-script
-            // ueberschreibt den deklarierten `result`-Output mit dem (JSON-
-            // kodierten) Rueckgabewert des Scripts (undefined -> leer). Eigener
-            // Name `decision` ist davon unberuehrt (empirisch verifiziert).
-            core.setOutput('decision', String(result));
+            // WICHTIG: `return` statt core.setOutput('result', ...) - github-script
+            // reserviert den Output-Namen "result" für den Script-Rückgabewert und
+            // überschreibt ein manuell gesetztes Output "result" sonst mit "".
+            // (Bewiesen im Debug-Lauf 2026-08-25; ohne Fix werden die Merge-Schritte
+            // still geskippt, obwohl der Run "success" meldet.)
+            return (safeGroup || safeIndividual) && notDocker;
 
+      # running-workflow-name verhindert, dass wait-on-check auf SICH SELBST
+      # wartet (der AutomERGE-Run hängt am head-sha). allowed-conclusions
+      # inkl. "skipped": sonst blockiert ein übersprungener Deploy-Job den Merge.
+      # ACHTUNG: v1.9.1 kennt KEINEN "timeout"-Input (würde ignoriert -> potenziell
+      # 6h-Hängen). Warte-Zeit nur über wait-interval (Sekunden zwischen Polls) +
+      # das absichtlich kurze CI-Fenster im Repo begrenzt.
       - name: Wait for CI checks
-        if: steps.should-merge.outputs.decision == 'true'
+        if: steps.should-merge.outputs.result == 'true'
         uses: lewagon/wait-on-check-action@v1.9.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          running-workflow-name: automerge
           wait-interval: 60
-          # Eigenen Automerge-Check von der Warte-Logik ausnehmen (sonst
-          # wartet der Step auf sich selbst). WICHTIG: wird gegen den
-          # CHECK-Namen gematcht (Job-ID, wenn kein explicit name) - hier
-          # also "automerge", nicht der Workflow-Name.
-          running-workflow-name: "automerge"
-          # Build-Job des Price-Trackers dauert wenige Minuten - Timeout
-          # großzügig (Sekunden)
-          timeout: 1800
-          # skipped explizit erlauben (deploy-Job läuft auf PRs bewusst nicht);
-          # Default der Action ist success,skipped
           allowed-conclusions: success,skipped
 
+      # pull_request_target checkt per Default KEIN Repo aus -> "gh pr merge"
+      # scheitert mit "not a git repository". Daher main auschecken (nur Metadaten/
+      # API-Merge, KEIN PR-Code -> weiterhin sicher).
+      - name: Checkout main (for gh pr merge)
+        if: steps.should-merge.outputs.result == 'true'
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          sparse-checkout: .github
+
       - name: Merge Dependabot PR
-        if: steps.should-merge.outputs.decision == 'true'
+        if: steps.should-merge.outputs.result == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # --repo ist Pflicht: der Job checkt nichts aus (kein lokales Git),
-        # daher kann gh das Repository nicht aus dem Arbeitsverzeichnis ableiten.
-        run: gh pr merge "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}" --squash --delete-branch
+        run: gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch
