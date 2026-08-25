@@ -64,10 +64,15 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 60
+          # Eigenen Automerge-Check von der Warte-Logik ausnehmen (sonst
+          # wartet der Step auf sich selbst)
+          running-workflow-name: "Dependabot Auto-Merge"
           # Build-Job des Price-Trackers dauert wenige Minuten - Timeout
           # großzügig (Sekunden)
           timeout: 1800
-          allowed-conclusions: success
+          # skipped explizit erlauben (deploy-Job läuft auf PRs bewusst nicht);
+          # Default der Action ist success,skipped
+          allowed-conclusions: success,skipped
 
       - name: Merge Dependabot PR
         if: steps.should-merge.outputs.decision == 'true'
