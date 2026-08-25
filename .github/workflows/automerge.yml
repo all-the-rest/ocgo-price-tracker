@@ -65,8 +65,10 @@ jobs:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 60
           # Eigenen Automerge-Check von der Warte-Logik ausnehmen (sonst
-          # wartet der Step auf sich selbst)
-          running-workflow-name: "Dependabot Auto-Merge"
+          # wartet der Step auf sich selbst). WICHTIG: wird gegen den
+          # CHECK-Namen gematcht (Job-ID, wenn kein explicit name) - hier
+          # also "automerge", nicht der Workflow-Name.
+          running-workflow-name: "automerge"
           # Build-Job des Price-Trackers dauert wenige Minuten - Timeout
           # großzügig (Sekunden)
           timeout: 1800
