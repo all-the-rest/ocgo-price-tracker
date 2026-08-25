@@ -51,10 +51,14 @@ jobs:
             const notDocker = !dependencyGroup.includes('docker');
 
             const result = (safeGroup || safeIndividual) && notDocker;
-            core.setOutput('result', String(result));
+            // WICHTIG: NICHT `setOutput('result', ...)` verwenden - github-script
+            // ueberschreibt den deklarierten `result`-Output mit dem (JSON-
+            // kodierten) Rueckgabewert des Scripts (undefined -> leer). Eigener
+            // Name `decision` ist davon unberuehrt (empirisch verifiziert).
+            core.setOutput('decision', String(result));
 
       - name: Wait for CI checks
-        if: steps.should-merge.outputs.result == 'true'
+        if: steps.should-merge.outputs.decision == 'true'
         uses: lewagon/wait-on-check-action@v1.9.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
@@ -66,7 +70,7 @@ jobs:
           allowed-conclusions: success
 
       - name: Merge Dependabot PR
-        if: steps.should-merge.outputs.result == 'true'
+        if: steps.should-merge.outputs.decision == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch
