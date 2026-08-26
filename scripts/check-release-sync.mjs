@@ -29,7 +29,7 @@ function main() {
 
   const seenTags = new Set();
   for (const entry of entries) {
-    const tag = entry.id;
+    const tag = entry.id ?? entry.date;
     if (!tag) {
       errors.push(`changelog entry without id (date=${entry.date})`);
       continue;
