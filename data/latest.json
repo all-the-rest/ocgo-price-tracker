@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-26T14:05:28.727Z",
+  "fetchedAt": "2026-08-26T16:02:03.632Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -198,7 +198,19 @@
         "cachedRead": 55000,
         "output": 200
       },
-      "capabilities": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
       "multiplier": 2,
       "effectiveInput": 0.3,
       "effectiveOutput": 1,
@@ -209,7 +221,7 @@
         "retentionDays": true,
         "validUntil": null
       },
-      "id": null
+      "id": "opencode-go/glm-5.3-flash"
     },
     {
       "name": "GLM-5.3",
