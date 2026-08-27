@@ -45,6 +45,10 @@ export interface FreeModel {
   name?: string;
   availableFrom: string;
   capabilities: Capabilities | null;
+  /** Kontextfenster in Tokens (aus models.dev); null = unbekannt. */
+  contextWindow: number | null;
+  /** Hersteller/Provider (aus models.dev, z. B. "anthropic", "xai"); null = unbekannt. */
+  provider: string | null;
   privacy: Privacy;
 }
 
@@ -65,6 +69,10 @@ export interface Model {
   effectiveCachedWrite: number | null;
   pattern: RequestPattern | null;
   capabilities: Capabilities | null;
+  /** Kontextfenster in Tokens (aus models.dev); null = unbekannt. */
+  contextWindow: number | null;
+  /** Hersteller/Provider (aus models.dev, z. B. "anthropic", "xai"); null = unbekannt. */
+  provider: string | null;
   privacy: Privacy | null;
 }
 

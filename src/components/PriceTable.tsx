@@ -2,7 +2,7 @@ import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import type { Translation } from "../i18n";
 import Heading from "./Heading";
 import type { Basis, Model, PeakHours } from "../types";
-import { fmt, fmtPricing } from "../util";
+import { fmt, fmtContextWindow, fmtPricing } from "../util";
 import { fieldPrice, formatTokens, formatReqPerMonth, requestCost, requestsPerMonth } from "../weighted";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import { setupDragScroll } from "../dragscroll";
@@ -241,13 +241,25 @@ export default function PriceTable(props: PriceTableProps) {
                         {(id) => <ModelId id={id()} t={props.t} />}
                       </Show>
                     </span>
+                    <Show when={m.provider || m.contextWindow != null}>
+                      <span class="block text-xs font-normal text-base-content/70">
+                        {[
+                          m.provider,
+                          m.contextWindow != null
+                            ? `${fmtContextWindow(m.contextWindow)} ${props.t.contextTokens}`
+                            : null,
+                        ]
+                          .filter((s): s is string => Boolean(s))
+                          .join(" · ")}
+                      </span>
+                    </Show>
                     <Show when={m.tier}>
                       {(tier) => (
                         <Show
                           when={isPeakTier(tier()) && peakRangesFor(props.peakHours, m.name).length > 0}
                           fallback={<span class="block text-xs font-normal text-base-content/70">{tier()}</span>}
                         >
-                          <span class="block text-xs font-normal text-base-content/70">
+                          <span class="flex items-center text-xs font-normal text-base-content/70">
                             <PeakIndicator
                               tier={tier()}
                               ranges={peakRangesFor(props.peakHours, m.name)}

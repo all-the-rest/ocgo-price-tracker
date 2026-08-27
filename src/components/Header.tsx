@@ -21,6 +21,42 @@ export default function Header(props: HeaderProps) {
   return (
     <header class="navbar sticky top-0 z-10 bg-base-200 px-6 shadow-sm">
       <div class="navbar-start">
+        {/* Mobile (< md): Burger ganz links, Menü öffnet sich nach rechts. */}
+        <div class="dropdown dropdown-start md:hidden">
+          <div
+            tabindex="0"
+            role="button"
+            class="btn btn-ghost btn-circle btn-sm"
+            aria-label={props.lang === "de" ? "Weitere Links" : "More links"}
+          >
+            <svg
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </div>
+          <ul
+            tabindex="0"
+            class="menu dropdown-content z-20 mt-2 w-60 max-w-[90vw] rounded-box bg-base-100 p-2 shadow-lg"
+          >
+            <For each={crossLinks()}>
+              {(link) => (
+                <li>
+                  <a href={link.href} target="_blank" rel="noreferrer">
+                    {link.label} <span aria-hidden="true">↗</span>
+                  </a>
+                </li>
+              )}
+            </For>
+          </ul>
+        </div>
         <a
           href={window.location.pathname}
           class="inline-flex items-center"
@@ -67,39 +103,6 @@ export default function Header(props: HeaderProps) {
               </a>
             )}
           </For>
-        </div>
-        {/* Mobile (< md): Burger-Dropdown mit denselben Links */}
-        <div class="dropdown dropdown-end md:hidden">
-          <div
-            tabindex="0"
-            role="button"
-            class="btn btn-ghost btn-circle btn-sm"
-            aria-label={props.lang === "de" ? "Weitere Links" : "More links"}
-          >
-            <svg
-              class="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </div>
-          <ul tabindex="0" class="menu dropdown-content z-20 mt-2 w-60 rounded-box bg-base-100 p-2 shadow-lg">
-            <For each={crossLinks()}>
-              {(link) => (
-                <li>
-                  <a href={link.href} target="_blank" rel="noreferrer">
-                    {link.label} <span aria-hidden="true">↗</span>
-                  </a>
-                </li>
-              )}
-            </For>
-          </ul>
         </div>
         <div class="join">
           <button

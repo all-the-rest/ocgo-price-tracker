@@ -66,6 +66,35 @@ function toCapabilities(md) {
 }
 
 /**
+ * Kontextfenster (Tokens) aus den models.dev-Metadaten extrahiert
+ * (`md.limit.context`). Fehlend/unbekannt → null.
+ */
+function toContextWindow(md) {
+  return typeof md?.limit?.context === "number" ? md.limit.context : null;
+}
+
+/**
+ * Hersteller/Provider aus den models.dev-Metadaten ableiten. models.dev kodiert
+ * den Provider im `id`-Prefix (`"anthropic/claude-…"` → "anthropic",
+ * `"xai/grok-4.5"` → "xai"); bei `id` ohne Slash/Colon (z. B. interne
+ * opencode-IDs) ist kein Provider ableitbar → null. `md.provider` ist bei
+ * models.dev meist ein Objekt (npm/api) und `md.family` eine Modellfamilie,
+ * daher nur als Fallback, wenn kein Prefix vorliegt.
+ */
+function toProvider(md) {
+  if (!md) return null;
+  if (typeof md.id === "string") {
+    const slash = md.id.split("/")[0];
+    if (slash && slash !== md.id) return slash;
+    const colon = md.id.split(":")[0];
+    if (colon && colon !== md.id) return colon;
+  }
+  if (typeof md.provider === "string" && md.provider) return md.provider;
+  if (typeof md.family === "string" && md.family) return md.family;
+  return null;
+}
+
+/**
  * Ausnahmen für die Fähigkeiten-Zuordnung (normalisierter Modellname →
  * kanonische models.dev-ID). Für künftige Edge Cases.
  * Muse Spark 1.2 Contributor: Der Contributor-Tier ist nicht im opencode-Provider
@@ -870,6 +899,10 @@ export function enrichCapabilities(models, opencodeModels, metadataModels, goMod
     if (!md) md = resolve(m.name, m.name);
 
     m.capabilities = toCapabilities(md);
+    // Kontextfenster (Tokens) aus models.dev; null wenn nicht gelistet.
+    m.contextWindow = toContextWindow(md);
+    // Hersteller/Provider aus models.dev (id-Prefix); null wenn nicht ableitbar.
+    m.provider = toProvider(md);
     // Modell-ID für OpenCode (`opencode/<id>`), null wenn nicht im
     // opencode-Provider gelistet → UI zeigt die Zeile ohne ID an.
     m.id = resolveOpencodeId(m.name, m.name);
@@ -894,6 +927,8 @@ export function enrichFreeModels(freeModels, providerModels, metadataModels, goM
   for (const f of freeModels) {
     const md = resolve(f.id, f.id);
     f.capabilities = toCapabilities(md);
+    f.contextWindow = toContextWindow(md);
+    f.provider = toProvider(md);
     const publicName = md?.name?.replace(/\s*\([^)]*\)\s*$/, "").trim();
     if (publicName) f.name = publicName;
     f.privacy = FREE_MODEL_PRIVACY_OVERRIDES[normalizeName(f.id)] ?? { training: true, validUntil: null };
@@ -1208,6 +1243,10 @@ const ModelSchema = z
     effectiveCachedWrite: z.number().nullable(),
     pattern: RequestPatternSchema.nullable(),
     capabilities: CapabilitiesSchema.nullable(),
+    // Kontextfenster in Tokens (aus models.dev); null = unbekannt.
+    contextWindow: z.number().nullable(),
+    // Hersteller/Provider (aus models.dev); null = unbekannt.
+    provider: z.string().nullable().default(null),
     privacy: PrivacySchema.nullable(),
   })
   .superRefine((m, ctx) => {
@@ -1226,6 +1265,8 @@ const FreeModelSchema = z.object({
   name: z.string().min(1).optional(),
   availableFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   capabilities: CapabilitiesSchema.nullable(),
+  contextWindow: z.number().nullable(),
+  provider: z.string().nullable().default(null),
   privacy: PrivacySchema,
 });
 
@@ -1484,6 +1525,32 @@ async function main() {
         return (m.id ?? null) !== before; // null↔Wert oder Wert↔Wert (Präfix-Änderung)
       });
 
+    // Kontextfenster (contextWindow) befüllt/geändert: Daten-Dateien schreiben,
+    // aber KEINE Changelog-Events — reine Anreicherung. Erstbefüllung (vorheriger
+    // Lauf hatte null/fehlend, jetzt ein Wert) zählt als Änderung.
+    const prevCtx = new Map([
+      ...(prev?.models ?? []).map((m) => [modelKey(m), m.contextWindow ?? null]),
+      ...(Array.isArray(prev?.freeModels) ? prev.freeModels : []).map((f) => [f.id, f.contextWindow ?? null]),
+    ]);
+    const contextWindowPopulated =
+      prev !== null &&
+      [...models.map((m) => [modelKey(m), m.contextWindow ?? null]), ...freeModels.map((f) => [f.id, f.contextWindow ?? null])].some(
+        ([key, cw]) => cw !== (prevCtx.get(key) ?? null)
+      );
+
+    // Hersteller/Provider (provider) befüllt/geändert: Daten-Dateien schreiben,
+    // aber KEINE Changelog-Events — reine Anreicherung. Erstbefüllung (vorheriger
+    // Lauf hatte null/fehlend, jetzt ein Wert) zählt als Änderung.
+    const prevProv = new Map([
+      ...(prev?.models ?? []).map((m) => [modelKey(m), m.provider ?? null]),
+      ...(Array.isArray(prev?.freeModels) ? prev.freeModels : []).map((f) => [f.id, f.provider ?? null]),
+    ]);
+    const providerPopulated =
+      prev !== null &&
+      [...models.map((m) => [modelKey(m), m.provider ?? null]), ...freeModels.map((f) => [f.id, f.provider ?? null])].some(
+        ([key, p]) => p !== (prevProv.get(key) ?? null)
+      );
+
     validateSnapshot(latest);
 
     const changelogPath = join(ROOT, "CHANGELOG.json");
@@ -1497,7 +1564,7 @@ async function main() {
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
 
-    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || monthlyPricingChanged || modelIdsPopulated) {
+    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || monthlyPricingChanged || modelIdsPopulated || contextWindowPopulated || providerPopulated) {
       history.snapshots.push(latest);
       writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
       writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
@@ -1506,7 +1573,7 @@ async function main() {
     const enriched = models.filter((m) => m.capabilities !== null).length;
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
     const privacyCovered = models.filter((m) => m.privacy !== null).length;
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Monatsguthaben $${monthlyCredit} / Monatspreis $${monthlyCostFinal} (${pricingFallback ? "Fallback 60/10" : "dynamisch"})${monthlyPricingChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}.`);
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Monatsguthaben $${monthlyCredit} / Monatspreis $${monthlyCostFinal} (${pricingFallback ? "Fallback 60/10" : "dynamisch"})${monthlyPricingChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}${contextWindowPopulated ? " (Kontextfenster still befüllt, keine Events)" : ""}${providerPopulated ? " (Hersteller still befüllt, keine Events)" : ""}.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

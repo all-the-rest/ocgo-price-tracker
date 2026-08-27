@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-26T16:02:03.632Z",
+  "fetchedAt": "2026-08-27T20:49:16.037Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -73,6 +73,8 @@
         "retentionDays": 30,
         "validUntil": null
       },
+      "contextWindow": 500000,
+      "provider": "grok",
       "id": "opencode-go/grok-4.6"
     },
     {
@@ -109,6 +111,8 @@
         "retentionDays": 30,
         "validUntil": null
       },
+      "contextWindow": 500000,
+      "provider": "grok",
       "id": "opencode-go/grok-4.6"
     },
     {
@@ -146,6 +150,8 @@
         "retentionDays": 30,
         "validUntil": null
       },
+      "contextWindow": 1050000,
+      "provider": "gpt-luna",
       "id": "opencode-go/gpt-5.6-luna"
     },
     {
@@ -183,6 +189,8 @@
         "retentionDays": 30,
         "validUntil": null
       },
+      "contextWindow": 1050000,
+      "provider": "gpt-luna",
       "id": "opencode-go/gpt-5.6-luna"
     },
     {
@@ -221,6 +229,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "zhipuai",
       "id": "opencode-go/glm-5.3-flash"
     },
     {
@@ -256,6 +266,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "zhipuai",
       "id": "opencode-go/glm-5.3"
     },
     {
@@ -291,6 +303,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "glm",
       "id": "opencode-go/glm-5.2"
     },
     {
@@ -326,6 +340,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 204800,
+      "provider": "glm",
       "id": "opencode-go/glm-5.1"
     },
     {
@@ -363,6 +379,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1048576,
+      "provider": "kimi-k3",
       "id": "opencode-go/kimi-k3"
     },
     {
@@ -400,6 +418,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 262144,
+      "provider": "kimi-k2",
       "id": "opencode-go/kimi-k2.7-code"
     },
     {
@@ -437,6 +457,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 262144,
+      "provider": "kimi-k2",
       "id": "opencode-go/kimi-k2.6"
     },
     {
@@ -472,6 +494,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "meituan",
       "id": "opencode-go/longcat-2.0"
     },
     {
@@ -510,6 +534,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1048576,
+      "provider": "xiaomi",
       "id": "opencode-go/mimo-v2.5"
     },
     {
@@ -545,6 +571,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1048576,
+      "provider": "xiaomi",
       "id": "opencode-go/mimo-v2.5-pro"
     },
     {
@@ -582,6 +610,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 512000,
+      "provider": "minimax",
       "id": "opencode-go/minimax-m3"
     },
     {
@@ -617,6 +647,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 204800,
+      "provider": "minimax",
       "id": "opencode-go/minimax-m2.7"
     },
     {
@@ -653,6 +685,8 @@
         "validUntil": null,
         "fallback": true
       },
+      "contextWindow": 204800,
+      "provider": "minimax",
       "id": "opencode-go/minimax-m2.5"
     },
     {
@@ -692,6 +726,8 @@
         "retentionDays": false,
         "validUntil": null
       },
+      "contextWindow": 1048576,
+      "provider": "meta",
       "id": "opencode-go/muse-spark-1.2-contributor"
     },
     {
@@ -730,6 +766,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "alibaba",
       "id": "opencode-go/qwen3.8-max"
     },
     {
@@ -765,6 +803,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "alibaba",
       "id": "opencode-go/qwen3.7-max"
     },
     {
@@ -802,6 +842,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "alibaba",
       "id": "opencode-go/qwen3.7-plus"
     },
     {
@@ -839,6 +881,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "alibaba",
       "id": "opencode-go/qwen3.7-plus"
     },
     {
@@ -876,6 +920,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 262144,
+      "provider": "qwen3.6",
       "id": "opencode-go/qwen3.6-plus"
     },
     {
@@ -913,6 +959,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 262144,
+      "provider": "qwen3.6",
       "id": "opencode-go/qwen3.6-plus"
     },
     {
@@ -948,6 +996,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "deepseek-thinking",
       "id": "opencode-go/deepseek-v4-pro"
     },
     {
@@ -983,6 +1033,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "deepseek-thinking",
       "id": "opencode-go/deepseek-v4-pro"
     },
     {
@@ -1018,6 +1070,8 @@
         "retentionDays": true,
         "validUntil": "2026-08-31"
       },
+      "contextWindow": 1000000,
+      "provider": "deepseek-flash",
       "id": "opencode-go/deepseek-v4-flash"
     },
     {
@@ -1053,6 +1107,8 @@
         "retentionDays": true,
         "validUntil": "2026-08-31"
       },
+      "contextWindow": 1000000,
+      "provider": "deepseek-flash",
       "id": "opencode-go/deepseek-v4-flash"
     },
     {
@@ -1089,6 +1145,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "deepseek",
       "id": "opencode-go/deepseek-v4-flash-vision-exp"
     },
     {
@@ -1125,6 +1183,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 1000000,
+      "provider": "deepseek",
       "id": "opencode-go/deepseek-v4-flash-vision-exp"
     },
     {
@@ -1160,6 +1220,8 @@
         "retentionDays": true,
         "validUntil": null
       },
+      "contextWindow": 256000,
+      "provider": "tencent",
       "id": "opencode-go/hy3"
     }
   ],
@@ -1177,6 +1239,8 @@
         "reasoning": true,
         "toolCall": true
       },
+      "contextWindow": 200000,
+      "provider": "big-pickle",
       "name": "Big Pickle",
       "privacy": {
         "training": true,
@@ -1196,6 +1260,8 @@
         "reasoning": true,
         "toolCall": true
       },
+      "contextWindow": 200000,
+      "provider": "deepseek-flash",
       "name": "DeepSeek V4 Flash Free",
       "privacy": {
         "training": true,
@@ -1215,6 +1281,8 @@
         "reasoning": true,
         "toolCall": true
       },
+      "contextWindow": 190000,
+      "provider": "hy3-free",
       "name": "Hy3 Free",
       "privacy": {
         "training": true,
@@ -1234,6 +1302,8 @@
         "reasoning": true,
         "toolCall": true
       },
+      "contextWindow": 256000,
+      "provider": "laguna",
       "name": "Laguna S 2.1 Free",
       "privacy": {
         "training": true,
@@ -1256,6 +1326,8 @@
         "reasoning": true,
         "toolCall": true
       },
+      "contextWindow": 200000,
+      "provider": "mimo-v2.5-free",
       "name": "MiMo V2.5 Free",
       "privacy": {
         "training": true,
@@ -1279,6 +1351,8 @@
         "reasoning": true,
         "toolCall": true
       },
+      "contextWindow": 1048576,
+      "provider": "muse-free",
       "name": "Muse Spark 1.2 Free",
       "privacy": {
         "training": true,
@@ -1298,6 +1372,8 @@
         "reasoning": true,
         "toolCall": true
       },
+      "contextWindow": 1000000,
+      "provider": "nemotron-free",
       "name": "Nemotron 3 Ultra Free",
       "privacy": {
         "training": true,
@@ -1317,6 +1393,8 @@
         "reasoning": true,
         "toolCall": true
       },
+      "contextWindow": 262144,
+      "provider": "nemotron-free",
       "name": "Nemotron 3.5 Lightning Free",
       "privacy": {
         "training": true,

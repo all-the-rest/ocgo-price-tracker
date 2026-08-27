@@ -813,12 +813,13 @@ test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () =
     monthlyCredit: 60,
     monthlyCost: 10,
     peakHours: {},
-    models: parseHtml(fixture),
+    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
     freeModels: [
       {
         id: "big-pickle",
         availableFrom: "2026-08-05",
         capabilities: null,
+        contextWindow: null,
         privacy: { training: true, validUntil: null },
       },
     ],
@@ -896,6 +897,7 @@ test("validateSnapshot: kostenlose Zeile (Preise 0) ohne Token-Stats ist gültig
         effectiveCachedWrite: 0,
         pattern: null,
         capabilities: null,
+        contextWindow: null,
         privacy: { training: true, validUntil: null },
       },
     ],
@@ -946,6 +948,41 @@ test("enrichCapabilities: lässt capabilities null bei unbekanntem Modell", () =
   const models = [{ name: "Völlig Unbekannt", tier: null }];
   const enriched = enrichCapabilities(models, {}, {});
   assert.equal(enriched[0].capabilities, null);
+});
+
+test("enrichCapabilities: befüllt provider aus dem models.dev-id-Prefix", () => {
+  const models = [{ name: "Grok 4.5", tier: null }];
+  const metadataModels = {
+    "xai/grok-4.5": {
+      id: "xai/grok-4.5",
+      name: "Grok 4.5",
+      modalities: { input: ["text"], output: ["text"] },
+    },
+  };
+  const enriched = enrichCapabilities(models, {}, metadataModels);
+  assert.equal(enriched[0].provider, "xai");
+});
+
+test("enrichCapabilities: provider null ohne ableitbaren Prefix", () => {
+  const models = [{ name: "Intern", tier: null }];
+  const opencodeModels = {
+    intern: { id: "intern", name: "Intern", modalities: { input: ["text"], output: ["text"] } },
+  };
+  const enriched = enrichCapabilities(models, opencodeModels, {});
+  assert.equal(enriched[0].provider, null);
+});
+
+test("enrichFreeModels: befüllt provider aus dem models.dev-id-Prefix", () => {
+  const free = [{ id: "big-pickle", availableFrom: "2026-08-05" }];
+  const metadataModels = {
+    "opencode/big-pickle": {
+      id: "opencode/big-pickle",
+      name: "Big Pickle",
+      modalities: { input: ["text"], output: ["text"] },
+    },
+  };
+  const enriched = enrichFreeModels(free, {}, metadataModels);
+  assert.equal(enriched[0].provider, "opencode");
 });
 
 test("computeCapabilityDiff: erkennt Änderung und ignoriert gleiche Werte", () => {

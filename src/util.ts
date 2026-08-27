@@ -18,6 +18,23 @@ export function fmtPricing(tpl: string, credit: number, cost: number): string {
     .replaceAll("{costNum}", String(cost));
 }
 
+/**
+ * Formatierung eines Kontextfensters (Tokens) — K/M-Suffix für große Werte,
+ * Spiegelbild zu cc-price-tracker. null/NaN → "–".
+ */
+export function fmtContextWindow(n: number | null): string {
+  if (n === null || n === undefined || Number.isNaN(n)) return "–";
+  if (n >= 1_000_000) {
+    const v = n / 1_000_000;
+    return `${v >= 10 ? Math.round(v) : Math.round(v * 10) / 10}M`;
+  }
+  if (n >= 1000) {
+    const v = n / 1000;
+    return `${v >= 10 ? Math.round(v) : Math.round(v * 10) / 10}K`;
+  }
+  return String(n);
+}
+
 export function fmtDate(iso: string, lang: "de" | "en"): string {
   const d = new Date(iso);
   return new Intl.DateTimeFormat(lang === "de" ? "de-DE" : "en-US", {

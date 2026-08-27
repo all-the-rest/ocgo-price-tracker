@@ -64,6 +64,7 @@ export const i18n = {
     privacyNote:
       "Datenschutz-Stufen: „Modelltraining“ (Daten können für das Modelltraining verwendet werden) · „Aufbewahrung“ (kein Training, aber Daten werden N Tage aufbewahrt) · „Kein ZDR“ (keine ZDR-Vereinbarung: Daten werden aufbewahrt, Dauer unbekannt) · „ZDR“ = Zero Data Retention (0 Tage). „Gültig bis“ = Ablauf der Vereinbarung (z. B. monatliche ZDR-Verlängerung bei DeepSeek V4 Flash). Kostenlose Zen-Modelle werden für das Modelltraining genutzt. „≈“ = nicht in der Doku gelistet, Angabe aus derselben Modellfamilie übernommen.",
     chgPrivacy: "{model}: Datenschutz {from} → {to}",
+    contextTokens: "Tokens",
     colModel: "Modell",
     modelIdCopy: "Klicken kopiert „opencode/{id}“",
     modelIdCopied: "Modell-ID {id} in die Zwischenablage kopiert",
@@ -164,6 +165,7 @@ export const i18n = {
     privacyNote:
       "Privacy tiers: \"Training\" (data may be used for model training) · \"Retention\" (no training, but data kept for N days) · \"No ZDR\" (no Zero Data Retention agreement: data is kept, duration unknown) · \"ZDR\" = Zero Data Retention (0 days). \"Valid until\" = expiry of the agreement (e.g. DeepSeek V4 Flash's monthly ZDR renewal). Free Zen models are used for model training. \"≈\" = not listed in the docs, value taken from the same model family.",
     chgPrivacy: "{model}: privacy {from} → {to}",
+    contextTokens: "tokens",
     colModel: "Model",
     modelIdCopy: "Click copies \"opencode/{id}\"",
     modelIdCopied: "Model ID {id} copied to clipboard",

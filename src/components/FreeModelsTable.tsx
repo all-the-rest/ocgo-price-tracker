@@ -2,7 +2,7 @@ import { createMemo, For, Show } from "solid-js";
 import type { Translation } from "../i18n";
 import Heading from "./Heading";
 import type { FreeModel } from "../types";
-import { fmtDateOnly, formatFreeModelName } from "../util";
+import { fmtContextWindow, fmtDateOnly, formatFreeModelName } from "../util";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import ModelId from "./ModelId";
 import type { FreeSortField, FreeSortState } from "../sort";
@@ -74,6 +74,18 @@ export default function FreeModelsTable(props: FreeModelsTableProps) {
                     <td class="font-medium">
                       {formatFreeModelName(f)}
                       <ModelId id={`opencode/${f.id}`} t={props.t} />
+                      <Show when={f.provider || f.contextWindow != null}>
+                        <span class="block text-xs font-normal text-base-content/70">
+                          {[
+                            f.provider,
+                            f.contextWindow != null
+                              ? `${fmtContextWindow(f.contextWindow)} ${props.t.contextTokens}`
+                              : null,
+                          ]
+                            .filter((s): s is string => Boolean(s))
+                            .join(" · ")}
+                        </span>
+                      </Show>
                     </td>
                     <td>
                       <CapabilityBadges m={f} t={props.t} />
