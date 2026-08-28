@@ -1,7 +1,7 @@
 {
   "fetchedAt": "2026-08-28T06:02:09.140Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
-  "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
+  "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
   "sourceLang": "de",
   "monthlyCredit": 60,
@@ -1287,27 +1287,6 @@
       }
     },
     {
-      "id": "deepseek-v4-flash-free",
-      "availableFrom": "2026-08-05",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 200000,
-      "provider": "deepseek-flash",
-      "name": "DeepSeek V4 Flash Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
       "id": "hy3-free",
       "availableFrom": "2026-08-11",
       "capabilities": {
@@ -1323,27 +1302,6 @@
       "contextWindow": 190000,
       "provider": "hy3-free",
       "name": "Hy3 Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "laguna-s-2.1-free",
-      "availableFrom": "2026-08-05",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 256000,
-      "provider": "laguna",
-      "name": "Laguna S 2.1 Free",
       "privacy": {
         "training": true,
         "validUntil": null
