@@ -21,6 +21,8 @@ interface PriceTableProps {
   setSort: (u: (prev: SortState) => SortState) => void;
   caps: CapId[];
   setCaps: (u: (prev: CapId[]) => CapId[]) => void;
+  showTraining: boolean;
+  setShowTraining: (v: boolean) => void;
   monthlyCredit: number;
   monthlyCost: number;
   peakHours?: PeakHours;
@@ -63,6 +65,9 @@ export default function PriceTable(props: PriceTableProps) {
   const sorted = createMemo(() => {
     const { field, dir } = props.sort;
     let models = props.models;
+    if (!props.showTraining) {
+      models = models.filter((m) => !(m.privacy && m.privacy.training === true));
+    }
     if (props.caps.length > 0) {
       models = models.filter((m) => {
         const s = capsOf(m);
@@ -195,7 +200,22 @@ export default function PriceTable(props: PriceTableProps) {
         </Show>
       </div>
 
-      <CapabilityFilter value={() => props.caps} setter={props.setCaps} t={props.t} />
+      <CapabilityFilter
+        value={() => props.caps}
+        setter={props.setCaps}
+        t={props.t}
+        trailing={
+          <label class="label cursor-pointer gap-2 order-first lg:order-last">
+            <span class="label-text">{props.t.trainingFilter}</span>
+            <input
+              type="checkbox"
+              class="toggle toggle-primary toggle-sm"
+              checked={props.showTraining}
+              onChange={(e) => props.setShowTraining(e.currentTarget.checked)}
+            />
+          </label>
+        }
+      />
 
       <div ref={scroller} class="mt-4 max-w-full overflow-x-auto">
         <table class="table table-zebra table-sm table-pin-rows">

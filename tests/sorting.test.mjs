@@ -115,3 +115,34 @@ test("paid-Basis input asc: Effektivpreis entscheidet, nicht der rohe Listenprei
     "GLM-5.2 muss vor GLM-5.3 stehen"
   );
 });
+
+test("Training-Filter (showTraining=false) blendet nur 'Muse Spark 1.2 Contributor' aus", () => {
+  const trainingNames = models
+    .filter((m) => m.privacy && m.privacy.training === true)
+    .map((m) => m.name);
+  assert.deepEqual(
+    trainingNames,
+    ["Muse Spark 1.2 Contributor"],
+    "aktuell hat exakt ein Modell training=true"
+  );
+  const html = ssr.renderPriceTable(models, {
+    basis: "full",
+    sortField: "name",
+    sortDir: 1,
+    monthlyCredit: CREDIT,
+    monthlyCost: COST,
+    lang: "de",
+    showTraining: false,
+  });
+  const names = extractRowNames(html);
+  assert.ok(
+    !names.includes("Muse Spark 1.2 Contributor"),
+    "Muse Spark 1.2 Contributor ist ausgeblendet"
+  );
+  assert.equal(names.length, models.length - 1, "genau ein Modell weniger");
+  const expected = [...models]
+    .filter((m) => !(m.privacy && m.privacy.training === true))
+    .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))
+    .map((m) => m.name);
+  assert.deepEqual(names, expected, "Reihenfolge der übrigen Modelle bleibt korrekt");
+});

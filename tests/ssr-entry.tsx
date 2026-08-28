@@ -13,6 +13,7 @@ export interface RenderOptions {
   monthlyCredit: number;
   monthlyCost: number;
   lang: Lang;
+  showTraining?: boolean;
 }
 
 /**
@@ -33,6 +34,8 @@ export function renderPriceTable(models: Model[], opts: RenderOptions): string {
       setSort={() => {}}
       caps={[]}
       setCaps={() => {}}
+      showTraining={opts.showTraining ?? true}
+      setShowTraining={() => {}}
       monthlyCredit={opts.monthlyCredit}
       monthlyCost={opts.monthlyCost}
     />

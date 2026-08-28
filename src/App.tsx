@@ -81,6 +81,7 @@ export default function App() {
   );
   const [caps, setCaps] = createSignal<CapId[]>(params.cap ?? []);
   const [freeCaps, setFreeCaps] = createSignal<CapId[]>(params.fcap ?? []);
+  const [showTraining, setShowTraining] = createSignal(true);
 
   const t = () => i18n[lang()];
 
@@ -158,6 +159,8 @@ export default function App() {
           setSort={setSort}
           caps={caps()}
           setCaps={setCaps}
+          showTraining={showTraining()}
+          setShowTraining={setShowTraining}
           monthlyCredit={data.monthlyCredit}
           monthlyCost={data.monthlyCost}
           peakHours={data.peakHours}

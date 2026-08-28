@@ -1,4 +1,4 @@
-import { For, Show } from "solid-js";
+import { For, Show, type JSX } from "solid-js";
 import type { Translation } from "./i18n";
 import type { Capabilities } from "./types";
 
@@ -50,11 +50,13 @@ export function CapabilityFilter(props: {
   value: () => CapId[];
   setter: (u: (prev: CapId[]) => CapId[]) => void;
   t: Translation;
+  trailing?: JSX.Element;
 }) {
   return (
-    <div class="mt-4 flex flex-wrap items-center gap-3">
-      <span>{props.t.capsLabel}</span>
-      <For each={CAP_IDS}>
+    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <span>{props.t.capsLabel}</span>
+        <For each={CAP_IDS}>
         {(id) => (
           <label class="label cursor-pointer gap-2">
             <span class="label-text">{capLabel(id, props.t)}</span>
@@ -75,6 +77,8 @@ export function CapabilityFilter(props: {
           </label>
         )}
       </For>
+      </div>
+      {props.trailing}
     </div>
   );
 }
