@@ -98,10 +98,10 @@ export default function Changelog(props: ChangelogProps) {
         return <span class={`${baseCls} badge-ghost`}>≈</span>;
       }
       case "usage_changed": {
-        if (c.to === null) return <span class={`${baseCls} badge-success`}>↓</span>;
-        if (c.from === null) return <span class={`${baseCls} badge-error`}>↑</span>;
-        if (c.to > c.from) return <span class={`${baseCls} badge-success`}>↓</span>;
-        if (c.to < c.from) return <span class={`${baseCls} badge-error`}>↑</span>;
+        if (c.to === null) return <span class={`${baseCls} badge-success`}>↑</span>;
+        if (c.from === null) return <span class={`${baseCls} badge-error`}>↓</span>;
+        if (c.to > c.from) return <span class={`${baseCls} badge-success`}>↑</span>;
+        if (c.to < c.from) return <span class={`${baseCls} badge-error`}>↓</span>;
         return <span class={`${baseCls} badge-ghost`}>≈</span>;
       }
       case "capabilities_changed": {
