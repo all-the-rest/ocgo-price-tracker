@@ -15,7 +15,8 @@ import {
   validateSnapshot,
   validateChangelog,
   modelKey,
-  extractFreeModels,
+  extractFreeModelsFromDocs,
+  parseZenEndpointIds,
   patternPartMatches,
   enrichCapabilities,
   computeCapabilityDiff,
@@ -549,9 +550,41 @@ test("mergeFreeModels: übernimmt availableFrom und setzt für neue Modelle das 
   ]);
 });
 
-test("extractFreeModels: filtert free-Modelle und big-pickle", () => {
-  const ids = ["gpt-5", "deepseek-v4-flash-free", "big-pickle", "mimo-v2.5-free", "grok-4.5", "big-pickle"];
-  assert.deepEqual(extractFreeModels(ids), ["big-pickle", "deepseek-v4-flash-free", "mimo-v2.5-free"]);
+test("parseZenEndpointIds: mappt normalisierten Modellnamen → Model-ID", () => {
+  const html = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"),
+    "utf8"
+  );
+  const ids = parseZenEndpointIds(html);
+  assert.equal(ids.get("bigpickle"), "big-pickle");
+  assert.equal(ids.get("mimov2.5free"), "mimo-v2.5-free");
+  assert.equal(ids.get("nemotron3.5lightningfree"), "nemotron-3.5-lightning-free");
+  assert.equal(ids.size, 8);
+});
+
+test("extractFreeModelsFromDocs: extrahiert nur die kostenlosen Modelle aus Endpunkte + Preise", () => {
+  const html = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"),
+    "utf8"
+  );
+  assert.deepEqual(extractFreeModelsFromDocs(html), [
+    "big-pickle",
+    "hy3-free",
+    "mimo-v2.5-free",
+    "muse-spark-1.2-contributor-free",
+    "nemotron-3-ultra-free",
+    "nemotron-3.5-lightning-free",
+  ]);
+});
+
+test("extractFreeModelsFromDocs: ignoriert kostenpflichtige Modelle", () => {
+  const html = readFileSync(
+    join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"),
+    "utf8"
+  );
+  const free = extractFreeModelsFromDocs(html);
+  assert.ok(!free.includes("deepseek-v4-flash"));
+  assert.ok(!free.includes("minimax-m3"));
 });
 
 test("upsertChangelogJson: ersetzt Eintrag mit gleicher id und entfernt leere Einträge", () => {
@@ -807,7 +840,7 @@ test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () =
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
     sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/zen/v1/models",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     monthlyCredit: 60,
@@ -833,7 +866,7 @@ test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung",
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
     sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/zen/v1/models",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     monthlyCredit: 60,
@@ -875,7 +908,7 @@ test("validateSnapshot: kostenlose Zeile (Preise 0) ohne Token-Stats ist gültig
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
     sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/zen/v1/models",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     monthlyCredit: 60,
@@ -1141,7 +1174,7 @@ test("validateSnapshot: kostenloses Modell ohne privacy bricht", () => {
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
     sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/zen/v1/models",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     monthlyCredit: 60,

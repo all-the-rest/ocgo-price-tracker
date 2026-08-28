@@ -13,7 +13,10 @@ import {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE_URL = "https://opencode.ai/docs/de/go/";
 const BONUS_URL = "https://opencode.ai/de/go";
-const ZEN_URL = "https://opencode.ai/zen/v1/models";
+// Quelle der kostenlosen Zen-Modelle: die Zen-Doku. Unter „Endpunkte“ stehen die
+// Model-IDs, unter „Preise“ die kostenlosen („Free“) Zeilen — das ist die
+// autoritative Liste der gratis Modelle (ersetzt die alte zen/v1/models-API).
+const ZEN_DOCS_URL = "https://opencode.ai/docs/de/zen/";
 const MODELS_DEV_URL = "https://models.dev";
 const SOURCE_LANG = "de";
 // Fallback-Werte: Monatsguthaben/-preis werden dynamisch aus der Go-Landingpage
@@ -213,23 +216,65 @@ const FREE_MODEL_PRIVACY_OVERRIDES = {
 };
 
 /**
- * Filtert aus einer Liste von OpenCode-Zen-Modell-IDs die kostenlosen Modelle
- * ("free" im Namen) sowie "big-pickle" heraus, dedupliziert und sortiert.
+ * Liefert die erste `<table>` nach der Überschrift mit der gegebenen `id`
+ * (z. B. `#endpunkte` oder `#preise`), oder ein leeres Element.
  */
-export function extractFreeModels(ids) {
-  return [...new Set(ids.filter((id) => typeof id === "string" && (id.includes("free") || id === "big-pickle")))].sort();
+function tableAfterHeading($, headingId) {
+  let el = $(`#${headingId}`).next();
+  while (el.length && !el.is("table")) el = el.next();
+  return el;
+}
+
+/**
+ * Parst die „Endpunkte“-Tabelle der Zen-Doku und liefert eine Map von
+ * normalisiertem Modellnamen → Model-ID (Spalten „Model“ / „Model ID“).
+ */
+export function parseZenEndpointIds(html) {
+  const $ = cheerio.load(html);
+  const map = new Map();
+  const rows = tableAfterHeading($, "endpunkte").find("tbody tr");
+  rows.each((_, tr) => {
+    const cells = $(tr).find("td");
+    const name = $(cells[0]).text().trim();
+    const id = $(cells[1]).text().trim();
+    if (name && id) map.set(normalizeName(name), id);
+  });
+  return map;
+}
+
+/**
+ * Parst die Zen-Doku (`https://opencode.ai/docs/de/zen/`) und extrahiert die
+ * kostenlosen Modelle. Die „Endpunkte“-Tabelle liefert die Model-IDs (per
+ * normalisiertem Namen), die „Preise“-Tabelle markiert die gratis Zeilen
+ * (Input-Spalte = „Free“). Beide werden über den Modellnamen korreliert.
+ * Ergebnis: deduplizierte, sortierte Liste der kostenlosen Model-IDs.
+ */
+export function extractFreeModelsFromDocs(html) {
+  const $ = cheerio.load(html);
+  const idsByName = parseZenEndpointIds(html);
+  const free = [];
+  const rows = tableAfterHeading($, "preise").find("tbody tr");
+  rows.each((_, tr) => {
+    const cells = $(tr).find("td");
+    const name = $(cells[0]).text().trim();
+    const input = $(cells[1]).text().trim().toLowerCase();
+    if (input === "free") {
+      const id = idsByName.get(normalizeName(name));
+      if (id) free.push(id);
+    }
+  });
+  return [...new Set(free)].sort();
 }
 
 async function fetchZenFreeModels(previousFree) {
   try {
-    const res = await fetch(ZEN_URL, { headers: { "User-Agent": USER_AGENT } });
-    if (!res.ok) throw new ScrapeError(`HTTP ${res.status} bei ${ZEN_URL}`);
-    const json = await res.json();
-    const ids = Array.isArray(json?.data) ? json.data.map((d) => d?.id) : [];
-    return extractFreeModels(ids);
+    const res = await fetch(ZEN_DOCS_URL, { headers: { "User-Agent": USER_AGENT } });
+    if (!res.ok) throw new ScrapeError(`HTTP ${res.status} bei ${ZEN_DOCS_URL}`);
+    const html = await res.text();
+    return extractFreeModelsFromDocs(html);
   } catch (err) {
     console.error(
-      `[scrape] Warnung: Zen-API nicht erreichbar (${err instanceof Error ? err.message : String(err)}); behalte ${previousFree.length} bisherige Einträge.`
+      `[scrape] Warnung: Zen-Doku nicht erreichbar (${err instanceof Error ? err.message : String(err)}); behalte ${previousFree.length} bisherige Einträge.`
     );
     return previousFree;
   }
@@ -1474,7 +1519,7 @@ async function main() {
     const latest = {
       fetchedAt,
       sourceUrl: SOURCE_URL,
-      freeModelsSourceUrl: ZEN_URL,
+      freeModelsSourceUrl: ZEN_DOCS_URL,
       capabilitiesSourceUrl: MODELS_DEV_URL,
       sourceLang: SOURCE_LANG,
       monthlyCredit,
