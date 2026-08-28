@@ -993,7 +993,7 @@ test("enrichCapabilities: befüllt provider aus dem models.dev-id-Prefix", () =>
     },
   };
   const enriched = enrichCapabilities(models, {}, metadataModels);
-  assert.equal(enriched[0].provider, "xai");
+  assert.equal(enriched[0].provider, "xAI");
 });
 
 test("enrichCapabilities: provider null ohne ableitbaren Prefix", () => {
@@ -1015,7 +1015,7 @@ test("enrichFreeModels: befüllt provider aus dem models.dev-id-Prefix", () => {
     },
   };
   const enriched = enrichFreeModels(free, {}, metadataModels);
-  assert.equal(enriched[0].provider, "opencode");
+  assert.equal(enriched[0].provider, "OpenCode");
 });
 
 test("computeCapabilityDiff: erkennt Änderung und ignoriert gleiche Werte", () => {

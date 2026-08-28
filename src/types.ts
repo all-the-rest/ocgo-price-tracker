@@ -47,7 +47,7 @@ export interface FreeModel {
   capabilities: Capabilities | null;
   /** Kontextfenster in Tokens (aus models.dev); null = unbekannt. */
   contextWindow: number | null;
-  /** Hersteller/Provider (aus models.dev, z. B. "anthropic", "xai"); null = unbekannt. */
+  /** Hersteller/Provider (aus models.dev, z. B. "Anthropic", "xAI", "Z.ai"); null = unbekannt. */
   provider: string | null;
   privacy: Privacy;
 }
@@ -71,7 +71,7 @@ export interface Model {
   capabilities: Capabilities | null;
   /** Kontextfenster in Tokens (aus models.dev); null = unbekannt. */
   contextWindow: number | null;
-  /** Hersteller/Provider (aus models.dev, z. B. "anthropic", "xai"); null = unbekannt. */
+  /** Hersteller/Provider (aus models.dev, z. B. "Anthropic", "xAI", "Z.ai"); null = unbekannt. */
   provider: string | null;
   privacy: Privacy | null;
 }

@@ -77,24 +77,79 @@ function toContextWindow(md) {
 }
 
 /**
+ * Anzeige-Name für Hersteller/Provider — angeglichen an cc-price-tracker
+ * (großgeschrieben/branded). `Z.ai` für GLM-Modelle (statt Rohwert `zhipuai`).
+ */
+const PROVIDER_LABELS = {
+  alibaba: "Alibaba",
+  anthropic: "Anthropic",
+  "big-pickle": "Big Pickle",
+  deepseek: "DeepSeek",
+  "deepseek-flash": "DeepSeek",
+  "deepseek-thinking": "DeepSeek",
+  glm: "Z.ai",
+  "gpt-luna": "OpenAI",
+  grok: "xAI",
+  "hy3-free": "Tencent",
+  "kimi-k2": "Moonshot AI",
+  "kimi-k3": "Moonshot AI",
+  meituan: "Meituan",
+  meta: "Meta",
+  "mimo-v2.5-free": "Xiaomi",
+  minimax: "MiniMax",
+  "muse-free": "Meta",
+  "nemotron-free": "NVIDIA",
+  nvidia: "NVIDIA",
+  opencode: "OpenCode",
+  openai: "OpenAI",
+  qwen: "Alibaba",
+  "qwen3.6": "Alibaba",
+  tencent: "Tencent",
+  xai: "xAI",
+  xiaomi: "Xiaomi",
+  zai: "Z.ai",
+  zhipuai: "Z.ai",
+  moonshotai: "Moonshot AI",
+  google: "Google",
+  sakana: "Sakana",
+  stepfun: "StepFun",
+  "thinking-machines": "Thinking Machines",
+};
+
+function formatProvider(raw) {
+  if (!raw) return null;
+  const key = String(raw).toLowerCase();
+  if (PROVIDER_LABELS[key]) return PROVIDER_LABELS[key];
+  // Fallback: Titel-Schreibweise (z. B. "meituan" → "Meituan", "big-pickle" → "Big Pickle")
+  return key
+    .split("-")
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : ""))
+    .join(" ");
+}
+
+/**
  * Hersteller/Provider aus den models.dev-Metadaten ableiten. models.dev kodiert
  * den Provider im `id`-Prefix (`"anthropic/claude-…"` → "anthropic",
  * `"xai/grok-4.5"` → "xai"); bei `id` ohne Slash/Colon (z. B. interne
  * opencode-IDs) ist kein Provider ableitbar → null. `md.provider` ist bei
  * models.dev meist ein Objekt (npm/api) und `md.family` eine Modellfamilie,
- * daher nur als Fallback, wenn kein Prefix vorliegt.
+ * daher nur als Fallback, wenn kein Prefix vorliegt. Rückgabe ist der
+ * Anzeige-Name (z. B. "Z.ai" statt "zhipuai", "xAI" statt "xai").
  */
 function toProvider(md) {
   if (!md) return null;
+  let raw = null;
   if (typeof md.id === "string") {
     const slash = md.id.split("/")[0];
-    if (slash && slash !== md.id) return slash;
-    const colon = md.id.split(":")[0];
-    if (colon && colon !== md.id) return colon;
+    if (slash && slash !== md.id) raw = slash;
+    else {
+      const colon = md.id.split(":")[0];
+      if (colon && colon !== md.id) raw = colon;
+    }
   }
-  if (typeof md.provider === "string" && md.provider) return md.provider;
-  if (typeof md.family === "string" && md.family) return md.family;
-  return null;
+  if (!raw && typeof md.provider === "string" && md.provider) raw = md.provider;
+  if (!raw && typeof md.family === "string" && md.family) raw = md.family;
+  return formatProvider(raw);
 }
 
 /**

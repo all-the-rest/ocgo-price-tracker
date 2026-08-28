@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-28T06:02:09.140Z",
+  "fetchedAt": "2026-08-28T08:24:35.110Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -74,7 +74,7 @@
         "validUntil": null
       },
       "contextWindow": 500000,
-      "provider": "grok",
+      "provider": "xAI",
       "id": "opencode-go/grok-4.6"
     },
     {
@@ -112,7 +112,7 @@
         "validUntil": null
       },
       "contextWindow": 500000,
-      "provider": "grok",
+      "provider": "xAI",
       "id": "opencode-go/grok-4.6"
     },
     {
@@ -151,7 +151,7 @@
         "validUntil": null
       },
       "contextWindow": 1050000,
-      "provider": "gpt-luna",
+      "provider": "OpenAI",
       "id": "opencode-go/gpt-5.6-luna"
     },
     {
@@ -190,7 +190,7 @@
         "validUntil": null
       },
       "contextWindow": 1050000,
-      "provider": "gpt-luna",
+      "provider": "OpenAI",
       "id": "opencode-go/gpt-5.6-luna"
     },
     {
@@ -230,7 +230,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "zhipuai",
+      "provider": "Z.ai",
       "id": "opencode-go/glm-5.3-flash"
     },
     {
@@ -267,7 +267,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "zhipuai",
+      "provider": "Z.ai",
       "id": "opencode-go/glm-5.3"
     },
     {
@@ -304,7 +304,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "glm",
+      "provider": "Z.ai",
       "id": "opencode-go/glm-5.2"
     },
     {
@@ -341,7 +341,7 @@
         "validUntil": null
       },
       "contextWindow": 204800,
-      "provider": "glm",
+      "provider": "Z.ai",
       "id": "opencode-go/glm-5.1"
     },
     {
@@ -380,7 +380,7 @@
         "validUntil": null
       },
       "contextWindow": 1048576,
-      "provider": "kimi-k3",
+      "provider": "Moonshot AI",
       "id": "opencode-go/kimi-k3"
     },
     {
@@ -419,7 +419,7 @@
         "validUntil": null
       },
       "contextWindow": 262144,
-      "provider": "kimi-k2",
+      "provider": "Moonshot AI",
       "id": "opencode-go/kimi-k2.7-code"
     },
     {
@@ -458,7 +458,7 @@
         "validUntil": null
       },
       "contextWindow": 262144,
-      "provider": "kimi-k2",
+      "provider": "Moonshot AI",
       "id": "opencode-go/kimi-k2.6"
     },
     {
@@ -495,7 +495,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "meituan",
+      "provider": "Meituan",
       "id": "opencode-go/longcat-2.0"
     },
     {
@@ -535,7 +535,7 @@
         "validUntil": null
       },
       "contextWindow": 1048576,
-      "provider": "xiaomi",
+      "provider": "Xiaomi",
       "id": "opencode-go/mimo-v2.5"
     },
     {
@@ -572,7 +572,7 @@
         "validUntil": null
       },
       "contextWindow": 1048576,
-      "provider": "xiaomi",
+      "provider": "Xiaomi",
       "id": "opencode-go/mimo-v2.5-pro"
     },
     {
@@ -611,7 +611,7 @@
         "validUntil": null
       },
       "contextWindow": 512000,
-      "provider": "minimax",
+      "provider": "MiniMax",
       "id": "opencode-go/minimax-m3"
     },
     {
@@ -648,7 +648,7 @@
         "validUntil": null
       },
       "contextWindow": 204800,
-      "provider": "minimax",
+      "provider": "MiniMax",
       "id": "opencode-go/minimax-m2.7"
     },
     {
@@ -686,7 +686,7 @@
         "fallback": true
       },
       "contextWindow": 204800,
-      "provider": "minimax",
+      "provider": "MiniMax",
       "id": "opencode-go/minimax-m2.5"
     },
     {
@@ -727,7 +727,7 @@
         "validUntil": null
       },
       "contextWindow": 1048576,
-      "provider": "meta",
+      "provider": "Meta",
       "id": "opencode-go/muse-spark-1.2-contributor"
     },
     {
@@ -767,7 +767,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "alibaba",
+      "provider": "Alibaba",
       "id": "opencode-go/qwen3.8-max"
     },
     {
@@ -806,7 +806,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "alibaba",
+      "provider": "Alibaba",
       "id": "opencode-go/qwen3.8-flash"
     },
     {
@@ -843,7 +843,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "alibaba",
+      "provider": "Alibaba",
       "id": "opencode-go/qwen3.7-max"
     },
     {
@@ -882,7 +882,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "alibaba",
+      "provider": "Alibaba",
       "id": "opencode-go/qwen3.7-plus"
     },
     {
@@ -921,7 +921,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "alibaba",
+      "provider": "Alibaba",
       "id": "opencode-go/qwen3.7-plus"
     },
     {
@@ -960,7 +960,7 @@
         "validUntil": null
       },
       "contextWindow": 262144,
-      "provider": "qwen3.6",
+      "provider": "Alibaba",
       "id": "opencode-go/qwen3.6-plus"
     },
     {
@@ -999,7 +999,7 @@
         "validUntil": null
       },
       "contextWindow": 262144,
-      "provider": "qwen3.6",
+      "provider": "Alibaba",
       "id": "opencode-go/qwen3.6-plus"
     },
     {
@@ -1036,7 +1036,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "deepseek-thinking",
+      "provider": "DeepSeek",
       "id": "opencode-go/deepseek-v4-pro"
     },
     {
@@ -1073,7 +1073,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "deepseek-thinking",
+      "provider": "DeepSeek",
       "id": "opencode-go/deepseek-v4-pro"
     },
     {
@@ -1110,7 +1110,7 @@
         "validUntil": "2026-08-31"
       },
       "contextWindow": 1000000,
-      "provider": "deepseek-flash",
+      "provider": "DeepSeek",
       "id": "opencode-go/deepseek-v4-flash"
     },
     {
@@ -1147,7 +1147,7 @@
         "validUntil": "2026-08-31"
       },
       "contextWindow": 1000000,
-      "provider": "deepseek-flash",
+      "provider": "DeepSeek",
       "id": "opencode-go/deepseek-v4-flash"
     },
     {
@@ -1185,7 +1185,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "deepseek",
+      "provider": "DeepSeek",
       "id": "opencode-go/deepseek-v4-flash-vision-exp"
     },
     {
@@ -1223,7 +1223,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "deepseek",
+      "provider": "DeepSeek",
       "id": "opencode-go/deepseek-v4-flash-vision-exp"
     },
     {
@@ -1260,7 +1260,7 @@
         "validUntil": null
       },
       "contextWindow": 256000,
-      "provider": "tencent",
+      "provider": "Tencent",
       "id": "opencode-go/hy3"
     }
   ],
@@ -1279,7 +1279,7 @@
         "toolCall": true
       },
       "contextWindow": 200000,
-      "provider": "big-pickle",
+      "provider": "Big Pickle",
       "name": "Big Pickle",
       "privacy": {
         "training": true,
@@ -1300,7 +1300,7 @@
         "toolCall": true
       },
       "contextWindow": 190000,
-      "provider": "hy3-free",
+      "provider": "Tencent",
       "name": "Hy3 Free",
       "privacy": {
         "training": true,
@@ -1324,7 +1324,7 @@
         "toolCall": true
       },
       "contextWindow": 200000,
-      "provider": "mimo-v2.5-free",
+      "provider": "Xiaomi",
       "name": "MiMo V2.5 Free",
       "privacy": {
         "training": true,
@@ -1349,7 +1349,7 @@
         "toolCall": true
       },
       "contextWindow": 1048576,
-      "provider": "muse-free",
+      "provider": "Meta",
       "name": "Muse Spark 1.2 Free",
       "privacy": {
         "training": true,
@@ -1370,7 +1370,7 @@
         "toolCall": true
       },
       "contextWindow": 1000000,
-      "provider": "nemotron-free",
+      "provider": "NVIDIA",
       "name": "Nemotron 3 Ultra Free",
       "privacy": {
         "training": true,
@@ -1391,7 +1391,7 @@
         "toolCall": true
       },
       "contextWindow": 262144,
-      "provider": "nemotron-free",
+      "provider": "NVIDIA",
       "name": "Nemotron 3.5 Lightning Free",
       "privacy": {
         "training": true,
