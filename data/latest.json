@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-27T20:49:16.037Z",
+  "fetchedAt": "2026-08-28T06:02:09.140Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/zen/v1/models",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -769,6 +769,45 @@
       "contextWindow": 1000000,
       "provider": "alibaba",
       "id": "opencode-go/qwen3.8-max"
+    },
+    {
+      "name": "Qwen3.8 Flash",
+      "tier": null,
+      "input": 0.15,
+      "output": 0.47,
+      "cachedRead": 0.016,
+      "cachedWrite": 0.2,
+      "usage": 30,
+      "pattern": {
+        "input": 600,
+        "cachedRead": 58000,
+        "output": 200
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 2,
+      "effectiveInput": 0.3,
+      "effectiveOutput": 0.94,
+      "effectiveCachedRead": 0.032,
+      "effectiveCachedWrite": 0.4,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "provider": "alibaba",
+      "id": "opencode-go/qwen3.8-flash"
     },
     {
       "name": "Qwen3.7 Max",
