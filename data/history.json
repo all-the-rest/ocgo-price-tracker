@@ -46457,6 +46457,1466 @@
           }
         }
       ]
+    },
+    {
+      "fetchedAt": "2026-08-28T15:41:39.840Z",
+      "sourceUrl": "https://opencode.ai/docs/de/go/",
+      "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
+      "capabilitiesSourceUrl": "https://models.dev",
+      "sourceLang": "de",
+      "monthlyCredit": 60,
+      "monthlyCost": 10,
+      "peakHours": {
+        "deepseekv4pro": [
+          [
+            1,
+            4
+          ],
+          [
+            6,
+            10
+          ]
+        ],
+        "deepseekv4flash": [
+          [
+            1,
+            4
+          ],
+          [
+            6,
+            10
+          ]
+        ],
+        "deepseekv4flashvisionexp": [
+          [
+            1,
+            4
+          ],
+          [
+            6,
+            10
+          ]
+        ]
+      },
+      "models": [
+        {
+          "name": "Grok 4.6",
+          "tier": "≤ 200K tokens",
+          "input": 2,
+          "output": 6,
+          "cachedRead": 0.5,
+          "cachedWrite": null,
+          "usage": 15,
+          "pattern": {
+            "input": 390,
+            "cachedRead": 32500,
+            "output": 120
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 8,
+          "effectiveOutput": 24,
+          "effectiveCachedRead": 2,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": 30,
+            "validUntil": null
+          },
+          "contextWindow": 500000,
+          "provider": "xAI",
+          "id": "opencode-go/grok-4.6"
+        },
+        {
+          "name": "Grok 4.6",
+          "tier": "> 200K tokens",
+          "input": 4,
+          "output": 12,
+          "cachedRead": 1,
+          "cachedWrite": null,
+          "usage": 15,
+          "pattern": {
+            "input": 390,
+            "cachedRead": 32500,
+            "output": 120
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 16,
+          "effectiveOutput": 48,
+          "effectiveCachedRead": 4,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": 30,
+            "validUntil": null
+          },
+          "contextWindow": 500000,
+          "provider": "xAI",
+          "id": "opencode-go/grok-4.6"
+        },
+        {
+          "name": "GPT 5.6 Luna",
+          "tier": "≤ 272K tokens",
+          "input": 0.2,
+          "output": 1.2,
+          "cachedRead": 0.02,
+          "cachedWrite": 0.25,
+          "usage": 15,
+          "pattern": {
+            "input": 1000,
+            "cachedRead": 50000,
+            "output": 220
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 0.8,
+          "effectiveOutput": 4.8,
+          "effectiveCachedRead": 0.08,
+          "effectiveCachedWrite": 1,
+          "privacy": {
+            "training": false,
+            "retentionDays": 30,
+            "validUntil": null
+          },
+          "contextWindow": 1050000,
+          "provider": "OpenAI",
+          "id": "opencode-go/gpt-5.6-luna"
+        },
+        {
+          "name": "GPT 5.6 Luna",
+          "tier": "> 272K tokens",
+          "input": 0.4,
+          "output": 1.8,
+          "cachedRead": 0.04,
+          "cachedWrite": 0.5,
+          "usage": 15,
+          "pattern": {
+            "input": 1000,
+            "cachedRead": 50000,
+            "output": 220
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 1.6,
+          "effectiveOutput": 7.2,
+          "effectiveCachedRead": 0.16,
+          "effectiveCachedWrite": 2,
+          "privacy": {
+            "training": false,
+            "retentionDays": 30,
+            "validUntil": null
+          },
+          "contextWindow": 1050000,
+          "provider": "OpenAI",
+          "id": "opencode-go/gpt-5.6-luna"
+        },
+        {
+          "name": "GLM-5.3-Flash",
+          "tier": null,
+          "input": 0.15,
+          "output": 0.5,
+          "cachedRead": 0.03,
+          "cachedWrite": null,
+          "usage": 30,
+          "pattern": {
+            "input": 1000,
+            "cachedRead": 55000,
+            "output": 200
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 2,
+          "effectiveInput": 0.3,
+          "effectiveOutput": 1,
+          "effectiveCachedRead": 0.06,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "Z.ai",
+          "id": "opencode-go/glm-5.3-flash"
+        },
+        {
+          "name": "GLM-5.3",
+          "tier": null,
+          "input": 1.4,
+          "output": 4.4,
+          "cachedRead": 0.26,
+          "cachedWrite": null,
+          "usage": 15,
+          "pattern": {
+            "input": 700,
+            "cachedRead": 52000,
+            "output": 150
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 5.6,
+          "effectiveOutput": 17.6,
+          "effectiveCachedRead": 1.04,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "Z.ai",
+          "id": "opencode-go/glm-5.3"
+        },
+        {
+          "name": "GLM-5.2",
+          "tier": null,
+          "input": 1.4,
+          "output": 4.4,
+          "cachedRead": 0.26,
+          "cachedWrite": null,
+          "usage": 60,
+          "pattern": {
+            "input": 700,
+            "cachedRead": 52000,
+            "output": 150
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 1.4,
+          "effectiveOutput": 4.4,
+          "effectiveCachedRead": 0.26,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "Z.ai",
+          "id": "opencode-go/glm-5.2"
+        },
+        {
+          "name": "GLM-5.1",
+          "tier": null,
+          "input": 1.4,
+          "output": 4.4,
+          "cachedRead": 0.26,
+          "cachedWrite": null,
+          "usage": 60,
+          "pattern": {
+            "input": 700,
+            "cachedRead": 52000,
+            "output": 150
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 1.4,
+          "effectiveOutput": 4.4,
+          "effectiveCachedRead": 0.26,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 204800,
+          "provider": "Z.ai",
+          "id": "opencode-go/glm-5.1"
+        },
+        {
+          "name": "Kimi K3",
+          "tier": null,
+          "input": 3,
+          "output": 15,
+          "cachedRead": 0.3,
+          "cachedWrite": null,
+          "usage": 15,
+          "pattern": {
+            "input": 1050,
+            "cachedRead": 76500,
+            "output": 300
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 12,
+          "effectiveOutput": 60,
+          "effectiveCachedRead": 1.2,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1048576,
+          "provider": "Moonshot AI",
+          "id": "opencode-go/kimi-k3"
+        },
+        {
+          "name": "Kimi K2.7 Code",
+          "tier": null,
+          "input": 0.95,
+          "output": 4,
+          "cachedRead": 0.19,
+          "cachedWrite": null,
+          "usage": 60,
+          "pattern": {
+            "input": 870,
+            "cachedRead": 55000,
+            "output": 200
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.95,
+          "effectiveOutput": 4,
+          "effectiveCachedRead": 0.19,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 262144,
+          "provider": "Moonshot AI",
+          "id": "opencode-go/kimi-k2.7-code"
+        },
+        {
+          "name": "Kimi K2.6",
+          "tier": null,
+          "input": 0.95,
+          "output": 4,
+          "cachedRead": 0.16,
+          "cachedWrite": null,
+          "usage": 60,
+          "pattern": {
+            "input": 870,
+            "cachedRead": 55000,
+            "output": 200
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.95,
+          "effectiveOutput": 4,
+          "effectiveCachedRead": 0.16,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 262144,
+          "provider": "Moonshot AI",
+          "id": "opencode-go/kimi-k2.6"
+        },
+        {
+          "name": "LongCat-2.0",
+          "tier": null,
+          "input": 0.3,
+          "output": 1.2,
+          "cachedRead": 0.006,
+          "cachedWrite": null,
+          "usage": 60,
+          "pattern": {
+            "input": 920,
+            "cachedRead": 88900,
+            "output": 200
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.3,
+          "effectiveOutput": 1.2,
+          "effectiveCachedRead": 0.006,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "Meituan",
+          "id": "opencode-go/longcat-2.0"
+        },
+        {
+          "name": "MiMo V2.5",
+          "tier": null,
+          "input": 0.14,
+          "output": 0.28,
+          "cachedRead": 0.0028,
+          "cachedWrite": null,
+          "usage": 60,
+          "pattern": {
+            "input": 830,
+            "cachedRead": 71500,
+            "output": 295
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.14,
+          "effectiveOutput": 0.28,
+          "effectiveCachedRead": 0.0028,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1048576,
+          "provider": "Xiaomi",
+          "id": "opencode-go/mimo-v2.5"
+        },
+        {
+          "name": "MiMo V2.5 Pro",
+          "tier": null,
+          "input": 0.435,
+          "output": 0.87,
+          "cachedRead": 0.003625,
+          "cachedWrite": null,
+          "usage": 15,
+          "pattern": {
+            "input": 790,
+            "cachedRead": 86000,
+            "output": 305
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 1.74,
+          "effectiveOutput": 3.48,
+          "effectiveCachedRead": 0.0145,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1048576,
+          "provider": "Xiaomi",
+          "id": "opencode-go/mimo-v2.5-pro"
+        },
+        {
+          "name": "MiniMax M3",
+          "tier": null,
+          "input": 0.3,
+          "output": 1.2,
+          "cachedRead": 0.06,
+          "cachedWrite": null,
+          "usage": 60,
+          "pattern": {
+            "input": 510,
+            "cachedRead": 56000,
+            "output": 190
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.3,
+          "effectiveOutput": 1.2,
+          "effectiveCachedRead": 0.06,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 512000,
+          "provider": "MiniMax",
+          "id": "opencode-go/minimax-m3"
+        },
+        {
+          "name": "MiniMax M2.7",
+          "tier": null,
+          "input": 0.3,
+          "output": 1.2,
+          "cachedRead": 0.06,
+          "cachedWrite": 0.375,
+          "usage": 60,
+          "pattern": {
+            "input": 300,
+            "cachedRead": 55000,
+            "output": 125
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.3,
+          "effectiveOutput": 1.2,
+          "effectiveCachedRead": 0.06,
+          "effectiveCachedWrite": 0.375,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 204800,
+          "provider": "MiniMax",
+          "id": "opencode-go/minimax-m2.7"
+        },
+        {
+          "name": "MiniMax M2.5",
+          "tier": null,
+          "input": 0.3,
+          "output": 1.2,
+          "cachedRead": 0.06,
+          "cachedWrite": 0.375,
+          "usage": 60,
+          "pattern": {
+            "input": 300,
+            "cachedRead": 55000,
+            "output": 125
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.3,
+          "effectiveOutput": 1.2,
+          "effectiveCachedRead": 0.06,
+          "effectiveCachedWrite": 0.375,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null,
+            "fallback": true
+          },
+          "contextWindow": 204800,
+          "provider": "MiniMax",
+          "id": "opencode-go/minimax-m2.5"
+        },
+        {
+          "name": "Muse Spark 1.2 Contributor",
+          "tier": null,
+          "input": 0.1,
+          "output": 0.2,
+          "cachedRead": 0.002,
+          "cachedWrite": null,
+          "usage": 60,
+          "pattern": {
+            "input": 620,
+            "cachedRead": 71400,
+            "output": 300
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf",
+              "audio"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.1,
+          "effectiveOutput": 0.2,
+          "effectiveCachedRead": 0.002,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": true,
+            "retentionDays": false,
+            "validUntil": null
+          },
+          "contextWindow": 1048576,
+          "provider": "Meta",
+          "id": "opencode-go/muse-spark-1.2-contributor"
+        },
+        {
+          "name": "Qwen3.8 Max",
+          "tier": null,
+          "input": 2,
+          "output": 6,
+          "cachedRead": 0.25,
+          "cachedWrite": 2.5,
+          "usage": 15,
+          "pattern": {
+            "input": 420,
+            "cachedRead": 66000,
+            "output": 200
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 8,
+          "effectiveOutput": 24,
+          "effectiveCachedRead": 1,
+          "effectiveCachedWrite": 10,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "Alibaba",
+          "id": "opencode-go/qwen3.8-max"
+        },
+        {
+          "name": "Qwen3.8 Flash",
+          "tier": null,
+          "input": 0.15,
+          "output": 0.47,
+          "cachedRead": 0.016,
+          "cachedWrite": 0.2,
+          "usage": 30,
+          "pattern": {
+            "input": 600,
+            "cachedRead": 58000,
+            "output": 200
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 2,
+          "effectiveInput": 0.3,
+          "effectiveOutput": 0.94,
+          "effectiveCachedRead": 0.032,
+          "effectiveCachedWrite": 0.4,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "Alibaba",
+          "id": "opencode-go/qwen3.8-flash"
+        },
+        {
+          "name": "Qwen3.7 Max",
+          "tier": null,
+          "input": 2.5,
+          "output": 7.5,
+          "cachedRead": 0.5,
+          "cachedWrite": 3.125,
+          "usage": 60,
+          "pattern": {
+            "input": 420,
+            "cachedRead": 66000,
+            "output": 200
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 2.5,
+          "effectiveOutput": 7.5,
+          "effectiveCachedRead": 0.5,
+          "effectiveCachedWrite": 3.125,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "Alibaba",
+          "id": "opencode-go/qwen3.7-max"
+        },
+        {
+          "name": "Qwen3.7 Plus",
+          "tier": "≤ 256K tokens",
+          "input": 0.4,
+          "output": 1.6,
+          "cachedRead": 0.04,
+          "cachedWrite": 0.5,
+          "usage": 60,
+          "pattern": {
+            "input": 500,
+            "cachedRead": 57000,
+            "output": 190
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.4,
+          "effectiveOutput": 1.6,
+          "effectiveCachedRead": 0.04,
+          "effectiveCachedWrite": 0.5,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "Alibaba",
+          "id": "opencode-go/qwen3.7-plus"
+        },
+        {
+          "name": "Qwen3.7 Plus",
+          "tier": "> 256K tokens",
+          "input": 1.2,
+          "output": 4.8,
+          "cachedRead": 0.12,
+          "cachedWrite": 1.5,
+          "usage": 60,
+          "pattern": {
+            "input": 500,
+            "cachedRead": 57000,
+            "output": 190
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 1.2,
+          "effectiveOutput": 4.8,
+          "effectiveCachedRead": 0.12,
+          "effectiveCachedWrite": 1.5,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "Alibaba",
+          "id": "opencode-go/qwen3.7-plus"
+        },
+        {
+          "name": "Qwen3.6 Plus",
+          "tier": "≤ 256K tokens",
+          "input": 0.5,
+          "output": 3,
+          "cachedRead": 0.05,
+          "cachedWrite": 0.625,
+          "usage": 60,
+          "pattern": {
+            "input": 500,
+            "cachedRead": 57000,
+            "output": 190
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 0.5,
+          "effectiveOutput": 3,
+          "effectiveCachedRead": 0.05,
+          "effectiveCachedWrite": 0.625,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 262144,
+          "provider": "Alibaba",
+          "id": "opencode-go/qwen3.6-plus"
+        },
+        {
+          "name": "Qwen3.6 Plus",
+          "tier": "> 256K tokens",
+          "input": 2,
+          "output": 6,
+          "cachedRead": 0.2,
+          "cachedWrite": 2.5,
+          "usage": 60,
+          "pattern": {
+            "input": 500,
+            "cachedRead": 57000,
+            "output": 190
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 1,
+          "effectiveInput": 2,
+          "effectiveOutput": 6,
+          "effectiveCachedRead": 0.2,
+          "effectiveCachedWrite": 2.5,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 262144,
+          "provider": "Alibaba",
+          "id": "opencode-go/qwen3.6-plus"
+        },
+        {
+          "name": "DeepSeek V4 Pro",
+          "tier": "Off-Peak",
+          "input": 0.66,
+          "output": 1.98,
+          "cachedRead": 0.022,
+          "cachedWrite": null,
+          "usage": 15,
+          "pattern": {
+            "input": 750,
+            "cachedRead": 82000,
+            "output": 290
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 2.64,
+          "effectiveOutput": 7.92,
+          "effectiveCachedRead": 0.088,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "DeepSeek",
+          "id": "opencode-go/deepseek-v4-pro"
+        },
+        {
+          "name": "DeepSeek V4 Pro",
+          "tier": "Peak",
+          "input": 1.32,
+          "output": 3.96,
+          "cachedRead": 0.044,
+          "cachedWrite": null,
+          "usage": 15,
+          "pattern": {
+            "input": 750,
+            "cachedRead": 82000,
+            "output": 290
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 5.28,
+          "effectiveOutput": 15.84,
+          "effectiveCachedRead": 0.176,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "DeepSeek",
+          "id": "opencode-go/deepseek-v4-pro"
+        },
+        {
+          "name": "DeepSeek V4 Flash",
+          "tier": "Off-Peak",
+          "input": 0.22,
+          "output": 0.66,
+          "cachedRead": 0.007,
+          "cachedWrite": null,
+          "usage": 30,
+          "pattern": {
+            "input": 410,
+            "cachedRead": 71300,
+            "output": 310
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 2,
+          "effectiveInput": 0.44,
+          "effectiveOutput": 1.32,
+          "effectiveCachedRead": 0.014,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": "2026-08-31"
+          },
+          "contextWindow": 1000000,
+          "provider": "DeepSeek",
+          "id": "opencode-go/deepseek-v4-flash"
+        },
+        {
+          "name": "DeepSeek V4 Flash",
+          "tier": "Peak",
+          "input": 0.44,
+          "output": 1.32,
+          "cachedRead": 0.014,
+          "cachedWrite": null,
+          "usage": 30,
+          "pattern": {
+            "input": 410,
+            "cachedRead": 71300,
+            "output": 310
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 2,
+          "effectiveInput": 0.88,
+          "effectiveOutput": 2.64,
+          "effectiveCachedRead": 0.028,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": "2026-08-31"
+          },
+          "contextWindow": 1000000,
+          "provider": "DeepSeek",
+          "id": "opencode-go/deepseek-v4-flash"
+        },
+        {
+          "name": "DeepSeek V4 Flash Vision Exp",
+          "tier": "Off-Peak",
+          "input": 0.22,
+          "output": 0.66,
+          "cachedRead": 0.007,
+          "cachedWrite": null,
+          "usage": 15,
+          "pattern": {
+            "input": 410,
+            "cachedRead": 71300,
+            "output": 310
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 0.88,
+          "effectiveOutput": 2.64,
+          "effectiveCachedRead": 0.028,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "DeepSeek",
+          "id": "opencode-go/deepseek-v4-flash-vision-exp"
+        },
+        {
+          "name": "DeepSeek V4 Flash Vision Exp",
+          "tier": "Peak",
+          "input": 0.44,
+          "output": 1.32,
+          "cachedRead": 0.014,
+          "cachedWrite": null,
+          "usage": 15,
+          "pattern": {
+            "input": 410,
+            "cachedRead": 71300,
+            "output": 310
+          },
+          "capabilities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 4,
+          "effectiveInput": 1.76,
+          "effectiveOutput": 5.28,
+          "effectiveCachedRead": 0.056,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1000000,
+          "provider": "DeepSeek",
+          "id": "opencode-go/deepseek-v4-flash-vision-exp"
+        },
+        {
+          "name": "Hy4 preview",
+          "tier": null,
+          "input": 0.834,
+          "output": 2.501,
+          "cachedRead": 0.042,
+          "cachedWrite": null,
+          "usage": 30,
+          "pattern": {
+            "input": 830,
+            "cachedRead": 71500,
+            "output": 295
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 2,
+          "effectiveInput": 1.668,
+          "effectiveOutput": 5.002,
+          "effectiveCachedRead": 0.084,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 1024000,
+          "provider": "Tencent",
+          "id": "opencode-go/hy4-preview"
+        },
+        {
+          "name": "Hy3",
+          "tier": null,
+          "input": 0.14,
+          "output": 0.58,
+          "cachedRead": 0.035,
+          "cachedWrite": null,
+          "usage": 480,
+          "pattern": {
+            "input": 830,
+            "cachedRead": 71500,
+            "output": 295
+          },
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "multiplier": 0.125,
+          "effectiveInput": 0.0175,
+          "effectiveOutput": 0.0725,
+          "effectiveCachedRead": 0.004375,
+          "effectiveCachedWrite": null,
+          "privacy": {
+            "training": false,
+            "retentionDays": true,
+            "validUntil": null
+          },
+          "contextWindow": 256000,
+          "provider": "Tencent",
+          "id": "opencode-go/hy3"
+        }
+      ],
+      "freeModels": [
+        {
+          "id": "big-pickle",
+          "availableFrom": "2026-08-05",
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "contextWindow": 200000,
+          "provider": "Big Pickle",
+          "name": "Big Pickle",
+          "privacy": {
+            "training": true,
+            "validUntil": null
+          }
+        },
+        {
+          "id": "hy3-free",
+          "availableFrom": "2026-08-11",
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "contextWindow": 190000,
+          "provider": "Tencent",
+          "name": "Hy3 Free",
+          "privacy": {
+            "training": true,
+            "validUntil": null
+          }
+        },
+        {
+          "id": "ling-3.0-flash-fin-free",
+          "availableFrom": "2026-08-28",
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "contextWindow": 262144,
+          "provider": "Ling",
+          "name": "Ling 3.0 Flash Fin Free",
+          "privacy": {
+            "training": true,
+            "validUntil": null
+          }
+        },
+        {
+          "id": "mimo-v2.5-free",
+          "availableFrom": "2026-08-05",
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "audio",
+              "video"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "contextWindow": 200000,
+          "provider": "Xiaomi",
+          "name": "MiMo V2.5 Free",
+          "privacy": {
+            "training": true,
+            "validUntil": null
+          }
+        },
+        {
+          "id": "muse-spark-1.2-contributor-free",
+          "availableFrom": "2026-08-20",
+          "capabilities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf",
+              "audio"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "contextWindow": 1048576,
+          "provider": "Meta",
+          "name": "Muse Spark 1.2 Free",
+          "privacy": {
+            "training": true,
+            "validUntil": null
+          }
+        },
+        {
+          "id": "nemotron-3-ultra-free",
+          "availableFrom": "2026-08-05",
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "contextWindow": 1000000,
+          "provider": "NVIDIA",
+          "name": "Nemotron 3 Ultra Free",
+          "privacy": {
+            "training": true,
+            "validUntil": null
+          }
+        },
+        {
+          "id": "nemotron-3.5-lightning-free",
+          "availableFrom": "2026-08-11",
+          "capabilities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ],
+            "reasoning": true,
+            "toolCall": true
+          },
+          "contextWindow": 262144,
+          "provider": "NVIDIA",
+          "name": "Nemotron 3.5 Lightning Free",
+          "privacy": {
+            "training": true,
+            "validUntil": null
+          }
+        }
+      ]
     }
   ]
 }
