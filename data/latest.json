@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-30T04:09:41.845Z",
+  "fetchedAt": "2026-08-30T12:08:15.337Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1318,27 +1318,6 @@
       "contextWindow": 200000,
       "provider": "Big Pickle",
       "name": "Big Pickle",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "hy3-free",
-      "availableFrom": "2026-08-11",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 190000,
-      "provider": "Tencent",
-      "name": "Hy3 Free",
       "privacy": {
         "training": true,
         "validUntil": null
