@@ -28,6 +28,9 @@ import {
   parseMonthlyPricing,
   parsePeakHours,
   recomputeUsageDerived,
+  computePrivacyDiff,
+  normalizeChangelogIds,
+  parseGermanDate,
 } from "../scripts/scrape.mjs";
 
 const fixture = readFileSync(
@@ -1205,4 +1208,67 @@ test("buildChanges: keine capabilities_changed für unveränderte Zen-Modelle", 
   const nextFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: { ...cap } }];
   const changes = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
   assert.deepEqual(changes, []);
+});
+
+test("computePrivacyDiff: erzeugt privacy_changed nur bei Stufen-Wechsel (Erst-Befüllung/validUntil ohne Event)", () => {
+  const withPrivacy = (privacy) => ({ id: "m-1", name: "M 1", privacy });
+  const base = withPrivacy({ training: true, retentionDays: undefined, validUntil: null });
+
+  // Training → ZDR: Stufe ändert sich → Event
+  const diff = computePrivacyDiff(
+    [base],
+    [withPrivacy({ training: false, retentionDays: true, validUntil: null })]
+  );
+  assert.equal(diff.length, 1);
+  assert.equal(diff[0].key, "M 1");
+  assert.deepEqual(diff[0].to, { training: false, retentionDays: true, validUntil: null });
+
+  // 30 Tage → ZDR: Stufe ändert sich → Event
+  assert.equal(
+    computePrivacyDiff(
+      [withPrivacy({ training: false, retentionDays: 30, validUntil: null })],
+      [withPrivacy({ training: false, retentionDays: true, validUntil: null })]
+    ).length,
+    1
+  );
+
+  // Reine validUntil-Änderung (ZDR-Verlängerung): kein Event
+  assert.deepEqual(
+    computePrivacyDiff(
+      [withPrivacy({ training: false, retentionDays: true, validUntil: "2026-01-01" })],
+      [withPrivacy({ training: false, retentionDays: true, validUntil: "2026-12-31" })]
+    ),
+    []
+  );
+
+  // Erst-Befüllung (Vorgänger ohne privacy): kein Event
+  assert.deepEqual(
+    computePrivacyDiff(
+      [{ id: "m-1", name: "M 1", privacy: undefined }],
+      [withPrivacy({ training: false, retentionDays: true, validUntil: null })]
+    ),
+    []
+  );
+});
+
+test("normalizeChangelogIds: weist fehlendes id = date zu, vorhandene bleiben", () => {
+  const out = normalizeChangelogIds({
+    entries: [
+      { date: "2026-08-15", changes: [{ type: "text", lang: { en: "Initial", de: "Start" } }] },
+      { id: "2026-08-16T10-00-00Z", date: "2026-08-16", changes: [{ type: "text", lang: { en: "x", de: "x" } }] },
+    ],
+  });
+  assert.equal(out.entries[0].id, "2026-08-15");
+  assert.equal(out.entries[1].id, "2026-08-16T10-00-00Z");
+});
+
+test("parseGermanDate: deutsches Datum → ISO, ungültige Eingaben → null", () => {
+  assert.equal(parseGermanDate("31. August 2026"), "2026-08-31");
+  assert.equal(parseGermanDate("5. Januar 2026"), "2026-01-05");
+  assert.equal(parseGermanDate("3. Februar 2026."), "2026-02-03");
+  assert.equal(parseGermanDate("32. August 2026"), null);
+  assert.equal(parseGermanDate("31. August"), null);
+  assert.equal(parseGermanDate("31. Monat 2026"), null);
+  assert.equal(parseGermanDate("gibtsnicht"), null);
+  assert.equal(parseGermanDate(null), null);
 });
