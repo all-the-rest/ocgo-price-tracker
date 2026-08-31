@@ -5,27 +5,27 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-const PRICE_FIELD_NAMES = {
+export const PRICE_FIELD_NAMES = {
   input: "Input",
   output: "Output",
   cachedRead: "Cached Read",
   cachedWrite: "Cached Write",
 };
 
-function fmtPrice(n) {
+export function fmtPrice(n) {
   if (n === null || n === undefined || Number.isNaN(n)) return "–";
   if (n >= 1) return `$${n.toFixed(2)}`;
   const s = n.toFixed(6);
   return `$${s.replace(/0+$/, "").replace(/\.$/, "")}`;
 }
 
-function pricingLine(p) {
+export function pricingLine(p) {
   const parts = [fmtPrice(p.input), fmtPrice(p.output), fmtPrice(p.cachedRead)];
   if (p.cachedWrite !== null) parts.push(fmtPrice(p.cachedWrite));
   return `${parts.join(" / ")} @ ${p.usage === null ? "∞ (unlimited)" : `$${p.usage}`}`;
 }
 
-function fmtCaps(c) {
+export function fmtCaps(c) {
   if (!c) return "–";
   const inp = Array.isArray(c.input) && c.input.length ? c.input.join("+") : "–";
   const outp = Array.isArray(c.output) && c.output.length ? c.output.join("+") : "–";
@@ -35,17 +35,24 @@ function fmtCaps(c) {
   return `in:${inp} out:${outp}${flags ? ` ${flags}` : ""}`;
 }
 
-function fmtPrivacy(p) {
+/**
+ * Formatiert eine Privacy-Stufe so, dass der Release-Text der Changelog-UI
+ * entspricht (`privacyTier`): training / ZDR / N days retention / retention.
+ * `retentionDays: true` = ZDR (0 Tage) — vorher fälschlich "true days retention".
+ */
+export function fmtPrivacy(p) {
   if (!p) return "–";
-  const core = p.training
-    ? "training"
-    : (p.retentionDays ?? 0) > 0
-      ? `${p.retentionDays} days retention`
-      : "ZDR";
+  let core;
+  if (p.training) core = "training";
+  else if (p.retentionDays === true) core = "ZDR";
+  else if (p.retentionDays === false) core = "retention";
+  else if (typeof p.retentionDays === "number")
+    core = p.retentionDays > 0 ? `${p.retentionDays} days retention` : "ZDR";
+  else core = "ZDR";
   return p.validUntil ? `${core} (valid until ${p.validUntil})` : core;
 }
 
-function renderChange(c) {
+export function renderChange(c) {
   switch (c.type) {
     case "text":
       return `- ${c.lang.en}`;
@@ -67,8 +74,13 @@ function renderChange(c) {
       return `- **${c.model}** — privacy: ${fmtPrivacy(c.from)} → ${fmtPrivacy(c.to)}`;
     case "free_added":
       return `- **${c.name ?? c.model}** — new free model`;
-    case "free_removed":
-      return `- **${c.name ?? c.model}** — free model removed (since ${c.availableFrom})`;
+    case "free_removed": {
+      const days = Math.max(
+        0,
+        Math.round((Date.parse(c.until) - Date.parse(c.availableFrom)) / 86_400_000)
+      );
+      return `- **${c.name ?? c.model}** — free model removed (was available ${days} days, since ${c.availableFrom})`;
+    }
     default:
       return `- ${c.type}: ${JSON.stringify(c)}`;
   }
@@ -98,7 +110,7 @@ function main() {
     (dateIdx !== -1 ? argv[dateIdx + 1] : null) ??
     (argv.find((a) => a.startsWith("--date="))?.slice("--date=".length) ?? null);
   const entry = date
-    ? changelog.entries.find((e) => e.date === date)
+    ? changelog.entries.find((e) => e.id === date || e.date === date)
     : changelog?.entries?.[0];
   if (!entry) {
     console.error(`no changelog entry found${date ? ` for date ${date}` : ""}`);

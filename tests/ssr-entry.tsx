@@ -1,6 +1,7 @@
 import { renderToString } from "solid-js/web";
 import PriceTable from "../src/components/PriceTable";
-import type { Basis, Model } from "../src/types";
+import Changelog from "../src/components/Changelog";
+import type { Basis, Model, ChangelogEntry } from "../src/types";
 import type { SortField } from "../src/sort";
 import { i18n, type Lang } from "../src/i18n";
 
@@ -39,5 +40,12 @@ export function renderPriceTable(models: Model[], opts: RenderOptions): string {
       monthlyCredit={opts.monthlyCredit}
       monthlyCost={opts.monthlyCost}
     />
+  ));
+}
+
+/** Rendert die echte Changelog-Komponente serverseitig (für Zeit/Anker-Tests). */
+export function renderChangelog(entries: ChangelogEntry[], monthlyCredit: number, lang: Lang = "en"): string {
+  return renderToString(() => (
+    <Changelog entries={entries} t={i18n[lang]} lang={lang} monthlyCredit={monthlyCredit} />
   ));
 }
