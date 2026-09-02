@@ -13,29 +13,29 @@ importers:
         version: 1.9.15
     devDependencies:
       '@iconify-json/material-symbols':
-        specifier: ^1.2.89
-        version: 1.2.89
+        specifier: ^1.2.90
+        version: 1.2.90
       '@iconify/tailwind4':
         specifier: ^1.2.3
         version: 1.2.3(tailwindcss@4.3.3)
       '@opencode-ai/models':
-        specifier: ^0.0.51
-        version: 0.0.51
+        specifier: ^0.0.58
+        version: 0.0.58
       '@playwright/test':
         specifier: 1.62.1
         version: 1.62.1
       '@tailwindcss/vite':
         specifier: ^4.1.0
-        version: 4.3.3(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0))
+        version: 4.3.3(vite@8.2.2(@types/node@26.4.0)(jiti@2.7.0))
       '@types/node':
-        specifier: ^26.2.0
-        version: 26.2.0
+        specifier: ^26.4.0
+        version: 26.4.0
       cheerio:
         specifier: ^1.0.0
         version: 1.2.0
       daisyui:
-        specifier: ^5.7.20
-        version: 5.7.20
+        specifier: ^5.7.22
+        version: 5.7.22
       tailwindcss:
         specifier: ^4.1.0
         version: 4.3.3
@@ -44,13 +44,13 @@ importers:
         version: 7.0.2
       vite:
         specifier: ^8.2.2
-        version: 8.2.2(@types/node@26.2.0)(jiti@2.7.0)
+        version: 8.2.2(@types/node@26.4.0)(jiti@2.7.0)
       vite-plugin-solid:
         specifier: ^2.11.0
-        version: 2.11.14(solid-js@1.9.15)(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0))
+        version: 2.11.14(solid-js@1.9.15)(vite@8.2.2(@types/node@26.4.0)(jiti@2.7.0))
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^4.5.4
+        version: 4.5.4
 
 packages:
 
@@ -141,8 +141,8 @@ packages:
   '@cyberalien/svg-utils@1.2.19':
     resolution: {integrity: sha512-paDJoDu+LhuH5Ma1q0BDqBpg6d16Xk22cZZrlg/s/J9oB8KgnnpU/snaEETJu2G1pwYcWQINUz6WUqu0Wm9k6A==}
 
-  '@iconify-json/material-symbols@1.2.89':
-    resolution: {integrity: sha512-wYJjKAOptNhc8Bq65PPJVEz/4Ozm+b3ZWEB3H65yGw37dr9AvXibW0GkEdVD7qrCtbD6aC6fY7SLmQCuUGtEAQ==}
+  '@iconify-json/material-symbols@1.2.90':
+    resolution: {integrity: sha512-gCOGFOIhK4QFsmUBsxtp6q7EPghSP11txPFfvb5Dj4nDYZ9qO88xpTQGtIzEQJ4mTPdXfzE9OWR2G4KUif4nXg==}
 
   '@iconify/tailwind4@1.2.3':
     resolution: {integrity: sha512-z8SKiMHRASJKF/IY//87MF88lcB7ulxh8vlhQXXLWsBkNtOh6ese9R41MyGpQeqXdRvQVt+/fX2glQtHFjQ+MA==}
@@ -174,8 +174,8 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@opencode-ai/models@0.0.51':
-    resolution: {integrity: sha512-6MyIH9s2ztVMb+xWi4dbNebzbsHukcEG0s67s/xniIIrIKBlsj/neJtUHqK1C7/jYZcyIs+xeFlW8aZBk7dI5g==}
+  '@opencode-ai/models@0.0.58':
+    resolution: {integrity: sha512-2v75faWG9MATbiYobWqYMSAQOIilj4YeY0+MocZ+pOQdNn1C42vsnjKF0UauX23hVcLuCTNQeq//Xp+8sGH4wg==}
     engines: {node: '>=18'}
     peerDependencies:
       effect: 4.0.0-beta.83
@@ -396,8 +396,8 @@ packages:
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
 
-  '@types/node@26.2.0':
-    resolution: {integrity: sha512-5IviulTZeRNp2vAJ514cc/HUlY5nZ9fCbq9DMyC52BrhFZACo3nI0R7qBxhQmo/d27NFe96ur/b7Wwxklda+kg==}
+  '@types/node@26.4.0':
+    resolution: {integrity: sha512-faiGnoIrLH/V8cibOMEAZ8pMw6oXqSukl29ra4mN8GdaB2ZewzeaLj+INpV5N+Z1eKWzY+IzaIZH2EIR6YZRNQ==}
 
   '@typescript/typescript-aix-ppc64@7.0.2':
     resolution: {integrity: sha512-MTKKkWB7p/0E9xi1d1tHtZ5PiLkGEMIq88pK2CubZjOsLtYTLqhgIgi6zepFa+9GHZ6h05NMCkQxGKiPXMxXtQ==}
@@ -585,8 +585,8 @@ packages:
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
-  daisyui@5.7.20:
-    resolution: {integrity: sha512-qoL9qXXo/K/MzcteD1SvZOSeBaL8F9qBJvwX3KEpiVHQLzIEtGkNl/ZznSI7J0d+qnQJa2dAAFzTFDAx9df1rw==}
+  daisyui@5.7.22:
+    resolution: {integrity: sha512-pYii+2NCN0+OIL6Lpuc054LK0QJeNv+GRK9UzN1GRmjdYhYO6WFl0QLoj5oPcitPD7o+okiiI0SKFkn641TxmA==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -1071,8 +1071,8 @@ packages:
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
 
-  zod@4.4.3:
-    resolution: {integrity: sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ==}
+  zod@4.5.4:
+    resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
 
 snapshots:
 
@@ -1196,7 +1196,7 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
-  '@iconify-json/material-symbols@1.2.89':
+  '@iconify-json/material-symbols@1.2.90':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -1244,7 +1244,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@opencode-ai/models@0.0.51': {}
+  '@opencode-ai/models@0.0.58': {}
 
   '@oxc-project/types@0.146.0': {}
 
@@ -1360,12 +1360,12 @@ snapshots:
       '@tailwindcss/oxide-win32-arm64-msvc': 4.3.3
       '@tailwindcss/oxide-win32-x64-msvc': 4.3.3
 
-  '@tailwindcss/vite@4.3.3(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0))':
+  '@tailwindcss/vite@4.3.3(vite@8.2.2(@types/node@26.4.0)(jiti@2.7.0))':
     dependencies:
       '@tailwindcss/node': 4.3.3
       '@tailwindcss/oxide': 4.3.3
       tailwindcss: 4.3.3
-      vite: 8.2.2(@types/node@26.2.0)(jiti@2.7.0)
+      vite: 8.2.2(@types/node@26.4.0)(jiti@2.7.0)
 
   '@types/babel__core@7.20.5':
     dependencies:
@@ -1388,7 +1388,7 @@ snapshots:
     dependencies:
       '@babel/types': 7.29.8
 
-  '@types/node@26.2.0':
+  '@types/node@26.4.0':
     dependencies:
       undici-types: 8.3.0
 
@@ -1535,7 +1535,7 @@ snapshots:
 
   csstype@3.2.3: {}
 
-  daisyui@5.7.20: {}
+  daisyui@5.7.22: {}
 
   debug@4.4.3:
     dependencies:
@@ -1887,7 +1887,7 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  vite-plugin-solid@2.11.14(solid-js@1.9.15)(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)):
+  vite-plugin-solid@2.11.14(solid-js@1.9.15)(vite@8.2.2(@types/node@26.4.0)(jiti@2.7.0)):
     dependencies:
       '@babel/core': 7.29.7
       '@types/babel__core': 7.20.5
@@ -1895,12 +1895,12 @@ snapshots:
       merge-anything: 5.1.7
       solid-js: 1.9.15
       solid-refresh: 0.6.3(solid-js@1.9.15)
-      vite: 8.2.2(@types/node@26.2.0)(jiti@2.7.0)
-      vitefu: 1.1.3(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0))
+      vite: 8.2.2(@types/node@26.4.0)(jiti@2.7.0)
+      vitefu: 1.1.3(vite@8.2.2(@types/node@26.4.0)(jiti@2.7.0))
     transitivePeerDependencies:
       - supports-color
 
-  vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0):
+  vite@8.2.2(@types/node@26.4.0)(jiti@2.7.0):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.5
@@ -1908,13 +1908,13 @@ snapshots:
       rolldown: 1.2.5
       tinyglobby: 0.2.17
     optionalDependencies:
-      '@types/node': 26.2.0
+      '@types/node': 26.4.0
       fsevents: 2.3.3
       jiti: 2.7.0
 
-  vitefu@1.1.3(vite@8.2.2(@types/node@26.2.0)(jiti@2.7.0)):
+  vitefu@1.1.3(vite@8.2.2(@types/node@26.4.0)(jiti@2.7.0)):
     optionalDependencies:
-      vite: 8.2.2(@types/node@26.2.0)(jiti@2.7.0)
+      vite: 8.2.2(@types/node@26.4.0)(jiti@2.7.0)
 
   whatwg-encoding@3.1.1:
     dependencies:
@@ -1924,4 +1924,4 @@ snapshots:
 
   yallist@3.1.1: {}
 
-  zod@4.4.3: {}
+  zod@4.5.4: {}
