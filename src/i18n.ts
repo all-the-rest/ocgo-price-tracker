@@ -62,6 +62,8 @@ export const i18n = {
     privacyUnknown: "–",
     privacyValidUntil: "gültig bis {date}",
     validUntilDefault: "bis auf weiteres",
+    validUntilExpired: "ZDR-Abkommen nicht verlängert",
+    privacyExpired: "ZDR-Abkommen nicht verlängert",
     privacyNote:
       "Datenschutz-Stufen: „Modelltraining“ (Daten können für das Modelltraining verwendet werden) · „Aufbewahrung“ (kein Training, aber Daten werden N Tage aufbewahrt) · „Kein ZDR“ (keine ZDR-Vereinbarung: Daten werden aufbewahrt, Dauer unbekannt) · „ZDR“ = Zero Data Retention (0 Tage). „Gültig bis“ = Ablauf der Vereinbarung (z. B. monatliche ZDR-Verlängerung bei DeepSeek V4 Flash). Kostenlose Zen-Modelle werden für das Modelltraining genutzt. „≈“ = nicht in der Doku gelistet, Angabe aus derselben Modellfamilie übernommen.",
     chgPrivacy: "{model}: Datenschutz {from} → {to}",
@@ -164,6 +166,8 @@ export const i18n = {
     privacyUnknown: "–",
     privacyValidUntil: "valid until {date}",
     validUntilDefault: "until further notice",
+    validUntilExpired: "ZDR agreement not renewed",
+    privacyExpired: "ZDR agreement not renewed",
     privacyNote:
       "Privacy tiers: \"Training\" (data may be used for model training) · \"Retention\" (no training, but data kept for N days) · \"No ZDR\" (no Zero Data Retention agreement: data is kept, duration unknown) · \"ZDR\" = Zero Data Retention (0 days). \"Valid until\" = expiry of the agreement (e.g. DeepSeek V4 Flash's monthly ZDR renewal). Free Zen models are used for model training. \"≈\" = not listed in the docs, value taken from the same model family.",
     chgPrivacy: "{model}: privacy {from} → {to}",

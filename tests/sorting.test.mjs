@@ -153,11 +153,17 @@ test("Training-Filter (showTraining=false) blendet nur 'Muse Spark 1.2 Contribut
   const trainingNames = models
     .filter((m) => m.privacy && m.privacy.training === true)
     .map((m) => m.name);
-  assert.deepEqual(
-    trainingNames,
-    ["Muse Spark 1.2 Contributor"],
-    "aktuell hat exakt ein Modell training=true"
+  assert.ok(
+    trainingNames.includes("Muse Spark 1.2 Contributor"),
+    "Muse Spark 1.2 Contributor muss training=true haben"
   );
+  assert.ok(trainingNames.length >= 1, "mindestens ein Modell mit training=true");
+  if (models.some((m) => m.name === "Muse Spark 1.3 Contributor")) {
+    assert.ok(
+      trainingNames.includes("Muse Spark 1.3 Contributor"),
+      "Muse Spark 1.3 Contributor muss ebenfalls training=true haben"
+    );
+  }
   const html = ssr.renderPriceTable(models, {
     basis: "full",
     sortField: "name",
@@ -168,11 +174,10 @@ test("Training-Filter (showTraining=false) blendet nur 'Muse Spark 1.2 Contribut
     showTraining: false,
   });
   const names = extractRowNames(html);
-  assert.ok(
-    !names.includes("Muse Spark 1.2 Contributor"),
-    "Muse Spark 1.2 Contributor ist ausgeblendet"
-  );
-  assert.equal(names.length, models.length - 1, "genau ein Modell weniger");
+  for (const n of trainingNames) {
+    assert.ok(!names.includes(n), `${n} ist ausgeblendet`);
+  }
+  assert.equal(names.length, models.length - trainingNames.length, "genau training-Modelle weniger");
   const expected = [...models]
     .filter((m) => !(m.privacy && m.privacy.training === true))
     .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()))

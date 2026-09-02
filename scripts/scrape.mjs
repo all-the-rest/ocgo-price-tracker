@@ -913,6 +913,102 @@ export const privacyStatusEqual = (a, b) => {
 };
 
 /**
+ * Prüft ob eine ZDR-Vereinbarung abgelaufen ist: `validUntil` (ISO
+ * YYYY-MM-DD) < `today` (YYYY-MM-DD). "gilt bis einschließlich" → erst
+ * `>` ist abgelaufen.
+ */
+export function isPrivacyExpired(validUntil, today) {
+  if (!validUntil) return false;
+  const vu = Date.parse(validUntil);
+  const td = Date.parse(today);
+  if (Number.isNaN(vu) || Number.isNaN(td)) return false;
+  return td > vu;
+}
+
+/**
+ * Wendet das Worst-Case-Szenario auf abgelaufene ZDR-Vereinbarungen an:
+ * `training: true, retentionDays: false` (kein ZDR, Modelltraining).
+ * `validUntil` bleibt aus Audit-Gründen erhalten.
+ * Betrifft z. B. DeepSeek V4 Flash: monatlich erneuert, gilt bis 31. Aug →
+ * am 1. Sept ohne neues Datum wird Worst-Case visualisiert und ein
+ * `privacy_changed`-Event erzeugt.
+ */
+export function applyPrivacyExpiry(models, today) {
+  if (!today) return models;
+  for (const m of models) {
+    if (!m.privacy || !m.privacy.validUntil) continue;
+    if (!isPrivacyExpired(m.privacy.validUntil, today)) continue;
+    const { fallback } = m.privacy;
+    m.privacy = {
+      training: true,
+      retentionDays: false,
+      validUntil: m.privacy.validUntil,
+      ...(fallback ? { fallback: true } : {}),
+    };
+  }
+  return models;
+}
+
+/**
+ * Löscht transiente Expiry-Einträge automatisch, wenn die Vereinbarung
+ * innerhalb von 2 Tagen nachgereicht wird.
+ *
+ * Szenario: 1. Sept Worst-Case (`good → worst` als privacy_changed),
+ * 2./3. Sept Erneuerung (`worst → good`). Dann wird der Expiry-Eintrag
+ * vom 1. Sept gelöscht und das Revert-Event unterdrückt — als wäre nie
+ * etwas passiert (keine künstliche Volatilität im Changelog).
+ *
+ * Heuristik pro Modell: `prev: good→worst` status-invertiert zu `cur:
+ * worst→good` (ohne validUntil verglichen) und Datum-Diff 1–2 Tage.
+ * Betroffene `privacy_changed`-Events werden aus dem alten Eintrag und
+ * aus `changes` entfernt; leere Einträge verschwinden ganz.
+ */
+export function pruneTransientExpiry(existing, changes, today) {
+  if (!existing?.entries?.length || !changes?.length) return { existing, changes };
+  const todayMs = Date.parse(today);
+  if (Number.isNaN(todayMs)) return { existing, changes };
+  // shallow copy
+  let newEntries = existing.entries.map((e) => ({ ...e, changes: [...e.changes] }));
+  let newChanges = [...changes];
+  const curToRemove = new Set();
+  const entryIdxToChangeIdxs = new Map();
+
+  for (let ci = 0; ci < newChanges.length; ci++) {
+    const cur = newChanges[ci];
+    if (cur.type !== "privacy_changed") continue;
+    for (let ei = 0; ei < newEntries.length; ei++) {
+      const ent = newEntries[ei];
+      const diffDays = Math.round((todayMs - Date.parse(ent.date)) / 86400000);
+      if (!Number.isFinite(diffDays) || diffDays < 0 || diffDays > 2) continue;
+      for (let pi = 0; pi < ent.changes.length; pi++) {
+        const prev = ent.changes[pi];
+        if (prev.type !== "privacy_changed" || prev.model !== cur.model) continue;
+        if (privacyStatusEqual(prev.from, cur.to) && privacyStatusEqual(prev.to, cur.from)) {
+          curToRemove.add(ci);
+          if (!entryIdxToChangeIdxs.has(ei)) entryIdxToChangeIdxs.set(ei, new Set());
+          entryIdxToChangeIdxs.get(ei).add(pi);
+          break;
+        }
+      }
+      if (curToRemove.has(ci)) break;
+    }
+  }
+
+  if (entryIdxToChangeIdxs.size > 0) {
+    const toDeleteEntries = new Set();
+    for (const [ei, idxSet] of entryIdxToChangeIdxs.entries()) {
+      const ent = newEntries[ei];
+      const filtered = ent.changes.filter((_, i) => !idxSet.has(i));
+      if (filtered.length === 0) toDeleteEntries.add(ei);
+      else newEntries[ei] = { ...ent, changes: filtered };
+    }
+    newEntries = newEntries.filter((_, i) => !toDeleteEntries.has(i));
+  }
+  newChanges = newChanges.filter((_, i) => !curToRemove.has(i));
+  return { existing: { entries: newEntries }, changes: newChanges };
+}
+
+/**
  * Baut die Lookups für die models.dev-Zuordnung auf: opencode-Provider
  * (normalisierte ID und Name), kanonische Metadaten (normalisierter Name,
  * bei Kollisionen exakter Normalized-ID-Treffer, sonst erste nach ID sortiert),
@@ -1548,6 +1644,13 @@ async function main() {
       goModels
     );
 
+    // Abgelaufene ZDR-Vereinbarungen → Worst-Case visualisieren.
+    // DeepSeek V4 Flash: monatlich erneuert, gilt bis 31. Aug → am 1. Sept ohne
+    // neues Datum wird training:true / Kein ZDR gezeigt und ein privacy_changed
+    // erzeugt.
+    applyPrivacyExpiry(models, date);
+    applyPrivacyExpiry(freeModels, date);
+
     const historyPath = join(ROOT, "data", "history.json");
     let history = { snapshots: [] };
     if (existsSync(historyPath)) {
@@ -1654,10 +1757,15 @@ async function main() {
     validateSnapshot(latest);
 
     const changelogPath = join(ROOT, "CHANGELOG.json");
-    const existingChangelog = existsSync(changelogPath)
+    const existingChangelogRaw = existsSync(changelogPath)
       ? normalizeChangelogIds(JSON.parse(readFileSync(changelogPath, "utf8")))
       : { entries: [] };
-    const changelog = upsertChangelogJson(existingChangelog, runId, date, changes);
+    // Transiente Expiry-Einträge (Worst-Case am 1. Tag, Renewal 1–2 Tage später)
+    // automatisch löschen — als wäre nie etwas passiert.
+    const pruned = pruneTransientExpiry(existingChangelogRaw, changes, date);
+    const existingChangelog = pruned.existing;
+    const effectiveChanges = pruned.changes;
+    const changelog = upsertChangelogJson(existingChangelog, runId, date, effectiveChanges);
     validateChangelog(changelog);
     const changelogJson = JSON.stringify(changelog) + "\n";
     writeFileSync(changelogPath, changelogJson);

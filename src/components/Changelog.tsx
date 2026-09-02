@@ -112,8 +112,8 @@ export default function Changelog(props: ChangelogProps) {
       }
       case "privacy_changed": {
         const diff = privacyRank(c.to) - privacyRank(c.from);
-        if (diff > 0) return <span class={`${baseCls} badge-success`}>↓</span>;
-        if (diff < 0) return <span class={`${baseCls} badge-error`}>↑</span>;
+        if (diff > 0) return <span class={`${baseCls} badge-success`}>+</span>;
+        if (diff < 0) return <span class={`${baseCls} badge-error`}>−</span>;
         return <span class={`${baseCls} badge-ghost`}>≈</span>;
       }
       case "text":

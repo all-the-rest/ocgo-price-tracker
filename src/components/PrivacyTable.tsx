@@ -71,6 +71,10 @@ export default function PrivacyTable(props: PrivacyTableProps) {
   const validUntilCell = (row: Row) => {
     const p = row.privacy;
     if (!p) return props.t.noValue;
+    // Abgelaufenes ZDR (z. B. DeepSeek V4 Flash nach 31.08.) wird als Worst-Case
+    // mit training:true + validUntil="2026-08-31" persistiert — "Gültig bis …"
+    // wäre irreführend. Zeige stattdessen "ZDR-Abkommen nicht verlängert".
+    if (p.training && p.validUntil) return props.t.validUntilExpired;
     if (p.validUntil) return fmtDateOnly(`${p.validUntil}T00:00:00.000Z`, props.lang);
     return privacyTier(p) === "training" ? props.t.noValue : props.t.validUntilDefault;
   };

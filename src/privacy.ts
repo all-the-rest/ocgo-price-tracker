@@ -56,7 +56,14 @@ export function privacyLabelWithValidUntil(
 ): string {
   let s = privacyLabel(p, t);
   if (p?.validUntil) {
-    s += ` · ${t.privacyValidUntil.replace("{date}", fmtDateOnly(`${p.validUntil}T00:00:00.000Z`, lang))}`;
+    // Gleicher Fall wie in PrivacyTable: abgelaufenes ZDR mit training:true
+    // (Worst-Case nach nicht verlängerter Vereinbarung) → nicht "gültig bis …",
+    // sondern "ZDR-Abkommen nicht verlängert".
+    if (p.training) {
+      s += ` · ${t.validUntilExpired}`;
+    } else {
+      s += ` · ${t.privacyValidUntil.replace("{date}", fmtDateOnly(`${p.validUntil}T00:00:00.000Z`, lang))}`;
+    }
   }
   return s;
 }
