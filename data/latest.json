@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-04T06:06:25.549Z",
+  "fetchedAt": "2026-09-04T14:07:31.223Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1146,9 +1146,9 @@
       "effectiveCachedRead": 0.014,
       "effectiveCachedWrite": null,
       "privacy": {
-        "training": true,
-        "retentionDays": false,
-        "validUntil": "2026-08-31"
+        "training": false,
+        "retentionDays": true,
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -1183,9 +1183,9 @@
       "effectiveCachedRead": 0.028,
       "effectiveCachedWrite": null,
       "privacy": {
-        "training": true,
-        "retentionDays": false,
-        "validUntil": "2026-08-31"
+        "training": false,
+        "retentionDays": true,
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
