@@ -30,7 +30,7 @@ function readParams(): {
   psort: PrivacySortState | null;
   basis: Basis | null;
   lang: "de" | "en" | null;
-  theme: "dark" | null;
+  theme: "dark" | "light" | null;
   cap: CapId[] | null;
   fcap: CapId[] | null;
 } {
@@ -55,7 +55,9 @@ function readParams(): {
   const basis: Basis | null = b === "list" || b === "full" || b === "paid" ? b : null;
   const l = p.get("lang");
   const lang: "de" | "en" | null = l === "de" || l === "en" ? l : null;
-  const theme: "dark" | null = p.get("theme") === "dark" ? "dark" : null;
+  const themeRaw = p.get("theme");
+  const theme: "dark" | "light" | null =
+    themeRaw === "dark" || themeRaw === "light" ? themeRaw : null;
   const parseCaps = (raw: string | null): CapId[] | null =>
     raw === null
       ? null
@@ -66,9 +68,38 @@ function readParams(): {
 }
 const params = readParams();
 
+function prefersDarkSystem(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia !== "undefined" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
+
+function resolveInitialDark(
+  themeParam: "dark" | "light" | null,
+  stored: string | null,
+): boolean {
+  if (themeParam === "dark") return true;
+  if (themeParam === "light") return false;
+  if (stored === "dark") return true;
+  if (stored === "light") return false;
+  return prefersDarkSystem();
+}
+
 export default function App() {
   const [lang, setLang] = createSignal<Lang>(params.lang ?? defaultLang);
-  const [dark, setDark] = createSignal(params.theme === "dark" || storedTheme === "dark");
+  const [dark, _setDark] = createSignal<boolean>(resolveInitialDark(params.theme, storedTheme));
+  // Explicit user toggle: always persist, so first load (system default)
+  // leaves localStorage untouched until the user actually toggles.
+  const setDark = (v: boolean) => {
+    _setDark(v);
+    try {
+      localStorage.setItem("theme", v ? "dark" : "light");
+    } catch {
+      // ignore (private mode etc.)
+    }
+  };
   const [basis, setBasis] = createSignal<Basis>(
     params.basis ?? "full"
   );
@@ -94,12 +125,23 @@ export default function App() {
     const el = document.documentElement;
     if (dark()) {
       el.setAttribute("data-theme", "dark");
-      localStorage.setItem("theme", "dark");
     } else {
       el.removeAttribute("data-theme");
-      localStorage.setItem("theme", "light");
     }
   });
+
+  // Follow OS theme while the user has no explicit choice
+  // (no localStorage entry and no ?theme param).
+  if (typeof window !== "undefined" && typeof window.matchMedia !== "undefined") {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e: MediaQueryListEvent) => {
+      if (localStorage.getItem("theme") !== null) return;
+      if (readParams().theme !== null) return;
+      _setDark(e.matches);
+    };
+    if (typeof mq.addEventListener === "function") mq.addEventListener("change", onChange);
+    else mq.addListener(onChange);
+  }
 
   const defaultBasis: Basis = "full";
 
