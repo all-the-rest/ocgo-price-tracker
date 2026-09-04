@@ -1272,21 +1272,22 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
   }
 
   // Fähigkeiten-Änderungen werden unterdrückt, wenn das Modell selbst erst
-  // innerhalb der letzten 24h hinzugefügt wurde (model_added/free_added): Bei
+  // innerhalb der letzten 72h hinzugefügt wurde (model_added/free_added): Bei
   // neuen Modellen werden die Fähigkeiten oft verzögert (models.dev)
-  // nachgeliefert — das ist keine echte Quelländerung, sondern Erstbefüllung.
+  // nachgeliefert (teils erst ~30h später) — das ist keine echte
+  // Quelländerung, sondern Erstbefüllung.
   // Analog zur stillen privacy-Erstbefüllung wird hier KEIN Event erzeugt.
   const todayMs = Number.isNaN(Date.parse(today)) ? null : Date.parse(today);
-  const addedWithin24h = (key) => {
+  const addedWithin72h = (key) => {
     if (todayMs == null) return false;
     const fs = firstSeen.get(key);
     if (fs == null) return false;
     const diffDays = Math.round((todayMs - Date.parse(fs)) / 86_400_000);
-    return diffDays >= 0 && diffDays <= 1;
+    return diffDays >= 0 && diffDays <= 3;
   };
 
   for (const { key, from, to } of computeCapabilityDiff(prevModels, nextModels)) {
-    if (addedWithin24h(key)) continue;
+    if (addedWithin72h(key)) continue;
     changes.push({ type: "capabilities_changed", model: key, from, to });
   }
 
@@ -1316,8 +1317,8 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
     if (!before) continue;
     if (!capabilitiesEqual(before.capabilities, f.capabilities)) {
       // Erstbefüllung eines erst kürzlich hinzugefügten kostenlosen Modells:
-      // kein capabilities_changed-Event (siehe addedWithin24h oben).
-      if (addedWithin24h(f.id)) continue;
+      // kein capabilities_changed-Event (siehe addedWithin72h oben).
+      if (addedWithin72h(f.id)) continue;
       changes.push({
         type: "capabilities_changed",
         model: f.id,
@@ -1667,7 +1668,7 @@ async function main() {
         if (!firstSeen.has(key)) firstSeen.set(key, day);
       }
       // Auch kostenlose Modelle erfassen: deren Fähigkeiten werden oft
-      // verzögert (models.dev) nachgeliefert — für die 24h-Unterdrückung der
+      // verzögert (models.dev) nachgeliefert — für die 72h-Unterdrückung der
       // capabilities_changed-Events muss das Erstbeobachtungsdatum herhalten.
       for (const f of snap.freeModels ?? []) {
         if (!firstSeen.has(f.id)) firstSeen.set(f.id, day);

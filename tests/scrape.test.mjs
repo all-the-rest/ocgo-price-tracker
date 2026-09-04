@@ -524,6 +524,28 @@ test("buildChanges: entferntes Modell mit Tagen aus firstSeen", () => {
   ]);
 });
 
+test("buildChanges: capabilities_changed innerhalb von 72h nach model_added unterdrückt", () => {
+  const prev = [
+    { ...base[0], capabilities: { input: ["text"], output: ["text"], reasoning: false, toolCall: false } },
+  ];
+  const next = [
+    { ...base[0], capabilities: { input: ["text"], output: ["text"], reasoning: true, toolCall: true } },
+  ];
+  // 2 Tage nach model_added → models.dev-Nachlieferung, kein Event
+  const recent = new Map([["Alpha", "2026-08-04"]]);
+  assert.deepEqual(buildChanges(prev, next, [], [], "2026-08-06", recent), []);
+  // 5 Tage nach model_added → echte Quelländerung, Event bleibt
+  const older = new Map([["Alpha", "2026-08-01"]]);
+  assert.deepEqual(buildChanges(prev, next, [], [], "2026-08-06", older), [
+    {
+      type: "capabilities_changed",
+      model: "Alpha",
+      from: prev[0].capabilities,
+      to: next[0].capabilities,
+    },
+  ]);
+});
+
 test("buildChanges: kostenlose Modelle hinzugefügt/entfernt", () => {
   const prevFree = [{ id: "a-free", availableFrom: "2026-08-01" }];
   const nextFree = [
