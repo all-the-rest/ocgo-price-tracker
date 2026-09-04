@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-02T18:21:07.025Z",
+  "fetchedAt": "2026-09-04T06:06:25.549Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1340,6 +1340,44 @@
       "contextWindow": 256000,
       "provider": "Tencent",
       "id": "opencode-go/hy3"
+    },
+    {
+      "name": "Omen Alpha",
+      "tier": null,
+      "input": 0.2,
+      "output": 0.66,
+      "cachedRead": 0.04,
+      "cachedWrite": null,
+      "usage": 100,
+      "pattern": {
+        "input": 300,
+        "cachedRead": 40000,
+        "output": 100
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 0.6,
+      "effectiveInput": 0.12,
+      "effectiveOutput": 0.396,
+      "effectiveCachedRead": 0.024,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 500000,
+      "provider": null,
+      "id": "opencode-go/omen-alpha"
     }
   ],
   "freeModels": [
