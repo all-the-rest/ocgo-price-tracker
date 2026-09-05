@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-04T14:07:31.223Z",
+  "fetchedAt": "2026-09-05T04:05:18.693Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1442,31 +1442,6 @@
       "contextWindow": 200000,
       "provider": "Xiaomi",
       "name": "MiMo V2.5 Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "muse-spark-1.2-contributor-free",
-      "availableFrom": "2026-08-20",
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video",
-          "pdf",
-          "audio"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1048576,
-      "provider": "Meta",
-      "name": "Muse Spark 1.2 Free",
       "privacy": {
         "training": true,
         "validUntil": null
