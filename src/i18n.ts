@@ -103,6 +103,7 @@ export const i18n = {
     watchHint: "Preisänderungen per E-Mail: GitHub-Repo unter „Watch → Releases“ beobachten.",
     impressum: "Impressum",
     datenschutz: "Datenschutz",
+    share: "Teilen",
     footer: "Automatisch täglich aktualisiert. Kein offizielles OpenCode-Angebot. OpenCode ist eine Marke von anomalyco; diese Seite ist weder mit anomalyco verbunden noch von ihr gesponsert.",
   },
   en: {
@@ -207,6 +208,7 @@ export const i18n = {
     watchHint: "Email notifications on price changes: watch the GitHub repo under \"Watch → Releases\".",
     impressum: "Impressum",
     datenschutz: "Privacy",
+    share: "Share",
     footer: "Updated automatically every day. Not an official OpenCode offering. OpenCode is a trademark of anomalyco; this site is neither affiliated with nor sponsored by anomalyco.",
   },
 } as const;

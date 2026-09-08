@@ -8,6 +8,7 @@ import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capab
 import { setupDragScroll } from "../dragscroll";
 import Tooltip from "./Tooltip";
 import ModelId from "./ModelId";
+import { openShareDialog } from "./ShareDialog";
 import PeakIndicator, { isPeakTier, isTierActive, peakRangesFor, usePeakClock } from "./PeakIndicator";
 import type { SortField, SortState } from "../sort";
 
@@ -168,7 +169,13 @@ export default function PriceTable(props: PriceTableProps) {
 
   return (
     <section id="prices" class="mt-10">
-      <Heading anchor="prices">{props.t.headingPrices}</Heading>
+      <div class="flex items-center justify-between gap-3">
+        <Heading anchor="prices">{props.t.headingPrices}</Heading>
+        <button class="btn btn-sm" onClick={openShareDialog} aria-haspopup="dialog">
+          <span class="icon-[material-symbols--share] h-4 w-4" aria-hidden="true" />
+          {props.t.share}
+        </button>
+      </div>
 
       <div class="mt-4 flex flex-wrap items-center gap-3">
         <span>{props.t.basisLabel}</span>

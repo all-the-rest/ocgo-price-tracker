@@ -11,6 +11,7 @@ import PrivacyTable from "./components/PrivacyTable";
 import Changelog from "./components/Changelog";
 import Legal from "./components/Legal";
 import Footer from "./components/Footer";
+import ShareDialog from "./components/ShareDialog";
 import dataJson from "../data/latest.json";
 import changelogJson from "./data/changelog.json";
 
@@ -190,6 +191,15 @@ export default function App() {
           modelCount={data.models.length}
           monthlyCredit={data.monthlyCredit}
           monthlyCost={data.monthlyCost}
+        />
+        <ShareDialog
+          models={data.models}
+          lang={lang()}
+          dark={dark()}
+          fetchedAt={data.fetchedAt}
+          site="ocgo-pricing.all-the.rest"
+          peakHours={data.peakHours}
+          caps={caps()}
         />
         <PriceTable
           models={data.models}

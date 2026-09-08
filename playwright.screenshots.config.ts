@@ -15,13 +15,13 @@ export default defineConfig({
   timeout: 120000,
   reporter: [["html", { open: "never", outputFolder: "playwright-report/ui-screenshots" }]],
   use: {
-    baseURL: "http://localhost:5175",
+    baseURL: "http://localhost:5177",
     trace: "off",
     video: "off",
   },
   webServer: {
-    command: "pnpm dev --port 5175 --strictPort",
-    url: "http://localhost:5175",
+    command: "pnpm dev --port 5177 --strictPort",
+    url: "http://localhost:5177",
     reuseExistingServer: true,
     timeout: 120000,
   },
