@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-09T18:09:41.292Z",
+  "fetchedAt": "2026-09-10T05:47:27.744Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -7,6 +7,16 @@
   "monthlyCredit": 60,
   "monthlyCost": 10,
   "peakHours": {
+    "deepseekv4.1flash": [
+      [
+        1,
+        4
+      ],
+      [
+        6,
+        10
+      ]
+    ],
     "deepseekv4pro": [
       [
         1,
@@ -39,160 +49,6 @@
     ]
   },
   "models": [
-    {
-      "name": "Grok 4.6",
-      "tier": "≤ 200K tokens",
-      "input": 2,
-      "output": 6,
-      "cachedRead": 0.5,
-      "cachedWrite": null,
-      "usage": 15,
-      "pattern": {
-        "input": 390,
-        "cachedRead": 32500,
-        "output": 120
-      },
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": 4,
-      "effectiveInput": 8,
-      "effectiveOutput": 24,
-      "effectiveCachedRead": 2,
-      "effectiveCachedWrite": null,
-      "privacy": {
-        "training": false,
-        "retentionDays": 30,
-        "validUntil": null
-      },
-      "contextWindow": 500000,
-      "provider": "xAI",
-      "id": "opencode-go/grok-4.6"
-    },
-    {
-      "name": "Grok 4.6",
-      "tier": "> 200K tokens",
-      "input": 4,
-      "output": 12,
-      "cachedRead": 1,
-      "cachedWrite": null,
-      "usage": 15,
-      "pattern": {
-        "input": 390,
-        "cachedRead": 32500,
-        "output": 120
-      },
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": 4,
-      "effectiveInput": 16,
-      "effectiveOutput": 48,
-      "effectiveCachedRead": 4,
-      "effectiveCachedWrite": null,
-      "privacy": {
-        "training": false,
-        "retentionDays": 30,
-        "validUntil": null
-      },
-      "contextWindow": 500000,
-      "provider": "xAI",
-      "id": "opencode-go/grok-4.6"
-    },
-    {
-      "name": "GPT 5.6 Luna",
-      "tier": "≤ 272K tokens",
-      "input": 0.2,
-      "output": 1.2,
-      "cachedRead": 0.02,
-      "cachedWrite": 0.25,
-      "usage": 15,
-      "pattern": {
-        "input": 1000,
-        "cachedRead": 50000,
-        "output": 220
-      },
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "pdf"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": 4,
-      "effectiveInput": 0.8,
-      "effectiveOutput": 4.8,
-      "effectiveCachedRead": 0.08,
-      "effectiveCachedWrite": 1,
-      "privacy": {
-        "training": false,
-        "retentionDays": 30,
-        "validUntil": null
-      },
-      "contextWindow": 1050000,
-      "provider": "OpenAI",
-      "id": "opencode-go/gpt-5.6-luna"
-    },
-    {
-      "name": "GPT 5.6 Luna",
-      "tier": "> 272K tokens",
-      "input": 0.4,
-      "output": 1.8,
-      "cachedRead": 0.04,
-      "cachedWrite": 0.5,
-      "usage": 15,
-      "pattern": {
-        "input": 1000,
-        "cachedRead": 50000,
-        "output": 220
-      },
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "pdf"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": 4,
-      "effectiveInput": 1.6,
-      "effectiveOutput": 7.2,
-      "effectiveCachedRead": 0.16,
-      "effectiveCachedWrite": 2,
-      "privacy": {
-        "training": false,
-        "retentionDays": 30,
-        "validUntil": null
-      },
-      "contextWindow": 1050000,
-      "provider": "OpenAI",
-      "id": "opencode-go/gpt-5.6-luna"
-    },
     {
       "name": "GLM-5.3-Flash",
       "tier": null,
@@ -1044,6 +900,82 @@
       "id": "opencode-go/qwen3.6-plus"
     },
     {
+      "name": "DeepSeek V4.1 Flash",
+      "tier": "Off-Peak",
+      "input": 0.15,
+      "output": 0.6,
+      "cachedRead": 0.003,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 410,
+        "cachedRead": 71300,
+        "output": 310
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 0.6,
+      "effectiveOutput": 2.4,
+      "effectiveCachedRead": 0.012,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "provider": "DeepSeek",
+      "id": "opencode-go/deepseek-flash"
+    },
+    {
+      "name": "DeepSeek V4.1 Flash",
+      "tier": "Peak",
+      "input": 0.3,
+      "output": 1.2,
+      "cachedRead": 0.006,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 410,
+        "cachedRead": 71300,
+        "output": 310
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 1.2,
+      "effectiveOutput": 4.8,
+      "effectiveCachedRead": 0.024,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "provider": "DeepSeek",
+      "id": "opencode-go/deepseek-flash"
+    },
+    {
       "name": "DeepSeek V4 Pro",
       "tier": "Off-Peak",
       "input": 0.66,
@@ -1120,9 +1052,9 @@
     {
       "name": "DeepSeek V4 Flash",
       "tier": "Off-Peak",
-      "input": 0.22,
-      "output": 0.66,
-      "cachedRead": 0.007,
+      "input": 0.15,
+      "output": 0.6,
+      "cachedRead": 0.003,
       "cachedWrite": null,
       "usage": 30,
       "pattern": {
@@ -1141,14 +1073,14 @@
         "toolCall": true
       },
       "multiplier": 2,
-      "effectiveInput": 0.44,
-      "effectiveOutput": 1.32,
-      "effectiveCachedRead": 0.014,
+      "effectiveInput": 0.3,
+      "effectiveOutput": 1.2,
+      "effectiveCachedRead": 0.006,
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": null
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -1157,9 +1089,9 @@
     {
       "name": "DeepSeek V4 Flash",
       "tier": "Peak",
-      "input": 0.44,
-      "output": 1.32,
-      "cachedRead": 0.014,
+      "input": 0.3,
+      "output": 1.2,
+      "cachedRead": 0.006,
       "cachedWrite": null,
       "usage": 30,
       "pattern": {
@@ -1178,14 +1110,14 @@
         "toolCall": true
       },
       "multiplier": 2,
-      "effectiveInput": 0.88,
-      "effectiveOutput": 2.64,
-      "effectiveCachedRead": 0.028,
+      "effectiveInput": 0.6,
+      "effectiveOutput": 2.4,
+      "effectiveCachedRead": 0.012,
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": null
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -1194,9 +1126,9 @@
     {
       "name": "DeepSeek V4 Flash Vision Exp",
       "tier": "Off-Peak",
-      "input": 0.22,
-      "output": 0.66,
-      "cachedRead": 0.007,
+      "input": 0.15,
+      "output": 0.6,
+      "cachedRead": 0.003,
       "cachedWrite": null,
       "usage": 15,
       "pattern": {
@@ -1216,9 +1148,9 @@
         "toolCall": true
       },
       "multiplier": 4,
-      "effectiveInput": 0.88,
-      "effectiveOutput": 2.64,
-      "effectiveCachedRead": 0.028,
+      "effectiveInput": 0.6,
+      "effectiveOutput": 2.4,
+      "effectiveCachedRead": 0.012,
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
@@ -1232,9 +1164,9 @@
     {
       "name": "DeepSeek V4 Flash Vision Exp",
       "tier": "Peak",
-      "input": 0.44,
-      "output": 1.32,
-      "cachedRead": 0.014,
+      "input": 0.3,
+      "output": 1.2,
+      "cachedRead": 0.006,
       "cachedWrite": null,
       "usage": 15,
       "pattern": {
@@ -1254,9 +1186,9 @@
         "toolCall": true
       },
       "multiplier": 4,
-      "effectiveInput": 1.76,
-      "effectiveOutput": 5.28,
-      "effectiveCachedRead": 0.056,
+      "effectiveInput": 1.2,
+      "effectiveOutput": 4.8,
+      "effectiveCachedRead": 0.024,
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
@@ -1342,17 +1274,17 @@
       "id": "opencode-go/hy3"
     },
     {
-      "name": "Omen Alpha",
-      "tier": null,
-      "input": 0.2,
-      "output": 0.66,
-      "cachedRead": 0.04,
+      "name": "Grok 4.6",
+      "tier": "≤ 200K tokens",
+      "input": 2,
+      "output": 6,
+      "cachedRead": 0.5,
       "cachedWrite": null,
-      "usage": 100,
+      "usage": 15,
       "pattern": {
-        "input": 300,
-        "cachedRead": 40000,
-        "output": 100
+        "input": 390,
+        "cachedRead": 32500,
+        "output": 120
       },
       "capabilities": {
         "input": [
@@ -1365,19 +1297,135 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 0.6,
-      "effectiveInput": 0.12,
-      "effectiveOutput": 0.396,
-      "effectiveCachedRead": 0.024,
+      "multiplier": 4,
+      "effectiveInput": 8,
+      "effectiveOutput": 24,
+      "effectiveCachedRead": 2,
       "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
-        "retentionDays": true,
+        "retentionDays": 30,
         "validUntil": null
       },
       "contextWindow": 500000,
-      "provider": null,
-      "id": "opencode-go/omen-alpha"
+      "provider": "xAI",
+      "id": "opencode-go/grok-4.6"
+    },
+    {
+      "name": "Grok 4.6",
+      "tier": "> 200K tokens",
+      "input": 4,
+      "output": 12,
+      "cachedRead": 1,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 390,
+        "cachedRead": 32500,
+        "output": 120
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 16,
+      "effectiveOutput": 48,
+      "effectiveCachedRead": 4,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 500000,
+      "provider": "xAI",
+      "id": "opencode-go/grok-4.6"
+    },
+    {
+      "name": "GPT 5.6 Luna",
+      "tier": "≤ 272K tokens",
+      "input": 0.2,
+      "output": 1.2,
+      "cachedRead": 0.02,
+      "cachedWrite": 0.25,
+      "usage": 15,
+      "pattern": {
+        "input": 1000,
+        "cachedRead": 50000,
+        "output": 220
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 0.8,
+      "effectiveOutput": 4.8,
+      "effectiveCachedRead": 0.08,
+      "effectiveCachedWrite": 1,
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 1050000,
+      "provider": "OpenAI",
+      "id": "opencode-go/gpt-5.6-luna"
+    },
+    {
+      "name": "GPT 5.6 Luna",
+      "tier": "> 272K tokens",
+      "input": 0.4,
+      "output": 1.8,
+      "cachedRead": 0.04,
+      "cachedWrite": 0.5,
+      "usage": 15,
+      "pattern": {
+        "input": 1000,
+        "cachedRead": 50000,
+        "output": 220
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 1.6,
+      "effectiveOutput": 7.2,
+      "effectiveCachedRead": 0.16,
+      "effectiveCachedWrite": 2,
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 1050000,
+      "provider": "OpenAI",
+      "id": "opencode-go/gpt-5.6-luna"
     }
   ],
   "freeModels": [
