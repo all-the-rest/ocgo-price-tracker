@@ -225,12 +225,20 @@ test("parseHtml: wirft bei fehlender Datenschutz-Tabelle", () => {
   assert.throws(() => parseHtml(html));
 });
 
-test("parseUsageBonuses: extrahiert 2x-usage-Boni aus der Landingpage", () => {
+test("parseUsageBonuses: extrahiert 4×-Nutzung-Bonus aus der Landingpage", () => {
   const $ = loadBonusFixture();
   const bonuses = parseUsageBonuses($);
+  assert.equal(bonuses.get("deepseekv4.1flash"), 4);
+  assert.equal(bonuses.size, 1);
+});
+
+test("parseUsageBonuses: Legacy-Format ([data-item]/[data-bonus]) weiter erkannt", () => {
+  const $ = cheerio.load(
+    "<div><span data-item data-model='gpt-5.6-luna'><span data-value>4,100</span><span data-bonus>2x usage</span></span></div>"
+  );
+  const bonuses = parseUsageBonuses($);
   assert.equal(bonuses.get("gpt5.6luna"), 2);
-  assert.equal(bonuses.get("deepseekv4flash"), 2);
-  assert.equal(bonuses.size, 2);
+  assert.equal(bonuses.size, 1);
 });
 
 test("parseUsageBonuses: leere Map bei fehlenden Bonus-Elementen", () => {

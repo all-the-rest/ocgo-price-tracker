@@ -6,8 +6,9 @@ Preis-Tracking für OpenCode Go. Ein täglicher GitHub-Actions-Lauf scrapet
 `https://opencode.ai/docs/de/go/`, berechnet die Preise auf Basis des vollen
 Monatsguthabens (Effektivpreis = Listpreis × Guthaben/Nutzung) und stellt eine
 statische SolidJS-Seite unter `https://ocgo-pricing.all-the.rest` bereit.
-Temporäre Nutzungs-Boni (`<span data-bonus>2x usage</span>`) kommen von der
-Go-Landingpage `https://opencode.ai/de/go` und verdoppeln das Nutzungslimit.
+Temporäre Nutzungs-Boni (`<span data-slot="badge">4× Nutzung</span>` in der
+Modell-Zeile) kommen von der
+Go-Landingpage `https://opencode.ai/de/go` und vervielfachen das Nutzungslimit.
 Monatsguthaben und Monatspreis werden **dynamisch** gefetcht (Landingpage
 Landingpage-CTA (`cta-price-old`/`cta-price`) → `$10/Monat`, Doku-Seite „das Sechsfache dieses
 Betrags“ → Faktor 6; Guthaben = Preis × Faktor = $60), Fallback auf 60/10.
@@ -133,7 +134,7 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 - Preistabelle über die **Header-Zeile** identifizieren (Zellen enthalten `Input` UND `Output`) — NICHT über `nth-child`-Selektoren.
 - Preise: `$1.40` → `1.4`; `-` → `null`.
 - `Nutzung` ist `$15` oder `$60`; Modellname mit `(… tokens)`-Suffix → `tier`-Feld.
-- **Nutzungs-Boni** von der Go-Landingpage `https://opencode.ai/de/go` (`fetchUsageBonuses`): `<span data-bonus>2x usage</span>` im `[data-item]`-Element verdoppelt das Nutzungslimit (`applyUsageBonuses`, Faktor aus `(\d+)x`). Zuordnung über `data-model`-Slug ↔ `normalizeName` (Luna hat zwei Tier-Zeilen — beide bekommen den Bonus). `usage` wird multipliziert, `multiplier`/`effective*` werden neu berechnet. HTTP-Fehler auf der Bonus-Seite → `process.exit(1)`; fehlende Bonus-Elemente → keine Boni.
+- **Nutzungs-Boni** von der Go-Landingpage `https://opencode.ai/de/go` (`fetchUsageBonuses`): `<span data-slot="badge">4× Nutzung</span>` in der `[data-slot="model-row"]`-Zeile vervielfacht das Nutzungslimit (`applyUsageBonuses`, Faktor aus `(\d+)\s*[x×]\s*(usage|nutzung)`). Zuordnung über den **angezeigten Modellnamen** (`[data-slot="model"]`, Badges entfernt) ↔ `normalizeName` — der `data-model`-Slug (`deepseek-flash`) ist zu kurz für Doku-Namen (`DeepSeek V4.1 Flash`); alle Tier-Zeilen desselben Namens bekommen den Bonus. Das alte `[data-item]`/`<span data-bonus>2x usage</span>`-Format bleibt als Fallback erkannt (Fixture `tests/fixtures/go-de-bonus.html` = aktueller Landingpage-Dump). `usage` wird multipliziert, `multiplier`/`effective*` werden neu berechnet. HTTP-Fehler auf der Bonus-Seite → `process.exit(1)`; fehlende Bonus-Elemente → keine Boni.
 - **Monatsguthaben/-preis dynamisch** (`parseMonthlyPricing`/`parseMonthlyCost`/`parseCreditFactor`): Monatspreis aus der Landingpage (`[data-slot="cta-price-old"]` — der reguläre Preis, falls wieder ein Einführungspreis als `cta-price-new` danebensteht —, sonst `[data-slot="cta-price"]`; existiert ein CTA-Kandidat, ist sein Text aber unparsebar → rot), sonst Prosa `$N/Monat` (Doku-Seite). Guthaben-Faktor aus der Doku-Prosa „das Sechsfache dieses Betrags“ (= 6; auch `das 6-fache`/`das 6×`; unbekannter Faktor bei vorhandenem Satz → rot). Guthaben = Monatspreis × Faktor (`$10 × 6 = $60`). Fehlt eine der beiden Quellen → Fallback-Konstanten 60/10 mit Warnung (kein Rot-Abbruch, Layout-Wechsel bricht die Pipeline nicht). `monthlyCredit`/`monthlyCost` werden danach in die Effektivpreise (`recomputeUsageDerived`) gerechnet.
 - **Anfragemuster** (`Name — N Input-, M Cached-, K Output-Tokens pro Anfrage`) pro Modell extrahieren; Kurzschreibweisen (`GLM-5.2/5.1`, `Kimi K2.7/K2.6`) gegen die Modellnamen auflösen. Fehlende Muster über `PATTERN_FALLBACKS` (z. B. MiniMax M2.5 → M2.7) auffüllen.
 - **zod-Validierung** (`validateSnapshot`): jedes Modell MIT Preisen/Nutzung MUSS `pattern` haben; kostenlose Zeilen (Preise 0, `usage` = null) sind ausgenommen; ungültige Daten → `process.exit(1)` → CI rot.

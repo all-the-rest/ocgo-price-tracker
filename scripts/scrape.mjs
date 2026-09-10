@@ -850,24 +850,41 @@ export function parseHtml(html) {
 export const modelKey = (model) => (model.tier ? `${model.name} (${model.tier})` : model.name);
 
 /**
- * Liest temporäre Nutzungs-Boni aus der Go-Landingpage. Die Preistabelle zeigt
- * dort pro Modell ein `[data-item]`-Element mit `data-model` (Slug) und optional
- * einem verschachtelten `<span data-bonus>…x usage</span>`. Liefert eine Map
- * normalisierter Modellnamen → Faktor (z. B. 2 bei "2x usage").
+ * Liest temporäre Nutzungs-Boni aus der Go-Landingpage. Aktuelles Format (seit
+ * 2026-09): pro Modell eine `[data-slot="model-row"]`-Zeile mit dem Anzeige-
+ * namen in `[data-slot="model"]` und `<span data-slot="badge">4× Nutzung</span>`
+ * für befristete Boni. Liefert eine Map normalisierter Modellnamen → Faktor
+ * (z. B. 4 bei "4× Nutzung"). Das alte `[data-item]`/ `[data-bonus]`-Format
+ * ("2x usage") wird als Fallback weiter erkannt.
  */
 export function parseUsageBonuses($) {
   const bonuses = new Map();
+  const bonusOf = (text) => {
+    const m = (text ?? "").trim().match(/(\d+)\s*[x×]\s*(usage|nutzung)/i);
+    const factor = m ? Number(m[1]) : null;
+    return factor && factor > 1 ? factor : null;
+  };
+  // Aktuell: Modell-Zeilen mit Badge ("4× Nutzung"); der data-model-Slug
+  // ("deepseek-flash") ist kurz und passt nicht auf Doku-Namen — daher zählt
+  // der angezeigte Modellname ("DeepSeek V4.1 Flash").
+  $("[data-slot='model-row']").each((_, el) => {
+    const $row = $(el);
+    let factor = null;
+    $row.find("[data-slot='badge']").each((_, b) => {
+      factor = bonusOf($(b).text()) ?? factor;
+    });
+    if (!factor) return;
+    const $name = $row.find("[data-slot='model']").first().clone();
+    $name.find("[data-slot='badge']").remove();
+    const key = normalizeName($name.text().trim() || $row.attr("data-model") || "");
+    if (key) bonuses.set(key, factor);
+  });
+  // Legacy: `[data-item]` mit `<span data-bonus>2x usage</span>`.
   $("[data-item]").each((_, el) => {
     const model = $(el).attr("data-model");
     if (!model) return;
-    const text = $(el)
-      .find("[data-bonus]")
-      .first()
-      .text()
-      .trim();
-    const m = text.match(/^(\d+)x\b/i);
-    const factor = m ? Number(m[1]) : null;
-    if (factor && factor > 1) bonuses.set(normalizeName(model), factor);
+    const factor = bonusOf($(el).find("[data-bonus]").first().text());
+    if (factor) bonuses.set(normalizeName(model), factor);
   });
   return bonuses;
 }
