@@ -227,7 +227,10 @@ function mapColumns($, table) {
     output: find((h) => h.includes("output"), "Output"),
     cachedRead: find((h) => h.includes("cached read"), "Cached Read"),
     cachedWrite: find((h) => h.includes("cached write"), "Cached Write"),
-    usage: find((h) => h.includes("nutzung") || h.includes("usage"), "Nutzung/Usage"),
+    usage: find(
+      (h) => h.includes("nutzung") || h.includes("usage") || h.includes("limit") || h.includes("monatlich"),
+      "Nutzung/Usage/Monatliches Limit"
+    ),
   };
 }
 
