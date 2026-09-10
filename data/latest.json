@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-10T05:53:19.841Z",
+  "fetchedAt": "2026-09-10T18:02:13.760Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -935,7 +935,7 @@
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
-      "id": "opencode-go/deepseek-flash"
+      "id": "opencode-go/deepseek-v4.1-flash"
     },
     {
       "name": "DeepSeek V4.1 Flash",
@@ -973,7 +973,7 @@
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
-      "id": "opencode-go/deepseek-flash"
+      "id": "opencode-go/deepseek-v4.1-flash"
     },
     {
       "name": "DeepSeek V4 Pro",
