@@ -300,7 +300,7 @@ export function buildShareSvg(input: ShareCardInput): string {
   // (IG Top 10, Story Top 15) fill their height with per-row constraint
   // lines plus a compact rules block instead of uninteresting filler models.
   const rows = portrait ? input.rows : input.rows.slice(0, autoTopN(input.cfg.size));
-  const title = de ? `Top ${rows.length} · OpenCode Go Anfragen` : `Top ${rows.length} · OpenCode Go requests`;
+  const title = de ? `Top ${rows.length} · OpenCode Go Modelle` : `Top ${rows.length} · OpenCode Go models`;
   const subtitle = metricLabel(input.lang);
   const updated = shareUpdatedLine(input.lang, input.fetchedAt);
   // Dense cards (portrait Top 10/15) get a slimmer header so all rows fit.

@@ -203,3 +203,21 @@ Außerdem wird geprüft, dass **aktuelle Tool-Versionen** verwendet werden
   und Akzeptanzkriterien — keine Annahmen über bereits Gesehenes.
 - **Kleine Änderungen** (einzelne Edits, offensichtliche Fixes, Versions-/Befehlskosmetik) macht OpenCode weiter
   **direkt selbst** — Subagenten sind für größere, unabhängige Arbeitspakete gedacht.
+
+## Schwester-Projekte (Git-Remotes)
+
+Tracker-Familie (alle unter `all-the-rest/`): `ocgo-price-tracker` (dieses Repo, `origin`),
+`ai-10-usd`, `cc-price-tracker`, `provider-plans` (als gleichnamige Remotes eingebunden).
+
+```bash
+git remote add ai-10-usd https://github.com/all-the-rest/ai-10-usd.git
+git remote add cc-price-tracker https://github.com/all-the-rest/cc-price-tracker.git
+git remote add provider-plans https://github.com/all-the-rest/provider-plans.git
+```
+
+Vergleichen (read-only, `origin` bleibt unberührt):
+
+```bash
+git fetch ai-10-usd main --dry-run
+git log --oneline origin/main..ai-10-usd/main --no-decorate | head
+```

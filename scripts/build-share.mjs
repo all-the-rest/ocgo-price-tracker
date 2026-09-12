@@ -66,9 +66,9 @@ const rowSvg = rows
   .join("");
 
 const svg =
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Top 5 OpenCode Go requests">` +
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Top 5 OpenCode Go models">` +
   `<rect width="${W}" height="${H}" fill="${p.bg}"/><rect x="0" y="0" width="${W}" height="8" fill="${p.accent}"/>` +
-  `<text x="${pad}" y="72" font-family="system-ui,sans-serif" font-size="40" font-weight="800" fill="${p.text}">Top 5 · OpenCode Go requests</text>` +
+  `<text x="${pad}" y="72" font-family="system-ui,sans-serif" font-size="40" font-weight="800" fill="${p.text}">Top 5 · OpenCode Go models</text>` +
   `<text x="${pad}" y="110" font-family="system-ui,sans-serif" font-size="22" fill="${p.muted}">Total requests</text>` +
   rowSvg +
   `<text data-footer-left="1" x="${pad}" y="${H - 28}" font-family="system-ui,sans-serif" font-size="20" fill="${p.muted}">${SITE}</text>` +
