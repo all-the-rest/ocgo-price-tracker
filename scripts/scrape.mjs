@@ -29,7 +29,7 @@ const FLOAT_TOLERANCE = 1e-9;
 const USER_AGENT =
   "ocgo-price-tracker/0.1.0 (+https://github.com/all-the-rest/ocgo-price-tracker)";
 
-class ScrapeError extends Error {}
+export class ScrapeError extends Error {}
 
 /**
  * Lädt den models.dev-Katalog (Live-API) und fällt bei Fehlern auf den
@@ -695,11 +695,19 @@ export function parsePrivacyTable($, table) {
 
 /**
  * Parst die Notizen-Liste unter der Datenschutz-Tabelle (z. B. die monatliche
- * ZDR-Vereinbarung von DeepSeek V4 Flash: "gilt bis einschließlich 31. August
- * 2026") und liefert eine Map normalisierter Modellnamen → validUntil (ISO).
+ * ZDR-Vereinbarung der Modellfamilie DeepSeek: "gilt bis einschließlich
+ * 31. August 2026") und liefert eine Map normalisierter Notiz-Labels →
+ * validUntil (ISO).
+ *
+ * Das Label ist die Modellfamilie (z. B. `DeepSeek`) oder modellspezifisch
+ * (z. B. `DeepSeek V4 Flash`); die Zuordnung auf die Modelle übernimmt
+ * `validUntilFor`. Die Original-Labels hängen als `labels`-Map (normalisiert →
+ * Anzeigeform) an der Rückgabe, damit `parseHtml` ungenutzte Notizen lesbar
+ * melden kann.
  */
 export function parsePrivacyNotes($) {
   const map = new Map();
+  const labels = new Map();
   $("main ul li").each((_, li) => {
     const $li = $(li);
     const label = $li
@@ -714,9 +722,47 @@ export function parsePrivacyNotes($) {
     const m = text.match(/(?:gilt|gültig)\s+bis(?:\s+einschließlich)?\s+(\d{1,2}\.\s+[A-Za-zäöüß]+\s+\d{4})/i);
     if (!m) return;
     const date = parseGermanDate(m[1]);
-    if (date) map.set(normalizeName(label), date);
+    if (date) {
+      const key = normalizeName(label);
+      map.set(key, date);
+      labels.set(key, label);
+    }
   });
+  map.labels = labels;
   return map;
+}
+
+/**
+ * Prüft, ob ein Notiz-Label (normalisierter Key) auf einen Modell-Namen passt:
+ * Exakt-Match (modellspezifisch) oder echter Familien-Präfix (das Label ist ein
+ * kürzerer Präfix des Modell-Namens, z. B. Familie `DeepSeek` → `DeepSeek V4
+ * Pro`).
+ */
+function validUntilKeyMatches(norm, key) {
+  return norm === key || (key.length > 0 && key.length < norm.length && norm.startsWith(key));
+}
+
+/**
+ * Ordnet einem Modell (normalisierter Name) das `validUntil`-Datum aus der
+ * Notizen-Map zu:
+ *  1. Exakt-Match (modellspezifisches Label, z. B. `DeepSeek V4 Flash`) gewinnt
+ *     immer.
+ *  2. Sonst Familien-Fallback: ein Notiz-Label, das ein echter Präfix des
+ *     Modell-Namens ist (z. B. Familie `DeepSeek` → `DeepSeek V4 Pro`). Bei
+ *     mehreren Treffern gewinnt der längste (spezifischste) Key.
+ *  3. Kein Treffer → `null`.
+ */
+export function validUntilFor(norm, validUntilMap) {
+  let best = null;
+  let bestLen = -1;
+  for (const [key, date] of validUntilMap) {
+    if (!validUntilKeyMatches(norm, key)) continue;
+    if (key.length > bestLen) {
+      best = date;
+      bestLen = key.length;
+    }
+  }
+  return best;
 }
 
 function isPeakTier(tier) {
@@ -838,9 +884,23 @@ export function parseHtml(html) {
     const fallback = !own;
     m.privacy = {
       ...base,
-      validUntil: validUntilMap.get(norm) ?? null,
+      validUntil: validUntilFor(norm, validUntilMap),
       ...(fallback ? { fallback: true } : {}),
     };
+  }
+
+  // Jede ZDR-Notiz muss auf mindestens ein Modell abbildbar sein (exakt oder
+  // als Familien-Präfix). Eine Notiz ohne Modell ist entweder ein
+  // Quell-Layoutwechsel oder ein neues Modell ohne Tabellenzeile — beides darf
+  // nicht still untergehen.
+  const modelNorms = models.map((m) => normalizeName(m.name));
+  for (const key of validUntilMap.keys()) {
+    if (!modelNorms.some((norm) => validUntilKeyMatches(norm, key))) {
+      const label = validUntilMap.labels?.get(key) ?? key;
+      throw new ScrapeError(
+        `Datenschutz-Notiz "${label}" konnte keinem Modell zugeordnet werden (weder exakt noch als Familien-Präfix)`
+      );
+    }
   }
 
   if (models.length === 0) throw new ScrapeError("keine Modelle aus der Preistabelle extrahiert");
@@ -949,7 +1009,7 @@ export function isPrivacyExpired(validUntil, today) {
  * Wendet das Worst-Case-Szenario auf abgelaufene ZDR-Vereinbarungen an:
  * `training: true, retentionDays: false` (kein ZDR, Modelltraining).
  * `validUntil` bleibt aus Audit-Gründen erhalten.
- * Betrifft z. B. DeepSeek V4 Flash: monatlich erneuert, gilt bis 31. Aug →
+ * Betrifft z. B. DeepSeek: monatlich erneuert, gilt bis 31. Aug →
  * am 1. Sept ohne neues Datum wird Worst-Case visualisiert und ein
  * `privacy_changed`-Event erzeugt.
  */
@@ -1666,7 +1726,7 @@ async function main() {
     );
 
     // Abgelaufene ZDR-Vereinbarungen → Worst-Case visualisieren.
-    // DeepSeek V4 Flash: monatlich erneuert, gilt bis 31. Aug → am 1. Sept ohne
+    // DeepSeek: monatlich erneuert, gilt bis 31. Aug → am 1. Sept ohne
     // neues Datum wird training:true / Kein ZDR gezeigt und ein privacy_changed
     // erzeugt.
     applyPrivacyExpiry(models, date);

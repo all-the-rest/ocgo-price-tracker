@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-10T18:02:13.760Z",
+  "fetchedAt": "2026-09-12T19:44:34.179Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -931,7 +931,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": null
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -969,7 +969,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": null
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -1006,7 +1006,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": null
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -1043,7 +1043,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": null
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -1080,7 +1080,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": null
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -1117,7 +1117,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": null
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -1155,7 +1155,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": null
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",
@@ -1193,7 +1193,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": null
+        "validUntil": "2026-09-30"
       },
       "contextWindow": 1000000,
       "provider": "DeepSeek",

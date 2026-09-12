@@ -27,6 +27,9 @@ import {
   parseCreditFactor,
   parseMonthlyPricing,
   parsePeakHours,
+  parsePrivacyNotes,
+  validUntilFor,
+  ScrapeError,
   recomputeUsageDerived,
   computePrivacyDiff,
   normalizeChangelogIds,
@@ -157,6 +160,51 @@ test("parseHtml: Datenschutz — ZDR-Modelle mit true (0 Tage)", () => {
 test("parseHtml: Datenschutz — DeepSeek V4 Flash mit gültig-bis-Datum", () => {
   const flash = parseHtml(fixture).find((m) => m.name === "DeepSeek V4 Flash");
   assert.deepEqual(flash.privacy, { training: false, retentionDays: true, validUntil: "2026-08-31" });
+});
+
+test("parsePrivacyNotes: Familien-Label (DeepSeek) → validUntil (ISO)", () => {
+  const $ = cheerio.load(
+    "<main><ul><li><strong>DeepSeek:</strong> Die ZDR-Vereinbarung wird monatlich erneuert. Die aktuelle Vereinbarung gilt bis einschließlich 30. September 2026.</li></ul></main>"
+  );
+  const notes = parsePrivacyNotes($);
+  assert.equal(notes.get("deepseek"), "2026-09-30");
+});
+
+test("validUntilFor: Familien-Fallback gilt für alle Modelle der Familie", () => {
+  const map = new Map([["deepseek", "2026-09-30"]]);
+  assert.equal(validUntilFor("deepseekv4flash", map), "2026-09-30");
+  assert.equal(validUntilFor("deepseekv4pro", map), "2026-09-30");
+  assert.equal(validUntilFor("deepseekv41flash", map), "2026-09-30");
+});
+
+test("validUntilFor: Exakt-/spezifischer Treffer gewinnt gegen Familien-Fallback", () => {
+  const map = new Map([
+    ["deepseek", "2026-09-30"],
+    ["deepseekv4flash", "2026-10-31"],
+  ]);
+  assert.equal(validUntilFor("deepseekv4flash", map), "2026-10-31");
+  assert.equal(validUntilFor("deepseekv4pro", map), "2026-09-30");
+});
+
+test("validUntilFor: ohne Treffer null, kein falscher Präfix-Match", () => {
+  assert.equal(validUntilFor("grok45", new Map([["deepseek", "2026-09-30"]])), null);
+  assert.equal(validUntilFor("deepseekv4flash", new Map()), null);
+});
+
+test("parseHtml: Datenschutz-Notiz ohne passendes Modell → ScrapeError", () => {
+  const html = `
+    <html><body><main>
+      <table>
+        <thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Nutzung</th></tr></thead>
+        <tbody><tr><td>Alpha</td><td>$1</td><td>$1</td><td>-</td><td>-</td><td>$60</td></tr></tbody>
+      </table>
+      <table>
+        <thead><tr><th>Modell</th><th>Modelltraining</th><th>Datenaufbewahrung</th></tr></thead>
+        <tbody><tr><td>Alpha</td><td>Nicht verwendet</td><td>0 Tage</td></tr></tbody>
+      </table>
+      <ul><li><strong>DeepSeek:</strong> Die ZDR-Vereinbarung gilt bis einschließlich 30. September 2026.</li></ul>
+    </main></body></html>`;
+  assert.throws(() => parseHtml(html), ScrapeError);
 });
 
 test("parseHtml: Datenschutz — Muse Spark 1.2 ohne ZDR ('Kein ZDR' → false)", () => {
