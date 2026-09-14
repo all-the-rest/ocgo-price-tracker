@@ -80,18 +80,32 @@ test("release notes: price_changed zeigt from/to mit Usage + Feldnamen", () => {
       fields: ["input", "output", "cachedRead"],
     }),
     "- **DeepSeek V4 Pro** — price change (Input, Output, Cached Read): " +
-      "$0.435 / $0.87 / $0.003625 @ $30 → $0.66 / $1.98 / $0.022 @ $30"
+      "**$0.435** / **$0.87** / **$0.003625** @ $30 → **$0.66** / **$1.98** / **$0.022** @ $30"
+  );
+});
+
+test("release notes: price_changed mit Usage-Wechsel boldet auch Usage (wie Changelog)", () => {
+  assert.equal(
+    renderChange({
+      type: "price_changed",
+      model: "DeepSeek V4 Flash",
+      from: pricing({ input: 0.14, output: 0.28, cachedRead: 0.0028, usage: 120 }),
+      to: pricing({ input: 0.22, output: 0.66, cachedRead: 0.007, usage: 15 }),
+      fields: ["input", "output", "cachedRead"],
+    }),
+    "- **DeepSeek V4 Flash** — price change (Input, Output, Cached Read): " +
+      "**$0.14** / **$0.28** / **$0.0028** @ **$120** → **$0.22** / **$0.66** / **$0.007** @ **$15**"
   );
 });
 
 test("release notes: usage_changed zeigt from/to inkl. unbegrenzt", () => {
   assert.equal(
     renderChange({ type: "usage_changed", model: "Grok 4.6", from: 15, to: null }),
-    "- **Grok 4.6** — usage: $15 → ∞ (unlimited)"
+    "- **Grok 4.6** — usage: **$15** → **∞ (unlimited)**"
   );
   assert.equal(
     renderChange({ type: "usage_changed", model: "GPT 5.6 Luna", from: null, to: 60 }),
-    "- **GPT 5.6 Luna** — usage: ∞ (unlimited) → $60"
+    "- **GPT 5.6 Luna** — usage: **∞ (unlimited)** → **$60**"
   );
 });
 
@@ -103,7 +117,7 @@ test("release notes: capabilities_changed zeigt From/To-Fähigkeiten", () => {
       from: null,
       to: { input: ["text"], output: ["text"], reasoning: true, toolCall: true },
     }),
-    "- **DeepSeek V4 Pro** — capabilities: – → in:text out:text reasoning+tool"
+    "- **DeepSeek V4 Pro** — capabilities: **–** → **in:text out:text reasoning+tool**"
   );
 });
 
@@ -116,7 +130,7 @@ test("release notes: privacy_changed zeigt Stufen (training/ZDR/retention), Rete
       from: { training: true, validUntil: null },
       to: { training: false, retentionDays: true, validUntil: null },
     }),
-    "- **Muse Spark 1.2** — privacy: training → ZDR"
+    "- **Muse Spark 1.2** — privacy: **training** → **ZDR**"
   );
   assert.equal(
     renderChange({
@@ -125,7 +139,7 @@ test("release notes: privacy_changed zeigt Stufen (training/ZDR/retention), Rete
       from: { training: false, retentionDays: 30, validUntil: "2026-12-31" },
       to: { training: false, retentionDays: false, validUntil: null },
     }),
-    "- **x** — privacy: 30 days retention (valid until 2026-12-31) → retention"
+    "- **x** — privacy: **30 days retention (valid until 2026-12-31)** → **retention**"
   );
 });
 
@@ -184,24 +198,24 @@ function assertCovered(notes, c) {
       return;
     case "price_changed":
       has(c.model);
-      has(pricingLine(c.from));
-      has(pricingLine(c.to));
+      has(pricingLine(c.from, c.fields, c.from.usage !== c.to.usage));
+      has(pricingLine(c.to, c.fields, c.from.usage !== c.to.usage));
       for (const f of c.fields) has(PRICE_FIELD_NAMES[f] ?? f);
       return;
     case "usage_changed":
       has(c.model);
-      has(fmtUsage(c.from));
-      has(fmtUsage(c.to));
+      has(`**${fmtUsage(c.from)}**`);
+      has(`**${fmtUsage(c.to)}**`);
       return;
     case "capabilities_changed":
       has(c.model);
-      if (c.from) has(fmtCaps(c.from));
-      if (c.to) has(fmtCaps(c.to));
+      if (c.from) has(`**${fmtCaps(c.from)}**`);
+      if (c.to) has(`**${fmtCaps(c.to)}**`);
       return;
     case "privacy_changed":
       has(c.model);
-      if (c.from) has(fmtPrivacy(c.from));
-      if (c.to) has(fmtPrivacy(c.to));
+      if (c.from) has(`**${fmtPrivacy(c.from)}**`);
+      if (c.to) has(`**${fmtPrivacy(c.to)}**`);
       return;
     case "free_added":
       has(c.name ?? c.model);

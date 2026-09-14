@@ -161,24 +161,38 @@ export default function Changelog(props: ChangelogProps) {
           </span>
         );
       }
-      case "capabilities_changed":
+      case "capabilities_changed": {
+        const [beforeFrom, afterFrom] = props.t.chgCaps.split("{from}");
+        const [modelPart, middlePart] = beforeFrom.split("{model}");
+        const [arrowPart, afterTo] = afterFrom.split("{to}");
         return (
           <span>
-            {props.t.chgCaps
-              .replace("{model}", c.model)
-              .replace("{from}", fmtCaps(c.from, props.t))
-              .replace("{to}", fmtCaps(c.to, props.t))}
+            {modelPart}
+            {c.model}
+            {middlePart}
+            <strong class="font-bold">{fmtCaps(c.from, props.t)}</strong>
+            {arrowPart}
+            <strong class="font-bold">{fmtCaps(c.to, props.t)}</strong>
+            {afterTo}
           </span>
         );
-      case "privacy_changed":
+      }
+      case "privacy_changed": {
+        const [beforeFrom, afterFrom] = props.t.chgPrivacy.split("{from}");
+        const [modelPart, middlePart] = beforeFrom.split("{model}");
+        const [arrowPart, afterTo] = afterFrom.split("{to}");
         return (
           <span>
-            {props.t.chgPrivacy
-              .replace("{model}", c.model)
-              .replace("{from}", privacyLabelWithValidUntil(c.from, props.t, props.lang))
-              .replace("{to}", privacyLabelWithValidUntil(c.to, props.t, props.lang))}
+            {modelPart}
+            {c.model}
+            {middlePart}
+            <strong class="font-bold">{privacyLabelWithValidUntil(c.from, props.t, props.lang)}</strong>
+            {arrowPart}
+            <strong class="font-bold">{privacyLabelWithValidUntil(c.to, props.t, props.lang)}</strong>
+            {afterTo}
           </span>
         );
+      }
       case "free_added":
         return (
           <span>

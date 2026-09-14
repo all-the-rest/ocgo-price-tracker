@@ -19,10 +19,15 @@ export function fmtPrice(n) {
   return `$${s.replace(/0+$/, "").replace(/\.$/, "")}`;
 }
 
-export function pricingLine(p) {
-  const parts = [fmtPrice(p.input), fmtPrice(p.output), fmtPrice(p.cachedRead)];
-  if (p.cachedWrite !== null) parts.push(fmtPrice(p.cachedWrite));
-  return `${parts.join(" / ")} @ ${p.usage === null ? "∞ (unlimited)" : `$${p.usage}`}`;
+export function pricingLine(p, fields = [], boldUsage = false) {
+  const order = ["input", "output", "cachedRead"];
+  if (p.cachedWrite !== null) order.push("cachedWrite");
+  const parts = order.map((f) => {
+    const s = fmtPrice(p[f]);
+    return fields.includes(f) ? `**${s}**` : s;
+  });
+  const u = p.usage === null ? "∞ (unlimited)" : `$${p.usage}`;
+  return `${parts.join(" / ")} @ ${boldUsage ? `**${u}**` : u}`;
 }
 
 export function fmtCaps(c) {
@@ -62,16 +67,17 @@ export function renderChange(c) {
       return `- **${c.model}** — removed (${pricingLine(c.pricing)}, was available ${c.days} days)`;
     case "price_changed": {
       const fields = c.fields.map((f) => PRICE_FIELD_NAMES[f] ?? f).join(", ");
-      return `- **${c.model}** — price change (${fields}): ${pricingLine(c.from)} → ${pricingLine(c.to)}`;
+      const boldUsage = c.from.usage !== c.to.usage;
+      return `- **${c.model}** — price change (${fields}): ${pricingLine(c.from, c.fields, boldUsage)} → ${pricingLine(c.to, c.fields, boldUsage)}`;
     }
     case "usage_changed": {
       const fmtU = (u) => (u === null ? "∞ (unlimited)" : `$${u}`);
-      return `- **${c.model}** — usage: ${fmtU(c.from)} → ${fmtU(c.to)}`;
+      return `- **${c.model}** — usage: **${fmtU(c.from)}** → **${fmtU(c.to)}**`;
     }
     case "capabilities_changed":
-      return `- **${c.model}** — capabilities: ${fmtCaps(c.from)} → ${fmtCaps(c.to)}`;
+      return `- **${c.model}** — capabilities: **${fmtCaps(c.from)}** → **${fmtCaps(c.to)}**`;
     case "privacy_changed":
-      return `- **${c.model}** — privacy: ${fmtPrivacy(c.from)} → ${fmtPrivacy(c.to)}`;
+      return `- **${c.model}** — privacy: **${fmtPrivacy(c.from)}** → **${fmtPrivacy(c.to)}**`;
     case "free_added":
       return `- **${c.name ?? c.model}** — new free model`;
     case "free_removed": {
