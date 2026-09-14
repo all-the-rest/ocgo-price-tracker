@@ -22,6 +22,7 @@ import {
   computeCapabilityDiff,
   enrichFreeModels,
   parseUsageBonuses,
+  parseDocsUsageBonuses,
   applyUsageBonuses,
   parseMonthlyCost,
   parseCreditFactor,
@@ -292,6 +293,45 @@ test("parseUsageBonuses: Legacy-Format ([data-item]/[data-bonus]) weiter erkannt
 test("parseUsageBonuses: leere Map bei fehlenden Bonus-Elementen", () => {
   const $ = cheerio.load("<div><span data-item data-model='grok-4.5'><span data-value>1</span></span></div>");
   assert.deepEqual([...parseUsageBonuses($).entries()], []);
+});
+
+test("parseHtml: Nutzungs-Zelle mit Doku-Bonus (del/strong/small) → aktueller Wert", () => {
+  const html = `<html><body><main>
+    <table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monatliches Limit</th></tr></thead>
+    <tbody><tr><td>DeepSeek V4.1 Flash (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td>
+    <td><del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small></td></tr></tbody></table>
+    <table><thead><tr><th>Modell</th><th>Modelltraining</th><th>Datenaufbewahrung</th></tr></thead>
+    <tbody><tr><td>DeepSeek V4.1 Flash</td><td>Nicht verwendet</td><td>0 Tage</td></tr></tbody></table>
+    <p>DeepSeek V4.1 Flash — 410 Input-, 71300 Cached-, 310 Output-Tokens pro Anfrage</p>
+  </main></body></html>`;
+  const models = parseHtml(html);
+  assert.equal(models[0].usage, 60);
+  assert.equal(models[0].multiplier, 1);
+});
+
+test("parseDocsUsageBonuses: extrahiert 4×-Faktor aus der Doku-Zelle", () => {
+  const $ = cheerio.load(`<html><body><main>
+    <table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monatliches Limit</th></tr></thead>
+    <tbody><tr><td>DeepSeek V4.1 Flash</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td>
+    <td><del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small></td></tr>
+    <tr><td>Grok 4.5</td><td>$1</td><td>$2</td><td>$0.1</td><td>-</td><td>$15</td></tr></tbody></table>
+  </main></body></html>`);
+  const bonuses = parseDocsUsageBonuses($);
+  assert.equal(bonuses.get("deepseekv4.1flash"), 4);
+  assert.equal(bonuses.size, 1);
+});
+
+test("parseHtml: Nutzungs-Zelle als Fließtext mit Bonus-Notiz → letzter $-Wert", () => {
+  const html = `<html><body><main>
+    <table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monatliches Limit</th></tr></thead>
+    <tbody><tr><td>DeepSeek V4.1 Flash (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td>
+    <td>$15 $60 4x · Endet am 20. Sept.</td></tr></tbody></table>
+    <table><thead><tr><th>Modell</th><th>Modelltraining</th><th>Datenaufbewahrung</th></tr></thead>
+    <tbody><tr><td>DeepSeek V4.1 Flash</td><td>Nicht verwendet</td><td>0 Tage</td></tr></tbody></table>
+    <p>DeepSeek V4.1 Flash — 410 Input-, 71300 Cached-, 310 Output-Tokens pro Anfrage</p>
+  </main></body></html>`;
+  const models = parseHtml(html);
+  assert.equal(models[0].usage, 60);
 });
 
 test("applyUsageBonuses: verdoppelt usage und berechnet Effektivpreise neu", () => {

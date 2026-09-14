@@ -175,14 +175,42 @@ function parsePrice(text) {
 /**
  * Parst die Nutzung-Spalte. "-" (kein Nutzungslimit, z. B. kostenlose Modelle
  * wie Ox Alpha Free) → null = unbegrenzte Nutzung; sonst `$15` → 15.
+ *
+ * Seit 2026-09 zeigt die Doku Boni inline in der Zelle:
+ * `<del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small>`
+ * (durchgestrichener Basiswert + aktueller Wert + Bonus-Notiz). Daher wird die
+ * Bonus-Notiz (`Nx · Endet …`) vor dem Parsen entfernt und bei mehreren
+ * $-Beträgen der letzte (= aktuelle Wert) genommen.
  */
 function parseUsage(text) {
   const t = (text ?? "").trim();
   if (t === "" || t === "-" || t === "—" || t === "–") return null;
-  const cleaned = t.replace(/[\$,\s]/g, "");
+  const withoutNote = t
+    .replace(/\d+\s*[x×]\s*·.*$/, "")
+    .trim();
+  const amounts = [...withoutNote.matchAll(/\$(\d+(?:[.,]\d+)?)/g)];
+  if (amounts.length > 0) {
+    const value = Number(amounts[amounts.length - 1][1].replace(",", "."));
+    if (Number.isFinite(value)) return value;
+  }
+  const cleaned = withoutNote.replace(/[\$,\s]/g, "");
   const value = Number(cleaned);
   if (!Number.isFinite(value)) throw new ScrapeError(`Nutzung unparsebar: "${text}"`);
   return value;
+}
+
+/**
+ * Parst eine Nutzungs-Tabellenzelle anhand ihres HTML: ein `<strong>`-Wert
+ * (aktueller Wert bei durchgestrichenem Basiswert in `<del>`) gewinnt, sonst
+ * wird der Text ohne `<small>`-Bonus-Notiz geparst.
+ */
+function parseUsageCell($cell) {
+  if (!$cell || $cell.length === 0) throw new ScrapeError("Nutzungs-Zelle fehlt");
+  const strong = $cell.find("strong").first();
+  if (strong.length > 0) return parseUsage(strong.text());
+  const clone = $cell.clone();
+  clone.find("small").remove();
+  return parseUsage(clone.text());
 }
 
 function findPriceTable($) {
@@ -505,7 +533,7 @@ export function parsePatterns($, models) {
   return patterns;
 }
 
-function parseModel(cells, colMap) {
+function parseModel(cells, colMap, $usageCell = null) {
   const at = (idx) => {
     const cell = cells[idx];
     if (cell === undefined) throw new ScrapeError(`Zelle für Spaltenindex ${idx} fehlt`);
@@ -525,7 +553,7 @@ function parseModel(cells, colMap) {
     output,
     cachedRead,
     cachedWrite,
-    usage: parseUsage(at(colMap.usage)),
+    usage: $usageCell ? parseUsageCell($usageCell) : parseUsage(at(colMap.usage)),
     pattern: null,
     capabilities: null,
   };
@@ -569,13 +597,13 @@ function parseModels($, table, colMap) {
   $(table)
     .find("tbody tr, > tr")
     .each((_, row) => {
-      const cells = $(row)
-        .find("th, td")
+      const $cells = $(row).find("th, td");
+      const cells = $cells
         .map((_, c) => $(c).text().trim())
         .get();
       const first = (cells[0] ?? "").trim().toLowerCase();
       if (first === "model" || first === "modell") return;
-      models.push(parseModel(cells, colMap));
+      models.push(parseModel(cells, colMap, $cells.eq(colMap.usage)));
     });
   return models;
 }
@@ -916,6 +944,10 @@ export const modelKey = (model) => (model.tier ? `${model.name} (${model.tier})`
  * für befristete Boni. Liefert eine Map normalisierter Modellnamen → Faktor
  * (z. B. 4 bei "4× Nutzung"). Das alte `[data-item]`/ `[data-bonus]`-Format
  * ("2x usage") wird als Fallback weiter erkannt.
+ *
+ * LEGACY: aktuell im Hauptfluss nicht verdrahtet — Nutzungs-Boni kommen
+ * ausschließlich aus der Doku-Tabelle (Inline-Format, siehe parseUsageCell).
+ * Nur für Unit-Tests und als Reserve bei Format-Rückschritten behalten.
  */
 export function parseUsageBonuses($) {
   const bonuses = new Map();
@@ -946,6 +978,47 @@ export function parseUsageBonuses($) {
     const factor = bonusOf($(el).find("[data-bonus]").first().text());
     if (factor) bonuses.set(normalizeName(model), factor);
   });
+  return bonuses;
+}
+
+/**
+ * Liest die in der Doku-Tabelle eingepreisten Nutzungs-Boni (seit 2026-09 zeigt
+ * die Nutzungs-Zelle `<del>$15</del> <strong>$60</strong><br>
+ * <small>4x · Endet am 20. Sept.</small>`). Liefert eine Map normalisierter
+ * Modellnamen → Doku-Bonus-Faktor. Reine Reporting-Hilfe (Bonus-Labels im
+ * Run-Log) — die `usage`-Werte selbst liest parseHtml bereits als aktuelle
+ * Werte, es wird nichts multipliziert.
+ */
+export function parseDocsUsageBonuses($) {
+  const bonuses = new Map();
+  let table;
+  try {
+    table = findPriceTable($);
+  } catch {
+    return bonuses;
+  }
+  const colMap = mapColumns($, table);
+  $(table)
+    .find("tbody tr, > tr")
+    .each((_, row) => {
+      const $cells = $(row).find("th, td");
+      if ($cells.length === 0) return;
+      const first = ($cells.eq(colMap.name).text() ?? "").trim().toLowerCase();
+      if (first === "model" || first === "modell") return;
+      const $usage = $cells.eq(colMap.usage);
+      if ($usage.length === 0) return;
+      const smallText = $usage.find("small").text() ?? "";
+      const m = smallText.match(/(\d+)\s*[x×]/);
+      const factor = m ? Number(m[1]) : null;
+      const hasBonusStructure = $usage.find("del").length > 0 && $usage.find("strong").length > 0;
+      if (factor && factor > 1) {
+        const { name } = splitTier($cells.eq(colMap.name).text().trim());
+        if (name) bonuses.set(normalizeName(name), factor);
+      } else if (hasBonusStructure) {
+        const { name } = splitTier($cells.eq(colMap.name).text().trim());
+        if (name) bonuses.set(normalizeName(name), 1);
+      }
+    });
   return bonuses;
 }
 
@@ -1670,9 +1743,12 @@ async function main() {
     const models = parseHtml(html);
     const peakHours = parsePeakHours(docs$, models);
     const landing$ = await fetchGoLanding();
-    const usageBonuses = parseUsageBonuses(landing$);
-    applyUsageBonuses(models, usageBonuses);
-    const bonusLabels = [...usageBonuses.entries()].map(([n, f]) => `${n}×${f}`).join(", ");
+    // Nutzungs-Boni kommen ausschließlich aus der Doku-Tabelle (inline-Format
+    // `<del>$15</del> <strong>$60</strong>` + `<small>4x …</small>` → parseHtml
+    // liest den aktuellen Wert). Die Landingpage liefert nur den Monatspreis
+    // und wird NICHT für Bonus-Credits verwendet (kein applyUsageBonuses).
+    const docsBonuses = parseDocsUsageBonuses(docs$);
+    const bonusLabels = [...docsBonuses.entries()].map(([n, f]) => `${n}×${f}`).join(", ");
 
     // Monatsguthaben/-preis dynamisch: Monatspreis von der Landingpage
     // (`[data-slot="cta-price-old"]` → "$10/Monat"), Guthaben-Faktor von der
