@@ -6,16 +6,14 @@ Preis-Tracking für OpenCode Go. Ein täglicher GitHub-Actions-Lauf scrapet
 `https://opencode.ai/docs/de/go/`, berechnet die Preise auf Basis des vollen
 Monatsguthabens (Effektivpreis = Listpreis × Guthaben/Nutzung) und stellt eine
 statische SolidJS-Seite unter `https://ocgo-pricing.all-the.rest` bereit.
-Temporäre Nutzungs-Boni stehen **inline in der Doku-Preistabelle**
+Alle Daten kommen von der einen Doku-Seite: Temporäre Nutzungs-Boni stehen
+**inline in der Preistabelle**
 (`<del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small>`
-in der Nutzungs-Zelle) — `parseUsageCell` liest den aktuellen Wert
-(`<strong>` gewinnt, `<small>`-Notiz wird entfernt, bei Fließtext gilt der
-letzte $-Betrag). Die Go-Landingpage `https://opencode.ai/de/go` wird weiter
-gefetcht, liefert aber **nur den Monatspreis** (keine Bonus-Credits;
-`parseUsageBonuses`/`applyUsageBonuses` sind legacy/reserve).
-Monatsguthaben und Monatspreis werden **dynamisch** gefetcht (Landingpage
-Landingpage-CTA (`cta-price-old`/`cta-price`) → `$10/Monat`, Doku-Seite „das Sechsfache dieses
-Betrags“ → Faktor 6; Guthaben = Preis × Faktor = $60), Fallback auf 60/10.
+→ `parseUsageCell` liest den aktuellen Wert). Monatsguthaben und Monatspreis
+werden **dynamisch** aus der Doku-Prosa gefetcht (Intro `10 $/Monat`,
+Limit-Liste „Monatliches Limit — Nutzung im Wert von $60“, ersatzweise
+Faktor-Satz „das Sechsfache dieses Betrags“ → Guthaben = Preis × Faktor),
+Fallback auf 60/10.
 
 - Repo (remote): `all-the-rest/ocgo-price-tracker`
 - GitHub Pages Custom Domain: `ocgo-pricing.all-the.rest` (CNAME)
@@ -109,10 +107,10 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 }
 ```
 
-- `multiplier = monthlyCredit / usage`; `usage` = Basis-Nutzung aus der Preistabelle (`$15`/`$60`) **× Bonus-Faktor** (z. B. `2x usage` → `usage` = `30`/`120`). Ein Bonus-Anstieg senkt `multiplier` und damit die Effektivpreise.
+- `multiplier = monthlyCredit / usage`; `usage` = aktueller Nutzungs-Wert aus der Preistabelle (inkl. inline eingepreister Boni, z. B. `<del>$15</del> <strong>$60</strong>` → `usage` = `60`). Ein Bonus-Anstieg senkt `multiplier` und damit die Effektivpreise.
 - **Kostenlose Preistabellen-Zeilen** (`Nutzung` = `-`, z. B. Ox Alpha Free): Token-Preise (`input`/`output`/`cachedRead`/`cachedWrite`) werden als `0` erfasst, nicht als `null` — gratis ist ein bekannter Preis (`recomputeUsageDerived`, Nutzungszweig `usage === null`; `multiplier` bleibt `null`). `pattern` bleibt für diese Zeilen `null` und ist **nicht** Pflicht (zod-Prüfung: nur von 0 verschiedene Preise erfordern ein Muster); `requestCost` = 0 → UI zeigt `$0.00` statt `-`.
 - `monthlyCost` = laufender Abo-Preis (dynamisch, aktuell 10); die UI berechnet daraus die zusätzliche Preisbasis „Was du zahlst“ (`Effektivpreis = Listpreis × monthlyCost/Nutzung`).
-- `monthlyCredit` = Monatsguthaben = `monthlyCost × Faktor` (dynamisch, aktuell 60 = 10 × 6); Quelle: Landingpage-Preis (CTA `cta-price-old`, sonst `cta-price`) × Doku-Faktor („das Sechsfache dieses Betrags“). Fallback-Konstanten 60/10 bei fehlender Extraktion (Warnung, kein Abbruch).
+- `monthlyCredit` = Monatsguthaben (dynamisch, aktuell 60); Quelle: Doku-Limit-Liste („Monatliches Limit — Nutzung im Wert von $60“), ersatzweise `monthlyCost × Faktor` (Faktor aus „das Sechsfache dieses Betrags“). Fallback-Konstante 60 bei fehlender Extraktion (Warnung, kein Abbruch).
 - `effective* = preis × multiplier`
 - `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: 5% Input-Preis + 95% Cached-Write-Preis, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
 - `capabilities` = Fähigkeiten aus models.dev (via `@opencode-ai/models`): `input`/`output`-Modalitäten (`text`, `audio`, `image`, `video`, `pdf`), `reasoning`, `toolCall`. `null` = kein models.dev-Eintrag. **Nur Fähigkeiten — die Preise bleiben aus dem Go-Scrape (models.dev-Preise weichen ab und werden ignoriert).**
@@ -138,8 +136,8 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 - Preistabelle über die **Header-Zeile** identifizieren (Zellen enthalten `Input` UND `Output`) — NICHT über `nth-child`-Selektoren.
 - Preise: `$1.40` → `1.4`; `-` → `null`.
 - `Nutzung` ist `$15` oder `$60`; Modellname mit `(… tokens)`-Suffix → `tier`-Feld.
-- **Nutzungs-Boni** stehen inline in der Doku-Preistabelle (`<del>$15</del> <strong>$60</strong>` + `<small>4x · Endet …</small>` in der Nutzungs-Zelle; `parseUsageCell` liest den aktuellen Wert, `parseDocsUsageBonuses` liefert nur Reporting-Labels). Die Landingpage-Boni (`parseUsageBonuses`/`applyUsageBonuses`, Fixture `tests/fixtures/go-de-bonus.html`) sind **legacy/reserve** und werden im Hauptfluss nicht angewendet. HTTP-Fehler auf der Landingpage-Seite → `process.exit(1)` (sie liefert den Monatspreis).
-- **Monatsguthaben/-preis dynamisch** (`parseMonthlyPricing`/`parseMonthlyCost`/`parseCreditFactor`): Monatspreis aus der Landingpage (`[data-slot="cta-price-old"]` — der reguläre Preis, falls wieder ein Einführungspreis als `cta-price-new` danebensteht —, sonst `[data-slot="cta-price"]`; existiert ein CTA-Kandidat, ist sein Text aber unparsebar → rot), sonst Prosa `$N/Monat` (Doku-Seite). Guthaben-Faktor aus der Doku-Prosa „das Sechsfache dieses Betrags“ (= 6; auch `das 6-fache`/`das 6×`; unbekannter Faktor bei vorhandenem Satz → rot). Guthaben = Monatspreis × Faktor (`$10 × 6 = $60`). Fehlt eine der beiden Quellen → Fallback-Konstanten 60/10 mit Warnung (kein Rot-Abbruch, Layout-Wechsel bricht die Pipeline nicht). `monthlyCredit`/`monthlyCost` werden danach in die Effektivpreise (`recomputeUsageDerived`) gerechnet.
+- **Nutzungs-Boni** stehen inline in der Doku-Preistabelle (`<del>$15</del> <strong>$60</strong>` + `<small>4x · Endet …</small>` in der Nutzungs-Zelle; `parseUsageCell` liest den aktuellen Wert, `parseDocsUsageBonuses` liefert nur Reporting-Labels). Keine zweite Quelle — die Landingpage wird nicht gefetcht.
+- **Monatsguthaben/-preis dynamisch, alles aus der Doku-Seite** (`parseMonthlyCreditDirect`/`parseMonthlyCost`/`parseMonthlyPricing`/`parseCreditFactor`): Monatspreis aus dem Intro (`10 $/Monat`, auch `$10/Monat`), Monatsguthaben direkt aus der Limit-Liste („Monatliches Limit — Nutzung im Wert von $60“), ersatzweise Guthaben-Faktor aus der Doku-Prosa „das Sechsfache dieses Betrags“ (= 6; auch `das 6-fache`/`das 6×`; unbekannter Faktor bei vorhandenem Satz → rot) via Guthaben = Monatspreis × Faktor. Fehlt alles → Fallback-Konstanten 60/10 mit Warnung (kein Rot-Abbruch, Layout-Wechsel bricht die Pipeline nicht). `monthlyCredit`/`monthlyCost` werden danach in die Effektivpreise (`recomputeUsageDerived`) gerechnet.
 - **Anfragemuster** (`Name — N Input-, M Cached-, K Output-Tokens pro Anfrage`) pro Modell extrahieren; Kurzschreibweisen (`GLM-5.2/5.1`, `Kimi K2.7/K2.6`) gegen die Modellnamen auflösen. Fehlende Muster über `PATTERN_FALLBACKS` (z. B. MiniMax M2.5 → M2.7) auffüllen.
 - **zod-Validierung** (`validateSnapshot`): jedes Modell MIT Preisen/Nutzung MUSS `pattern` haben; kostenlose Zeilen (Preise 0, `usage` = null) sind ausgenommen; ungültige Daten → `process.exit(1)` → CI rot.
 - Zen-Free-Models via `https://opencode.ai/docs/de/zen/` (`extractFreeModelsFromDocs`: „Endpunkte"-Tabelle liefert die Model-IDs, „Preise"-Tabelle markiert die gratis Zeilen), `availableFrom` aus dem vorherigen Lauf übernehmen (`mergeFreeModels`).

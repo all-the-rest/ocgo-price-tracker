@@ -21,10 +21,9 @@ import {
   enrichCapabilities,
   computeCapabilityDiff,
   enrichFreeModels,
-  parseUsageBonuses,
   parseDocsUsageBonuses,
-  applyUsageBonuses,
   parseMonthlyCost,
+  parseMonthlyCreditDirect,
   parseCreditFactor,
   parseMonthlyPricing,
   parsePeakHours,
@@ -41,13 +40,6 @@ const fixture = readFileSync(
   join(dirname(fileURLToPath(import.meta.url)), "fixtures", "go-de.html"),
   "utf8"
 );
-
-const bonusFixture = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "fixtures", "go-de-bonus.html"),
-  "utf8"
-);
-
-const loadBonusFixture = () => cheerio.load(bonusFixture);
 
 test("parseHtml: extrahiert 23 Modelle aus dem HTML-Dump", () => {
   const models = parseHtml(fixture);
@@ -274,27 +266,6 @@ test("parseHtml: wirft bei fehlender Datenschutz-Tabelle", () => {
   assert.throws(() => parseHtml(html));
 });
 
-test("parseUsageBonuses: extrahiert 4×-Nutzung-Bonus aus der Landingpage", () => {
-  const $ = loadBonusFixture();
-  const bonuses = parseUsageBonuses($);
-  assert.equal(bonuses.get("deepseekv4.1flash"), 4);
-  assert.equal(bonuses.size, 1);
-});
-
-test("parseUsageBonuses: Legacy-Format ([data-item]/[data-bonus]) weiter erkannt", () => {
-  const $ = cheerio.load(
-    "<div><span data-item data-model='gpt-5.6-luna'><span data-value>4,100</span><span data-bonus>2x usage</span></span></div>"
-  );
-  const bonuses = parseUsageBonuses($);
-  assert.equal(bonuses.get("gpt5.6luna"), 2);
-  assert.equal(bonuses.size, 1);
-});
-
-test("parseUsageBonuses: leere Map bei fehlenden Bonus-Elementen", () => {
-  const $ = cheerio.load("<div><span data-item data-model='grok-4.5'><span data-value>1</span></span></div>");
-  assert.deepEqual([...parseUsageBonuses($).entries()], []);
-});
-
 test("parseHtml: Nutzungs-Zelle mit Doku-Bonus (del/strong/small) → aktueller Wert", () => {
   const html = `<html><body><main>
     <table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monatliches Limit</th></tr></thead>
@@ -334,60 +305,33 @@ test("parseHtml: Nutzungs-Zelle als Fließtext mit Bonus-Notiz → letzter $-Wer
   assert.equal(models[0].usage, 60);
 });
 
-test("applyUsageBonuses: verdoppelt usage und berechnet Effektivpreise neu", () => {
-  const models = parseHtml(fixture);
-  const bonuses = new Map([
-    ["gpt5.6luna", 2],
-    ["deepseekv4flash", 2],
-  ]);
-  applyUsageBonuses(models, bonuses);
-
-  const luna = models.filter((m) => m.name === "GPT 5.6 Luna");
-  assert.equal(luna.length, 2);
-  for (const l of luna) {
-    assert.equal(l.usage, 30);
-    assert.equal(l.multiplier, 2);
-  }
-  assert.equal(luna.find((m) => m.tier === "≤ 272K tokens").effectiveInput, 0.4);
-  assert.equal(luna.find((m) => m.tier === "≤ 272K tokens").effectiveOutput, 2.4);
-  assert.equal(luna.find((m) => m.tier === "≤ 272K tokens").effectiveCachedWrite, 0.5);
-  assert.equal(luna.find((m) => m.tier === "> 272K tokens").effectiveInput, 0.8);
-  assert.equal(luna.find((m) => m.tier === "> 272K tokens").effectiveCachedWrite, 1);
-
-  const flash = models.find((m) => m.name === "DeepSeek V4 Flash");
-  assert.equal(flash.usage, 120);
-  assert.equal(flash.multiplier, 0.5);
-  assert.equal(flash.effectiveInput, 0.07);
-  assert.equal(flash.effectiveOutput, 0.14);
-  assert.equal(flash.effectiveCachedRead, 0.0014);
-});
-
-test("applyUsageBonuses: lässt Modelle ohne Bonus unverändert", () => {
-  const models = parseHtml(fixture);
-  applyUsageBonuses(models, new Map([["gpt5.6luna", 2]]));
-  const grok = models.find((m) => m.name === "Grok 4.5");
-  assert.equal(grok.usage, 15);
-  assert.equal(grok.multiplier, 4);
-  assert.equal(models.find((m) => m.name === "DeepSeek V4 Flash").usage, 60);
-});
-
 test("parseMonthlyPricing: Doku-Fixture liefert $10/Monat und Faktor 6", () => {
   const pricing = parseMonthlyPricing(cheerio.load(fixture));
   assert.deepEqual(pricing, { monthlyCost: 10, creditFactor: 6 });
 });
 
-test("parseMonthlyPricing: Landing-Fixture liefert $10/Monat aus dem CTA, keinen Faktor", () => {
-  const pricing = parseMonthlyPricing(loadBonusFixture());
-  assert.deepEqual(pricing, { monthlyCost: 10, creditFactor: null });
+test("parseMonthlyCost: deutsches Format (10 $/Monat) wird geparst", () => {
+  const $ = cheerio.load("<p>OpenCode Go ist ein kostengünstiges Abonnement für <strong>10 $/Monat</strong>.</p>");
+  assert.equal(parseMonthlyCost($), 10);
 });
 
-test("parseMonthlyPricing: Monatsguthaben = Monatspreis × Faktor (10 × 6 = 60)", () => {
-  const landing = parseMonthlyPricing(loadBonusFixture());
-  const docs = parseMonthlyPricing(cheerio.load(fixture));
-  const monthlyCost = landing.monthlyCost ?? docs.monthlyCost;
-  const creditFactor = docs.creditFactor ?? landing.creditFactor;
-  assert.equal(monthlyCost, 10);
-  assert.equal(monthlyCost * creditFactor, 60);
+test("parseMonthlyCost: englisches Format ($10/Monat) wird geparst", () => {
+  const $ = cheerio.load("<p>OpenCode Go costs $10/Monat for reliable access.</p>");
+  assert.equal(parseMonthlyCost($), 10);
+});
+
+test("parseMonthlyCreditDirect: Limit-Liste liefert $60 Monatsguthaben", () => {
+  const $ = cheerio.load(`<ul>
+    <li><strong>5-Stunden-Limit</strong> — Nutzung im Wert von $12</li>
+    <li><strong>Wöchentliches Limit</strong> — Nutzung im Wert von $30</li>
+    <li><strong>Monatliches Limit</strong> — Nutzung im Wert von $60</li>
+  </ul>`);
+  assert.equal(parseMonthlyCreditDirect($), 60);
+});
+
+test("parseMonthlyCreditDirect: ohne Limit-Liste → null (Fallback-Pfad)", () => {
+  const $ = cheerio.load("<html><body><p>Keine Limits hier.</p></body></html>");
+  assert.equal(parseMonthlyCreditDirect($), null);
 });
 
 test("parseMonthlyPricing: fehlende Werte → null statt Fehler (Fallback-Pfad)", () => {
@@ -395,21 +339,9 @@ test("parseMonthlyPricing: fehlende Werte → null statt Fehler (Fallback-Pfad)"
   assert.deepEqual(parseMonthlyPricing($), { monthlyCost: null, creditFactor: null });
 });
 
-test("parseMonthlyCost: existierendes, aber unparsebares CTA-Element wirft", () => {
-  const $ = cheerio.load('<span data-slot="cta-price-old">kostenlos</span>');
-  assert.throws(() => parseMonthlyCost($), /unparsebar/);
-});
-
-test("parseMonthlyCost: cta-price-old (regulärer Preis) schlägt cta-price-new (Einführungspreis)", () => {
-  const $ = cheerio.load(
-    '<span data-slot="cta-price"><span data-slot="cta-price-old">$10/Monat</span><span data-slot="cta-price-new">$5 im ersten Monat</span></span>'
-  );
-  assert.equal(parseMonthlyCost($), 10);
-});
-
-test("parseMonthlyCost: schlankes cta-price ohne old/new-Children wird geparst", () => {
-  const $ = cheerio.load('<span data-slot="cta-price">$10/Monat</span>');
-  assert.equal(parseMonthlyCost($), 10);
+test("parseMonthlyCost: ohne Preisangabe → null (Fallback-Pfad)", () => {
+  const $ = cheerio.load("<html><body><p>Keine Preise hier.</p></body></html>");
+  assert.equal(parseMonthlyCost($), null);
 });
 
 test("parseCreditFactor: numerischer Faktor (das 6-fache) wird geparst", () => {
@@ -420,15 +352,6 @@ test("parseCreditFactor: numerischer Faktor (das 6-fache) wird geparst", () => {
 test("parseCreditFactor: unbekannter Faktor bei vorhandenem Satz wirft", () => {
   const $ = cheerio.load("<p>das Elffache dieses Betrags</p>");
   assert.throws(() => parseCreditFactor($), /unparsebar/);
-});
-
-test("applyUsageBonuses: monthlyCredit-Parameter fließt in multiplier und Effektivpreise ein", () => {
-  const models = parseHtml(fixture);
-  applyUsageBonuses(models, new Map([["deepseekv4flash", 2]]), 75);
-  const flash = models.find((m) => m.name === "DeepSeek V4 Flash");
-  assert.equal(flash.usage, 120);
-  assert.equal(flash.multiplier, 0.625);
-  assert.equal(flash.effectiveInput, 0.14 * (75 / 120));
 });
 
 const base = [

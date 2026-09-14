@@ -12,17 +12,16 @@ import {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE_URL = "https://opencode.ai/docs/de/go/";
-const BONUS_URL = "https://opencode.ai/de/go";
 // Quelle der kostenlosen Zen-Modelle: die Zen-Doku. Unter „Endpunkte“ stehen die
 // Model-IDs, unter „Preise“ die kostenlosen („Free“) Zeilen — das ist die
 // autoritative Liste der gratis Modelle (ersetzt die alte zen/v1/models-API).
 const ZEN_DOCS_URL = "https://opencode.ai/docs/de/zen/";
 const MODELS_DEV_URL = "https://models.dev";
 const SOURCE_LANG = "de";
-// Fallback-Werte: Monatsguthaben/-preis werden dynamisch aus der Go-Landingpage
-// (`https://opencode.ai/de/go`, `[data-slot="cta-price-old"]`) und der Doku-Seite
-// ("das Sechsfache dieses Betrags") gezogen; nur wenn die Extraktion fehlschlägt,
-// greifen diese Konstanten (mit Warnung, kein Rot-Abbruch).
+// Fallback-Werte: Monatsguthaben/-preis werden dynamisch aus der Doku-Seite
+// gezogen (Intro „10 $/Monat“, Limit-Liste „Monatliches Limit — Nutzung im Wert
+// von $60“, sonst Faktor-Satz „das Sechsfache dieses Betrags“); nur wenn die
+// Extraktion fehlschlägt, greifen diese Konstanten (mit Warnung, kein Rot-Abbruch).
 const DEFAULT_MONTHLY_CREDIT = 60;
 const DEFAULT_MONTHLY_COST = 10;
 const FLOAT_TOLERANCE = 1e-9;
@@ -366,17 +365,6 @@ async function fetchZenFreeModels(previousFree) {
   }
 }
 
-/**
- * Holt die Go-Landingpage (`https://opencode.ai/de/go`). Ein HTTP-Fehler bricht
- * rot ab, weil die Seite sowohl die temporären Nutzungs-Boni als auch den
- * laufenden Monatspreis liefert (verlässliche Preise sind Pflicht).
- */
-async function fetchGoLanding() {
-  const res = await fetch(BONUS_URL, { headers: { "User-Agent": USER_AGENT } });
-  if (!res.ok) throw new ScrapeError(`HTTP ${res.status} beim Abrufen von ${BONUS_URL}`);
-  return cheerio.load(await res.text());
-}
-
 const CREDIT_FACTOR_WORDS = {
   ein: 1,
   eins: 1,
@@ -392,24 +380,25 @@ const CREDIT_FACTOR_WORDS = {
 };
 
 /**
- * Parst den laufenden Monatspreis (`$10/Monat`) aus einer Seite. Bevorzugt das
- * semantische `[data-slot="cta-price-old"]`-Element der Go-Landingpage (der
- * reguläre Preis, falls wieder ein Einführungspreis als `cta-price-new`
- * danebensteht), sonst das CTA-Element selbst (`cta-price`), sonst die Prosa
- * `$N/Monat` (Doku-Seite). Existiert ein CTA-Kandidat, ist sein Text aber
- * unparsebar → ScrapeError; existiert gar keiner → null (Fallback).
+ * Parst den laufenden Monatspreis aus der Doku-Seite (Prosa, z. B. `10
+ * $/Monat` im Intro oder `$10/Monat`). Beide `$`-Stellungen (deutsch/englisch)
+ * werden erkannt. Kein Treffer → null (Fallback).
  */
 export function parseMonthlyCost($) {
-  let cta = $("[data-slot='cta-price-old']").first();
-  if (cta.length === 0) cta = $("[data-slot='cta-price']").first();
-  if (cta.length > 0) {
-    const text = cta.text().trim();
-    const m = text.match(/\$(\d+(?:[.,]\d+)?)\s*\/\s*Monat/i);
-    if (!m) throw new ScrapeError(`Monatspreis im CTA-Element unparsebar: "${text}"`);
-    return Number(m[1].replace(",", "."));
-  }
   const text = $("body").text().replace(/\s+/g, " ");
-  const m = text.match(/\$(\d+(?:[.,]\d+)?)\s*\/\s*Monat/i);
+  const m = text.match(/(?:\$(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*\$)\s*\/\s*Monat/i);
+  if (!m) return null;
+  return Number((m[1] ?? m[2]).replace(",", "."));
+}
+
+/**
+ * Parst das Monatsguthaben direkt aus der Doku-Seite (Limit-Fenster-Liste:
+ * „Monatliches Limit — Nutzung im Wert von $60“ → 60). Direkter Wert statt
+ * Preis×Faktor-Rechnung. Kein Treffer → null (Fallback).
+ */
+export function parseMonthlyCreditDirect($) {
+  const text = $("body").text().replace(/\s+/g, " ");
+  const m = text.match(/Monatliches Limit\s*[—–-]\s*Nutzung im Wert von\s*\$(\d+(?:[.,]\d+)?)/i);
   return m ? Number(m[1].replace(",", ".")) : null;
 }
 
@@ -938,50 +927,6 @@ export function parseHtml(html) {
 export const modelKey = (model) => (model.tier ? `${model.name} (${model.tier})` : model.name);
 
 /**
- * Liest temporäre Nutzungs-Boni aus der Go-Landingpage. Aktuelles Format (seit
- * 2026-09): pro Modell eine `[data-slot="model-row"]`-Zeile mit dem Anzeige-
- * namen in `[data-slot="model"]` und `<span data-slot="badge">4× Nutzung</span>`
- * für befristete Boni. Liefert eine Map normalisierter Modellnamen → Faktor
- * (z. B. 4 bei "4× Nutzung"). Das alte `[data-item]`/ `[data-bonus]`-Format
- * ("2x usage") wird als Fallback weiter erkannt.
- *
- * LEGACY: aktuell im Hauptfluss nicht verdrahtet — Nutzungs-Boni kommen
- * ausschließlich aus der Doku-Tabelle (Inline-Format, siehe parseUsageCell).
- * Nur für Unit-Tests und als Reserve bei Format-Rückschritten behalten.
- */
-export function parseUsageBonuses($) {
-  const bonuses = new Map();
-  const bonusOf = (text) => {
-    const m = (text ?? "").trim().match(/(\d+)\s*[x×]\s*(usage|nutzung)/i);
-    const factor = m ? Number(m[1]) : null;
-    return factor && factor > 1 ? factor : null;
-  };
-  // Aktuell: Modell-Zeilen mit Badge ("4× Nutzung"); der data-model-Slug
-  // ("deepseek-flash") ist kurz und passt nicht auf Doku-Namen — daher zählt
-  // der angezeigte Modellname ("DeepSeek V4.1 Flash").
-  $("[data-slot='model-row']").each((_, el) => {
-    const $row = $(el);
-    let factor = null;
-    $row.find("[data-slot='badge']").each((_, b) => {
-      factor = bonusOf($(b).text()) ?? factor;
-    });
-    if (!factor) return;
-    const $name = $row.find("[data-slot='model']").first().clone();
-    $name.find("[data-slot='badge']").remove();
-    const key = normalizeName($name.text().trim() || $row.attr("data-model") || "");
-    if (key) bonuses.set(key, factor);
-  });
-  // Legacy: `[data-item]` mit `<span data-bonus>2x usage</span>`.
-  $("[data-item]").each((_, el) => {
-    const model = $(el).attr("data-model");
-    if (!model) return;
-    const factor = bonusOf($(el).find("[data-bonus]").first().text());
-    if (factor) bonuses.set(normalizeName(model), factor);
-  });
-  return bonuses;
-}
-
-/**
  * Liest die in der Doku-Tabelle eingepreisten Nutzungs-Boni (seit 2026-09 zeigt
  * die Nutzungs-Zelle `<del>$15</del> <strong>$60</strong><br>
  * <small>4x · Endet am 20. Sept.</small>`). Liefert eine Map normalisierter
@@ -1020,23 +965,6 @@ export function parseDocsUsageBonuses($) {
       }
     });
   return bonuses;
-}
-
-/**
- * Wendet Nutzungs-Boni (Map normalisierter Modellname → Faktor) auf die
- * gescrapten Modelle an: `usage` wird multipliziert, `multiplier` und die
- * `effective*`-Preise werden neu berechnet (mit dem übergebenen Monatsguthaben).
- */
-export function applyUsageBonuses(models, bonuses, monthlyCredit = DEFAULT_MONTHLY_CREDIT) {
-  if (!bonuses || bonuses.size === 0) return models;
-  for (const m of models) {
-    const factor = bonuses.get(normalizeName(m.name));
-    if (!factor || factor <= 0) continue;
-    if (m.usage === null) continue; // unbegrenzte Nutzung — kein Bonus anwendbar
-    m.usage = m.usage * factor;
-    recomputeUsageDerived(m, monthlyCredit);
-  }
-  return models;
 }
 
 /**
@@ -1742,35 +1670,35 @@ async function main() {
     const docs$ = cheerio.load(html);
     const models = parseHtml(html);
     const peakHours = parsePeakHours(docs$, models);
-    const landing$ = await fetchGoLanding();
-    // Nutzungs-Boni kommen ausschließlich aus der Doku-Tabelle (inline-Format
-    // `<del>$15</del> <strong>$60</strong>` + `<small>4x …</small>` → parseHtml
-    // liest den aktuellen Wert). Die Landingpage liefert nur den Monatspreis
-    // und wird NICHT für Bonus-Credits verwendet (kein applyUsageBonuses).
     const docsBonuses = parseDocsUsageBonuses(docs$);
     const bonusLabels = [...docsBonuses.entries()].map(([n, f]) => `${n}×${f}`).join(", ");
 
-    // Monatsguthaben/-preis dynamisch: Monatspreis von der Landingpage
-    // (`[data-slot="cta-price-old"]` → "$10/Monat"), Guthaben-Faktor von der
-    // Doku-Seite ("das Sechsfache dieses Betrags" → 6). Guthaben = Preis ×
-    // Faktor. Fehlt eine der beiden Quellen → Fallback-Konstanten (Warnung,
-    // kein Rot-Abbruch, damit ein Layout-Wechsel die Pipeline nicht bricht).
-    const landingPricing = parseMonthlyPricing(landing$);
+    // Monatsguthaben/-preis dynamisch aus der Doku-Seite: Monatspreis aus dem
+    // Intro („10 $/Monat“), Monatsguthaben direkt aus der Limit-Liste
+    // („Monatliches Limit — Nutzung im Wert von $60“), ersatzweise Monatspreis
+    // × Faktor („das Sechsfache dieses Betrags“ → 6). Fehlt alles →
+    // Fallback-Konstanten (Warnung, kein Rot-Abbruch, damit ein Layout-Wechsel
+    // die Pipeline nicht bricht). Die Landingpage wird nicht mehr gefetcht.
     const docsPricing = parseMonthlyPricing(docs$);
-    const monthlyCost = landingPricing.monthlyCost ?? docsPricing.monthlyCost;
-    const creditFactor = docsPricing.creditFactor ?? landingPricing.creditFactor;
-    const pricingFallback = monthlyCost === null || creditFactor === null;
+    const monthlyCost = docsPricing.monthlyCost;
+    const monthlyCreditDirect = parseMonthlyCreditDirect(docs$);
+    const creditFactor = docsPricing.creditFactor;
     let monthlyCredit;
     let monthlyCostFinal;
-    if (pricingFallback) {
+    let pricingFallback = false;
+    if (monthlyCreditDirect !== null && monthlyCost !== null) {
+      monthlyCredit = monthlyCreditDirect;
+      monthlyCostFinal = monthlyCost;
+    } else if (monthlyCost !== null && creditFactor !== null) {
+      monthlyCredit = monthlyCost * creditFactor;
+      monthlyCostFinal = monthlyCost;
+    } else {
+      pricingFallback = true;
       console.error(
-        `[scrape] Warnung: Monatsguthaben/-preis nicht extrahierbar (Monatspreis=${monthlyCost}, Faktor=${creditFactor}); nutze Konstanten ${DEFAULT_MONTHLY_CREDIT}/${DEFAULT_MONTHLY_COST}.`
+        `[scrape] Warnung: Monatsguthaben/-preis nicht extrahierbar (Monatspreis=${monthlyCost}, direkt=${monthlyCreditDirect}, Faktor=${creditFactor}); nutze Konstanten ${DEFAULT_MONTHLY_CREDIT}/${DEFAULT_MONTHLY_COST}.`
       );
       monthlyCredit = DEFAULT_MONTHLY_CREDIT;
       monthlyCostFinal = DEFAULT_MONTHLY_COST;
-    } else {
-      monthlyCredit = monthlyCost * creditFactor;
-      monthlyCostFinal = monthlyCost;
     }
     // Effektivpreise auf Basis des (möglicherweise geänderten) Monatsguthabens
     // neu berechnen — nutzt die bereits bonus-bereinigten usage-Werte.

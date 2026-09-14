@@ -4,8 +4,8 @@ Scrapet täglich die Preistabelle von `https://opencode.ai/docs/de/go/` und
 berechnet die Preise wahlweise auf Basis des vollen Monatsguthabens
 (Effektivpreis = Listenpreis × Guthaben/Nutzung) oder dessen, was man
 tatsächlich zahlt (Monatspreis/Nutzung). Monatsguthaben und Monatspreis werden
-dynamisch gefetchtt (Go-Landingpage `https://opencode.ai/de/go` → `$10/Monat`,
-Doku-Seite → „das Sechsfache dieses Betrags“ → Guthaben `$60`; Fallback 60/10).
+dynamisch gefetcht (Doku-Seite: Intro `10 $/Monat`, Limit-Liste „Monatliches
+Limit — Nutzung im Wert von $60“; Fallback 60/10).
 Die Ergebnisse werden als statische SolidJS-Seite unter
 `https://ocgo-pricing.all-the.rest` bereitgestellt.
 
