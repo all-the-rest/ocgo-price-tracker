@@ -9,6 +9,7 @@
   },
   "scripts": {
     "scrape": "node scripts/scrape.mjs",
+    "prebuild": "node scripts/build-share.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
@@ -25,6 +26,7 @@
     "@iconify/tailwind4": "^1.2.3",
     "@opencode-ai/models": "^0.0.65",
     "@playwright/test": "1.63.0",
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.1.0",
     "@types/node": "^26.4.1",
     "cheerio": "^1.0.0",

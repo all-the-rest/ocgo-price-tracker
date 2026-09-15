@@ -6,3 +6,4 @@ tests/.ssr/
 test-results/
 playwright-report/
 output-tmp-txt
+public/share/og.png

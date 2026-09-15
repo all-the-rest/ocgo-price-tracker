@@ -1,8 +1,8 @@
-// Static share-card snapshot → public/share/top.svg (copied to dist/ by Vite).
+// Static share-card snapshot → public/share/top.svg + public/share/og.png (copied to dist/ by Vite).
 // Layout mirror of src/share.ts for the OG landscape card
 // (top 5, total requests at list basis, dark, OG 1200×630, no constraints).
-// Regenerate: `node scripts/build-share.mjs`.
-// Kept dependency-free (plain node) so the build never needs a TS step.
+// Regenerate: `node scripts/build-share.mjs` (also runs automatically as `prebuild` before `pnpm build`).
+// Needs the @resvg/resvg-js devDependency for SVG→PNG rendering (crawlers don't render SVG).
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 function formatReq(n) {
@@ -77,3 +77,9 @@ const svg =
 mkdirSync("public/share", { recursive: true });
 writeFileSync("public/share/top.svg", svg);
 console.log(`public/share/top.svg written (${rows.length} rows)`);
+
+const { Resvg } = await import("@resvg/resvg-js");
+const resvg = new Resvg(svg, { fitTo: { mode: "width", value: W } });
+const png = resvg.render().asPng();
+writeFileSync("public/share/og.png", png);
+console.log(`public/share/og.png written (${png.length} bytes)`);
