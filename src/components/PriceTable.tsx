@@ -265,7 +265,12 @@ export default function PriceTable(props: PriceTableProps) {
                     <span class="block">
                       {m.name}
                       <Show when={m.id}>
-                        {(id) => <ModelId id={id()} t={props.t} />}
+                        {(id) => (
+                          <>
+                            {" "}
+                            <ModelId id={id()} t={props.t} />
+                          </>
+                        )}
                       </Show>
                     </span>
                     <Show when={m.provider || m.contextWindow != null}>

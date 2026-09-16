@@ -140,6 +140,33 @@ test("parseHtml: wirft bei unparsebarem Preis", () => {
   assert.throws(() => parseHtml(broken));
 });
 
+for (const usage of ["<strong>Unbegrenzt</strong>", "Unlimited", "-", "<strong>$60</strong>"]) {
+  test(`parseHtml: Free-Preise mit Nutzung ${usage}`, () => {
+    const $ = cheerio.load(fixture);
+    $("main table").filter((_, table) => $(table).find("thead").text().includes("Input"))
+      .first().find("tbody").append(`
+        <tr><td>Union Alpha</td><td>Free</td><td> free </td><td>FREE</td><td>-</td>
+        <td>${usage}<br><small>für begrenzte Zeit</small></td></tr>`);
+    const model = parseHtml($.html()).find((m) => m.name === "Union Alpha");
+    const limited = usage.includes("$60");
+    assert.equal(model.usage, limited ? 60 : null);
+    assert.equal(model.multiplier, limited ? 1 : null);
+    assert.equal(model.pattern, null);
+    for (const field of ["input", "output", "cachedRead", "effectiveInput", "effectiveOutput", "effectiveCachedRead"]) {
+      assert.equal(model[field], 0, field);
+    }
+    assert.equal(model.cachedWrite, limited ? null : 0);
+    assert.equal(model.effectiveCachedWrite, limited ? null : 0);
+  });
+}
+
+test("parseHtml: unbekanntes Nutzungslimit bleibt ein Fehler", () => {
+  const $ = cheerio.load(fixture);
+  $("main table").filter((_, table) => $(table).find("thead").text().includes("Input"))
+    .first().find("tbody tr").first().find("td").last().html("<strong>Unknown</strong>");
+  assert.throws(() => parseHtml($.html()), /Nutzung unparsebar/);
+});
+
 test("parseHtml: Datenschutz — Grok 4.5 mit 30 Tagen Aufbewahrung", () => {
   const grok = parseHtml(fixture).find((m) => m.name === "Grok 4.5");
   assert.deepEqual(grok.privacy, { training: false, retentionDays: 30, validUntil: null });
@@ -894,6 +921,7 @@ test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () =
     freeModels: [
       {
         id: "big-pickle",
+        fullId: "opencode/big-pickle",
         availableFrom: "2026-08-05",
         capabilities: null,
         contextWindow: null,
@@ -1233,6 +1261,57 @@ test("enrichFreeModels: lässt capabilities null bei unbekannter ID", () => {
   const free = [{ id: "does-not-exist-free", availableFrom: "2026-08-05" }];
   const enriched = enrichFreeModels(free, {}, {});
   assert.equal(enriched[0].capabilities, null);
+});
+
+test("enrichCapabilities: mappt glm-flash-Familie auf Z.ai (kein Glm-Flash-Fallback)", () => {
+  const models = [{ name: "GLM-5.3-Flash", tier: null }];
+  const opencodeModels = {
+    "glm-5.3-flash": {
+      id: "glm-5.3-flash",
+      name: "GLM-5.3-Flash",
+      family: "glm-flash",
+      modalities: { input: ["text"], output: ["text"] },
+    },
+  };
+  const enriched = enrichCapabilities(models, opencodeModels, {});
+  assert.equal(enriched[0].provider, "Z.ai");
+});
+
+test("enrichFreeModels: setzt fullId mit opencode-Prefix (Fallback ohne models.dev-Treffer)", () => {
+  const enriched = enrichFreeModels([{ id: "does-not-exist-free", availableFrom: "2026-08-05" }], {}, {});
+  assert.equal(enriched[0].fullId, "opencode/does-not-exist-free");
+});
+
+test("enrichFreeModels: fullId bevorzugt opencode-go vor opencode", () => {
+  const free = [{ id: "union-alpha", availableFrom: "2026-09-16" }];
+  const zenModels = { "union-alpha": { id: "union-alpha", name: "Union Alpha" } };
+  const goModels = { "union-alpha": { id: "union-alpha", name: "Union Alpha" } };
+  const enriched = enrichFreeModels(free, zenModels, {}, goModels);
+  assert.equal(enriched[0].fullId, "opencode-go/union-alpha");
+});
+
+test("validateSnapshot: kostenloses Modell ohne fullId bricht", () => {
+  const snapshot = {
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    monthlyCredit: 60,
+    monthlyCost: 10,
+    peakHours: {},
+    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
+    freeModels: [
+      {
+        id: "big-pickle",
+        availableFrom: "2026-08-05",
+        capabilities: null,
+        contextWindow: null,
+        privacy: { training: true, validUntil: null },
+      },
+    ],
+  };
+  assert.throws(() => validateSnapshot(snapshot));
 });
 
 test("buildChanges: capabilities_changed für kostenlose Zen-Modelle", () => {

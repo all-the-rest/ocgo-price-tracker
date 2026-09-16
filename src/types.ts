@@ -41,6 +41,8 @@ export interface RequestPattern {
 
 export interface FreeModel {
   id: string;
+  /** volle Kopier-ID wie in der UI (`opencode/<id>` bzw. `opencode-go/…`); `id` bleibt stabiler Schlüssel */
+  fullId: string;
   /** optionaler Anzeigename (bei Alias-IDs wie x-preview-f-free = Ox Alpha Free) */
   name?: string;
   availableFrom: string;

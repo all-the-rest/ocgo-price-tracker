@@ -116,10 +116,12 @@ export default function PeakIndicator(props: PeakIndicatorProps) {
       .replace("{weekend}", props.t.peakWeekendNote);
 
   return (
-    <Tooltip tip={tooltip()} class="inline-flex items-center gap-1 leading-none">
-      <span class="icon-[material-symbols--schedule] h-4 w-4 shrink-0 self-center -translate-y-px" aria-hidden="true" />
-      <span class="leading-none">{props.tier}</span>
-      <span class="tabular-nums leading-none text-base-content/70">· {countdown()}</span>
+    <Tooltip tip={tooltip()} class="inline-flex max-w-full flex-wrap items-center gap-x-1 gap-y-0.5 leading-none">
+      <span class="inline-flex items-center gap-1 whitespace-nowrap leading-none">
+        <span class="icon-[material-symbols--schedule] h-4 w-4 shrink-0 self-center" aria-hidden="true" />
+        <span class="leading-none">{props.tier}</span>
+      </span>
+      <span class="shrink-0 tabular-nums leading-none text-base-content/70">· {countdown()}</span>
     </Tooltip>
   );
 }

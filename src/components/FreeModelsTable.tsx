@@ -73,7 +73,7 @@ export default function FreeModelsTable(props: FreeModelsTableProps) {
                   <tr>
                     <td class="font-medium">
                       {formatFreeModelName(f)}
-                      <ModelId id={`opencode/${f.id}`} t={props.t} />
+                      <ModelId id={f.fullId ?? `opencode/${f.id}`} t={props.t} />
                       <Show when={f.provider || f.contextWindow != null}>
                         <span class="block text-xs font-normal text-base-content/70">
                           {[

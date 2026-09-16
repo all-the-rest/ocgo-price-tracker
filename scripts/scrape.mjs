@@ -87,6 +87,7 @@ const PROVIDER_LABELS = {
   "deepseek-flash": "DeepSeek",
   "deepseek-thinking": "DeepSeek",
   glm: "Z.ai",
+  "glm-flash": "Z.ai",
   "gpt-luna": "OpenAI",
   grok: "xAI",
   "hy3-free": "Tencent",
@@ -165,6 +166,7 @@ const CAPABILITY_OVERRIDES = {
 function parsePrice(text) {
   const t = (text ?? "").trim();
   if (t === "" || t === "-" || t === "—" || t === "–") return null;
+  if (t.toLowerCase() === "free") return 0;
   const cleaned = t.replace(/[\$,\s]/g, "");
   const value = parseFloat(cleaned);
   if (Number.isNaN(value)) throw new ScrapeError(`Preis unparsebar: "${text}"`);
@@ -172,8 +174,8 @@ function parsePrice(text) {
 }
 
 /**
- * Parst die Nutzung-Spalte. "-" (kein Nutzungslimit, z. B. kostenlose Modelle
- * wie Ox Alpha Free) → null = unbegrenzte Nutzung; sonst `$15` → 15.
+ * Parst die Nutzung-Spalte. "-", "Unbegrenzt" oder "Unlimited" (kein
+ * Nutzungslimit bei kostenlosen Modellen) → null; sonst `$15` → 15.
  *
  * Seit 2026-09 zeigt die Doku Boni inline in der Zelle:
  * `<del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small>`
@@ -184,6 +186,7 @@ function parsePrice(text) {
 function parseUsage(text) {
   const t = (text ?? "").trim();
   if (t === "" || t === "-" || t === "—" || t === "–") return null;
+  if (/^(unbegrenzt|unlimited)$/i.test(t)) return null;
   const withoutNote = t
     .replace(/\d+\s*[x×]\s*·.*$/, "")
     .trim();
@@ -1200,12 +1203,15 @@ export function enrichCapabilities(models, opencodeModels, metadataModels, goMod
  * FREE_MODEL_PRIVACY_OVERRIDES.
  */
 export function enrichFreeModels(freeModels, providerModels, metadataModels, goModels = {}) {
-  const { resolve } = buildModelsDevLookup(providerModels, metadataModels, goModels);
+  const { resolve, resolveOpencodeId } = buildModelsDevLookup(providerModels, metadataModels, goModels);
   for (const f of freeModels) {
     const md = resolve(f.id, f.id);
     f.capabilities = toCapabilities(md);
     f.contextWindow = toContextWindow(md);
     f.provider = toProvider(md);
+    // Volle Kopier-ID wie in der UI (`opencode/<id>`, ggf. `opencode-go/…`);
+    // `id` bleibt der stabile Schlüssel (Merge, Changelog, Zen-Endpunkte).
+    f.fullId = resolveOpencodeId(f.id, f.id) ?? `opencode/${f.id}`;
     const publicName = md?.name?.replace(/\s*\([^)]*\)\s*$/, "").trim();
     if (publicName) f.name = publicName;
     f.privacy = FREE_MODEL_PRIVACY_OVERRIDES[normalizeName(f.id)] ?? { training: true, validUntil: null };
@@ -1539,6 +1545,8 @@ const ModelSchema = z
 
 const FreeModelSchema = z.object({
   id: z.string().min(1),
+  // volle Kopier-ID wie in der UI (`opencode/<id>` bzw. `opencode-go/…`)
+  fullId: z.string().min(1),
   // optionaler Anzeigename (bei Alias-IDs wie x-preview-f-free = Ox Alpha Free)
   name: z.string().min(1).optional(),
   availableFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -1839,6 +1847,15 @@ async function main() {
         ([key, p]) => p !== (prevProv.get(key) ?? null)
       );
 
+    // Volle Kopier-ID der Free-Modelle (fullId, `opencode(-go)/<id>` für die
+    // UI) befüllt/geändert: Daten-Dateien schreiben, aber KEINE
+    // Changelog-Events — reine Anreicherung.
+    const prevFullIds = new Map(
+      (Array.isArray(prev?.freeModels) ? prev.freeModels : []).map((f) => [f.id, f.fullId ?? null])
+    );
+    const fullIdsPopulated =
+      prev !== null && freeModels.some((f) => (f.fullId ?? null) !== (prevFullIds.get(f.id) ?? null));
+
     validateSnapshot(latest);
 
     const changelogPath = join(ROOT, "CHANGELOG.json");
@@ -1857,7 +1874,7 @@ async function main() {
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
 
-    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || monthlyPricingChanged || modelIdsPopulated || contextWindowPopulated || providerPopulated) {
+    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || monthlyPricingChanged || modelIdsPopulated || contextWindowPopulated || providerPopulated || fullIdsPopulated) {
       history.snapshots.push(latest);
       writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
       writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
@@ -1866,7 +1883,7 @@ async function main() {
     const enriched = models.filter((m) => m.capabilities !== null).length;
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
     const privacyCovered = models.filter((m) => m.privacy !== null).length;
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Monatsguthaben $${monthlyCredit} / Monatspreis $${monthlyCostFinal} (${pricingFallback ? "Fallback 60/10" : "dynamisch"})${monthlyPricingChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}${contextWindowPopulated ? " (Kontextfenster still befüllt, keine Events)" : ""}${providerPopulated ? " (Hersteller still befüllt, keine Events)" : ""}.`);
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Monatsguthaben $${monthlyCredit} / Monatspreis $${monthlyCostFinal} (${pricingFallback ? "Fallback 60/10" : "dynamisch"})${monthlyPricingChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}${contextWindowPopulated ? " (Kontextfenster still befüllt, keine Events)" : ""}${providerPopulated ? " (Hersteller still befüllt, keine Events)" : ""}${fullIdsPopulated ? " (Full-IDs still befüllt, keine Events)" : ""}.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

@@ -84,7 +84,7 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
   "sourceLang": "de",
   "monthlyCredit": 60,
   "monthlyCost": 10,
-  "freeModels": [{ "id": "big-pickle", "availableFrom": "2026-08-05", "privacy": { "training": true, "retentionDays": null, "validUntil": null } }],
+  "freeModels": [{ "id": "big-pickle", "fullId": "opencode/big-pickle", "availableFrom": "2026-08-05", "privacy": { "training": true, "retentionDays": null, "validUntil": null } }],
   "models": [
     {
       "name": "Grok 4.5",
@@ -134,7 +134,7 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 ## Scraper-Regeln (`scripts/scrape.mjs`)
 
 - Preistabelle über die **Header-Zeile** identifizieren (Zellen enthalten `Input` UND `Output`) — NICHT über `nth-child`-Selektoren.
-- Preise: `$1.40` → `1.4`; `-` → `null`.
+- Preise: `$1.40` → `1.4`; `Free` (case-insensitive) → `0`; `-` → `null`. Nutzung `Unbegrenzt`/`Unlimited` → `null` (kein Limit, z. B. Union Alpha); `<small>`-Hinweise wie „für begrenzte Zeit“ werden von `parseUsageCell` ignoriert.
 - `Nutzung` ist `$15` oder `$60`; Modellname mit `(… tokens)`-Suffix → `tier`-Feld.
 - **Nutzungs-Boni** stehen inline in der Doku-Preistabelle (`<del>$15</del> <strong>$60</strong>` + `<small>4x · Endet …</small>` in der Nutzungs-Zelle; `parseUsageCell` liest den aktuellen Wert, `parseDocsUsageBonuses` liefert nur Reporting-Labels). Keine zweite Quelle — die Landingpage wird nicht gefetcht.
 - **Monatsguthaben/-preis dynamisch, alles aus der Doku-Seite** (`parseMonthlyCreditDirect`/`parseMonthlyCost`/`parseMonthlyPricing`/`parseCreditFactor`): Monatspreis aus dem Intro (`10 $/Monat`, auch `$10/Monat`), Monatsguthaben direkt aus der Limit-Liste („Monatliches Limit — Nutzung im Wert von $60“), ersatzweise Guthaben-Faktor aus der Doku-Prosa „das Sechsfache dieses Betrags“ (= 6; auch `das 6-fache`/`das 6×`; unbekannter Faktor bei vorhandenem Satz → rot) via Guthaben = Monatspreis × Faktor. Fehlt alles → Fallback-Konstanten 60/10 mit Warnung (kein Rot-Abbruch, Layout-Wechsel bricht die Pipeline nicht). `monthlyCredit`/`monthlyCost` werden danach in die Effektivpreise (`recomputeUsageDerived`) gerechnet.

@@ -11,7 +11,7 @@ export default function CopyId(props: { id: string; t: Translation }) {
   const label = () => props.t.modelIdCopy.replace("{id}", props.id);
   const copied = () => props.t.modelIdCopied.replace("{id}", props.id);
   return (
-    <Tooltip tip={props.id} side="right" class="ml-1 inline-flex translate-y-px items-center text-base-content/50 hover:text-primary focus:outline-none">
+    <Tooltip tip={props.id} side="right" class="inline-flex translate-y-px items-center text-base-content/50 hover:text-primary focus:outline-none">
       <button
         type="button"
         class="inline-flex items-center"
