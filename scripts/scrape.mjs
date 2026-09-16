@@ -110,6 +110,7 @@ const PROVIDER_LABELS = {
   zai: "Z.ai",
   zhipuai: "Z.ai",
   moonshotai: "Moonshot AI",
+  muse: "Meta",
   google: "Google",
   sakana: "Sakana",
   stepfun: "StepFun",
@@ -151,6 +152,20 @@ function toProvider(md) {
   if (!raw && typeof md.family === "string" && md.family) raw = md.family;
   return formatProvider(raw);
 }
+
+/**
+ * Stealth-Modelle (OpenCode-eigene Tarn-IDs, Lab unbekannt) — analog
+ * STEALTH_MANUFACTURER ("OpenCode Stealth") in opencode-usage
+ * (src/lib/manual-manufacturers.ts). Bare opencode-IDs (ohne
+ * `opencode(-go)/`-Prefix); greifen in enrichCapabilities/enrichFreeModels mit
+ * VORRANG vor der models.dev-Ableitung. Bei enthüllter Identität (vgl.
+ * ox-alpha → Z.ai) hier austragen, dann greift wieder models.dev.
+ */
+const STEALTH_PROVIDER = "OpenCode Stealth";
+const STEALTH_IDS = new Set([
+  "big-pickle", // Stealth-Modell, Lab unbekannt
+  "union-alpha", // Stealth-Modell, Lab unbekannt
+]);
 
 /**
  * Ausnahmen für die Fähigkeiten-Zuordnung (normalisierter Modellname →
@@ -1181,11 +1196,13 @@ export function enrichCapabilities(models, opencodeModels, metadataModels, goMod
     m.capabilities = toCapabilities(md);
     // Kontextfenster (Tokens) aus models.dev; null wenn nicht gelistet.
     m.contextWindow = toContextWindow(md);
-    // Hersteller/Provider aus models.dev (id-Prefix); null wenn nicht ableitbar.
-    m.provider = toProvider(md);
     // Modell-ID für OpenCode (`opencode/<id>`), null wenn nicht im
     // opencode-Provider gelistet → UI zeigt die Zeile ohne ID an.
     m.id = resolveOpencodeId(m.name, m.name);
+    // Hersteller/Provider aus models.dev (id-Prefix); Stealth-IDs mit Vorrang
+    // ("OpenCode Stealth"), sonst null wenn nicht ableitbar.
+    const bare = typeof m.id === "string" ? m.id.split("/").pop() : null;
+    m.provider = bare && STEALTH_IDS.has(bare) ? STEALTH_PROVIDER : toProvider(md);
   }
   return models;
 }
@@ -1208,7 +1225,8 @@ export function enrichFreeModels(freeModels, providerModels, metadataModels, goM
     const md = resolve(f.id, f.id);
     f.capabilities = toCapabilities(md);
     f.contextWindow = toContextWindow(md);
-    f.provider = toProvider(md);
+    // Stealth-IDs ("OpenCode Stealth") mit Vorrang vor models.dev.
+    f.provider = STEALTH_IDS.has(f.id) ? STEALTH_PROVIDER : toProvider(md);
     // Volle Kopier-ID wie in der UI (`opencode/<id>`, ggf. `opencode-go/…`);
     // `id` bleibt der stabile Schlüssel (Merge, Changelog, Zen-Endpunkte).
     f.fullId = resolveOpencodeId(f.id, f.id) ?? `opencode/${f.id}`;

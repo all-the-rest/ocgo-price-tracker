@@ -1078,11 +1078,11 @@ test("enrichCapabilities: provider null ohne ableitbaren Prefix", () => {
 });
 
 test("enrichFreeModels: befüllt provider aus dem models.dev-id-Prefix", () => {
-  const free = [{ id: "big-pickle", availableFrom: "2026-08-05" }];
+  const free = [{ id: "some-model", availableFrom: "2026-08-05" }];
   const metadataModels = {
-    "opencode/big-pickle": {
-      id: "opencode/big-pickle",
-      name: "Big Pickle",
+    "opencode/some-model": {
+      id: "opencode/some-model",
+      name: "Some Model",
       modalities: { input: ["text"], output: ["text"] },
     },
   };
@@ -1275,6 +1275,44 @@ test("enrichCapabilities: mappt glm-flash-Familie auf Z.ai (kein Glm-Flash-Fallb
   };
   const enriched = enrichCapabilities(models, opencodeModels, {});
   assert.equal(enriched[0].provider, "Z.ai");
+});
+
+test("enrichCapabilities: mappt muse-Familie auf Meta (konsistent mit muse-free)", () => {
+  const models = [{ name: "Muse Spark 1.3 Contributor", tier: null }];
+  const opencodeModels = {
+    "muse-spark-1.3": {
+      id: "muse-spark-1.3",
+      name: "Muse Spark 1.3 Contributor",
+      family: "muse",
+      modalities: { input: ["text"], output: ["text"] },
+    },
+  };
+  const enriched = enrichCapabilities(models, opencodeModels, {});
+  assert.equal(enriched[0].provider, "Meta");
+});
+
+test("enrichCapabilities: Stealth-IDs bekommen OpenCode Stealth (Vorrang vor models.dev)", () => {
+  const models = [{ name: "Union Alpha Free", tier: null }];
+  const opencodeModels = {};
+  const goModels = {
+    "union-alpha": { id: "union-alpha", name: "Union Alpha Free", family: "alpha" },
+  };
+  const enriched = enrichCapabilities(models, opencodeModels, {}, goModels);
+  assert.equal(enriched[0].id, "opencode-go/union-alpha");
+  assert.equal(enriched[0].provider, "OpenCode Stealth");
+});
+
+test("enrichFreeModels: Stealth-IDs bekommen OpenCode Stealth", () => {
+  const enriched = enrichFreeModels(
+    [
+      { id: "big-pickle", availableFrom: "2026-08-05" },
+      { id: "union-alpha", availableFrom: "2026-09-16" },
+    ],
+    {},
+    {}
+  );
+  assert.equal(enriched[0].provider, "OpenCode Stealth");
+  assert.equal(enriched[1].provider, "OpenCode Stealth");
 });
 
 test("enrichFreeModels: setzt fullId mit opencode-Prefix (Fallback ohne models.dev-Treffer)", () => {
