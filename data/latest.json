@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-12T19:44:34.179Z",
+  "fetchedAt": "2026-09-16T06:02:20.317Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -86,7 +86,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "Z.ai",
+      "provider": "Glm Flash",
       "id": "opencode-go/glm-5.3-flash"
     },
     {
