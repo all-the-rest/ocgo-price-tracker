@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-16T06:02:20.317Z",
+  "fetchedAt": "2026-09-16T15:54:18.458Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -86,7 +86,7 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "provider": "Glm Flash",
+      "provider": "Z.ai",
       "id": "opencode-go/glm-5.3-flash"
     },
     {
@@ -1274,6 +1274,40 @@
       "id": "opencode-go/hy3"
     },
     {
+      "name": "Union Alpha Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": null,
+      "pattern": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": null,
+      "effectiveInput": 0,
+      "effectiveOutput": 0,
+      "effectiveCachedRead": 0,
+      "effectiveCachedWrite": 0,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 262144,
+      "provider": null,
+      "id": "opencode-go/union-alpha"
+    },
+    {
       "name": "Grok 4.6",
       "tier": "≤ 200K tokens",
       "input": 2,
@@ -1444,6 +1478,7 @@
       },
       "contextWindow": 200000,
       "provider": "Big Pickle",
+      "fullId": "opencode/big-pickle",
       "name": "Big Pickle",
       "privacy": {
         "training": true,
@@ -1465,6 +1500,7 @@
       },
       "contextWindow": 262144,
       "provider": "Ling",
+      "fullId": "opencode/ling-3.0-flash-fin-free",
       "name": "Ling 3.0 Flash Fin Free",
       "privacy": {
         "training": true,
@@ -1489,6 +1525,7 @@
       },
       "contextWindow": 200000,
       "provider": "Xiaomi",
+      "fullId": "opencode/mimo-v2.5-free",
       "name": "MiMo V2.5 Free",
       "privacy": {
         "training": true,
@@ -1514,6 +1551,7 @@
       },
       "contextWindow": 1048576,
       "provider": "Meta",
+      "fullId": "opencode/muse-spark-1.3-contributor-free",
       "name": "Muse Spark 1.3 Free",
       "privacy": {
         "training": true,
@@ -1535,6 +1573,7 @@
       },
       "contextWindow": 1000000,
       "provider": "NVIDIA",
+      "fullId": "opencode/nemotron-3-ultra-free",
       "name": "Nemotron 3 Ultra Free",
       "privacy": {
         "training": true,
@@ -1556,7 +1595,31 @@
       },
       "contextWindow": 262144,
       "provider": "NVIDIA",
+      "fullId": "opencode/nemotron-3.5-lightning-free",
       "name": "Nemotron 3.5 Lightning Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "union-alpha",
+      "availableFrom": "2026-09-16",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 262144,
+      "provider": null,
+      "fullId": "opencode-go/union-alpha",
+      "name": "Union Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
