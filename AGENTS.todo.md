@@ -20,3 +20,9 @@
   im Dialog (legacy `?basis=` toleriert, ignoriert); Karten-Sortierung = List-Basis der Tabelle.
 - [x] Footer: LINKS Domain, RECHTS lokalisiertes Datum + Uhrzeit (fetchedAt, UTC).
 - [x] Dialog-Layout: Sprache zuerst (links neben Stil), 3er-Grid Desktop / Stack Mobile, X-Button.
+
+## Browser-Konsolen-Test (Playwright, Follow-up zum Smoke-Test)
+- [ ] Playwright-Test, der die Seite im echten Browser lädt und Konsolen-Fehler/pageerrors
+  als Fehler wertet (fängt JS-Laufzeitfehler, die Build + `pnpm smoke` nicht sehen).
+  Eigene Suite/config (nicht in die Screenshot-Suite — die bleibt assertion-frei),
+  in CI nach dem Smoke-Step. Browser via Container-Image oder `playwright install`.
