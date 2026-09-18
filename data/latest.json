@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-16T16:03:47.697Z",
+  "fetchedAt": "2026-09-18T04:07:29.297Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1282,17 +1282,7 @@
       "cachedWrite": 0,
       "usage": null,
       "pattern": null,
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
+      "capabilities": null,
       "multiplier": null,
       "effectiveInput": 0,
       "effectiveOutput": 0,
@@ -1303,9 +1293,9 @@
         "retentionDays": true,
         "validUntil": null
       },
-      "contextWindow": 262144,
-      "id": "opencode-go/union-alpha",
-      "provider": "OpenCode Stealth"
+      "contextWindow": null,
+      "id": null,
+      "provider": null
     },
     {
       "name": "Grok 4.6",
@@ -1605,21 +1595,10 @@
     {
       "id": "union-alpha",
       "availableFrom": "2026-09-16",
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 262144,
+      "capabilities": null,
+      "contextWindow": null,
       "provider": "OpenCode Stealth",
-      "fullId": "opencode-go/union-alpha",
-      "name": "Union Alpha Free",
+      "fullId": "opencode/union-alpha",
       "privacy": {
         "training": true,
         "validUntil": null
