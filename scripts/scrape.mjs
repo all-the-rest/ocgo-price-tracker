@@ -1574,6 +1574,14 @@ const FreeModelSchema = z.object({
   privacy: PrivacySchema,
 });
 
+const PlanSchema = z.object({
+  id: z.enum(["go"]),
+  name: z.string().min(1),
+  priceMonthly: z.number().positive(),
+  creditsMonthly: z.number().positive(),
+  sourceUrl: z.string().url(),
+});
+
 const SnapshotSchema = z.object({
   fetchedAt: z.string(),
   sourceUrl: z.string().url(),
@@ -1582,6 +1590,7 @@ const SnapshotSchema = z.object({
   sourceLang: z.string(),
   monthlyCredit: z.number().positive(),
   monthlyCost: z.number().positive(),
+  plans: z.array(PlanSchema).min(1),
   peakHours: z.record(
     z.string().min(1),
     z.array(
@@ -1793,6 +1802,15 @@ async function main() {
       sourceLang: SOURCE_LANG,
       monthlyCredit,
       monthlyCost: monthlyCostFinal,
+      plans: [
+        {
+          id: "go",
+          name: "Go",
+          priceMonthly: monthlyCostFinal,
+          creditsMonthly: monthlyCredit,
+          sourceUrl: SOURCE_URL,
+        },
+      ],
       peakHours,
       models,
       freeModels,

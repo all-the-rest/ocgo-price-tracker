@@ -11,8 +11,13 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "tests", ".ssr");
 const FIELDS = ["input", "output", "cachedRead", "cachedWrite", "cost", "requests"];
 const BASES = ["list", "full", "paid"];
-const CREDIT = 60;
-const COST = 10;
+const PLAN = {
+  id: "go",
+  name: "Go",
+  priceMonthly: 10,
+  creditsMonthly: 60,
+  sourceUrl: "https://opencode.ai/docs/de/go/",
+};
 
 let ssr;
 let models;
@@ -41,9 +46,9 @@ before(async () => {
 });
 
 const displayedValue = (m, field, basis) =>
-  field === "cost" ? ssr.requestCost(m, basis, COST)
-  : field === "requests" ? ssr.requestsPerMonth(m, basis, CREDIT, COST)
-  : ssr.fieldPrice(m, field, basis, COST);
+  field === "cost" ? ssr.requestCost(m, basis, PLAN)
+  : field === "requests" ? ssr.requestsPerMonth(m)
+  : ssr.fieldPrice(m, field, basis, PLAN);
 
 const extractRowNames = (html) => {
   const $ = cheerio.load(html);
@@ -88,7 +93,7 @@ test("Changelog: Run-id rendert die Uhrzeit (MEZ/MESZ), Anker = entry.id, mehrer
       // Altschema-Eintrag: id = date → keine Uhrzeit
       { id: "2026-08-26", date: "2026-08-26", changes: [{ type: "free_added", model: "ox-alpha", name: "Ox Alpha Free" }] },
     ],
-    60
+    PLAN
   );
   const $ = cheerio.load(html);
 
@@ -114,8 +119,7 @@ for (const basis of BASES) {
           basis,
           sortField: field,
           sortDir: dir,
-          monthlyCredit: CREDIT,
-          monthlyCost: COST,
+          plan: PLAN,
           lang: "de",
         });
         assert.deepEqual(extractRowNames(html), expected);
@@ -138,8 +142,7 @@ test("paid-Basis input asc: Effektivpreis entscheidet, nicht der rohe Listenprei
       basis: "paid",
       sortField: "input",
       sortDir: 1,
-      monthlyCredit: CREDIT,
-      monthlyCost: COST,
+      plan: PLAN,
       lang: "de",
     })
   );
@@ -168,8 +171,7 @@ test("Training-Filter (showTraining=false) blendet nur 'Muse Spark 1.2 Contribut
     basis: "full",
     sortField: "name",
     sortDir: 1,
-    monthlyCredit: CREDIT,
-    monthlyCost: COST,
+    plan: PLAN,
     lang: "de",
     showTraining: false,
   });

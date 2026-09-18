@@ -1,7 +1,7 @@
 import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import type { Translation } from "../i18n";
 import Heading from "./Heading";
-import type { Basis, Model, PeakHours } from "../types";
+import type { Basis, Model, PeakHours, Plan } from "../types";
 import { fmt, fmtContextWindow, fmtPricing } from "../util";
 import { fieldPrice, formatTokens, formatReqPerMonth, requestCost, requestsPerMonth } from "../weighted";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
@@ -24,8 +24,7 @@ interface PriceTableProps {
   setCaps: (u: (prev: CapId[]) => CapId[]) => void;
   showTraining: boolean;
   setShowTraining: (v: boolean) => void;
-  monthlyCredit: number;
-  monthlyCost: number;
+  plan: Plan;
   peakHours?: PeakHours;
 }
 
@@ -52,13 +51,12 @@ export default function PriceTable(props: PriceTableProps) {
   });
 
   const sortValue = (m: Model, f: SortField): number | string | null => {
-    if (f === "cost") return requestCost(m, props.basis, props.monthlyCost);
-    if (f === "requests")
-      return requestsPerMonth(m, props.basis, props.monthlyCredit, props.monthlyCost);
+    if (f === "cost") return requestCost(m, props.basis, props.plan);
+    if (f === "requests") return requestsPerMonth(m);
     if (f === "name") return m.name.toLowerCase();
     if (f === "usage") return m.usage ?? Infinity; // unbegrenzte Nutzung = bester Wert
     if (f === "input" || f === "output" || f === "cachedRead" || f === "cachedWrite") {
-      return fieldPrice(m, f, props.basis, props.monthlyCost);
+      return fieldPrice(m, f, props.basis, props.plan);
     }
     return m[f];
   };
@@ -133,27 +131,28 @@ export default function PriceTable(props: PriceTableProps) {
   };
 
   const usageBadge = (usage: number) => {
-    if (usage / props.monthlyCost <= 1) return "badge-error";
-    if (usage > props.monthlyCredit) return "badge-success";
-    if (usage < props.monthlyCredit) return usage < props.monthlyCredit / 2 ? "badge-error" : "badge-warning";
+    if (usage / props.plan.priceMonthly <= 1) return "badge-error";
+    if (usage > props.plan.creditsMonthly) return "badge-success";
+    if (usage < props.plan.creditsMonthly)
+      return usage < props.plan.creditsMonthly / 2 ? "badge-error" : "badge-warning";
     return "badge-success";
   };
 
-  const usagePct = (usage: number) => Math.round((usage / props.monthlyCredit) * 100);
+  const usagePct = (usage: number) => Math.round((usage / props.plan.creditsMonthly) * 100);
 
   const factorNote = createMemo(() => {
     if (props.basis === "list") return "";
     const usages = [...new Set(props.models.map((m) => m.usage))].filter((u): u is number => u !== null).sort((a, b) => a - b);
     if (props.basis === "paid") {
       const rows = usages
-        .map((u) => `$${u} → ${factorPhrase(u / props.monthlyCost, props.lang, "value")}`)
+        .map((u) => `$${u} → ${factorPhrase(u / props.plan.priceMonthly, props.lang, "value")}`)
         .join(" · ");
-      return props.t.paidNote.replace("{paid}", String(props.monthlyCost)).replace("{rows}", rows);
+      return props.t.paidNote.replace("{paid}", String(props.plan.priceMonthly)).replace("{rows}", rows);
     }
     const rows = usages
-      .map((u) => `$${u} → ${factorPhrase(props.monthlyCredit / u, props.lang, "price")}`)
+      .map((u) => `$${u} → ${factorPhrase(props.plan.creditsMonthly / u, props.lang, "price")}`)
       .join(" · ");
-    return props.t.factorNote.replace("{credit}", String(props.monthlyCredit)).replace("{rows}", rows);
+    return props.t.factorNote.replace("{credit}", String(props.plan.creditsMonthly)).replace("{rows}", rows);
   });
 
   const priceCell = (n: number | null | undefined) => {
@@ -192,14 +191,14 @@ export default function PriceTable(props: PriceTableProps) {
             classList={{ "btn-active": props.basis === "full", "btn-primary": props.basis === "full" }}
             onClick={() => props.setBasis("full")}
           >
-            {fmtPricing(props.t.basisFull, props.monthlyCredit, props.monthlyCost)}
+            {fmtPricing(props.t.basisFull, props.plan.creditsMonthly, props.plan.priceMonthly)}
           </button>
           <button
             class="join-item btn btn-sm text-xs sm:text-sm whitespace-nowrap"
             classList={{ "btn-active": props.basis === "paid", "btn-primary": props.basis === "paid" }}
             onClick={() => props.setBasis("paid")}
           >
-            {fmtPricing(props.t.basisPaid, props.monthlyCredit, props.monthlyCost)}
+            {fmtPricing(props.t.basisPaid, props.plan.creditsMonthly, props.plan.priceMonthly)}
           </button>
         </div>
         <Show when={props.basis === "full" || props.basis === "paid"}>
@@ -306,10 +305,10 @@ export default function PriceTable(props: PriceTableProps) {
                   <td>
                     <CapabilityBadges m={m} t={props.t} />
                   </td>
-                  <td>{priceCell(fieldPrice(m, "input", props.basis, props.monthlyCost))}</td>
-                  <td>{priceCell(fieldPrice(m, "output", props.basis, props.monthlyCost))}</td>
-                  <td>{priceCell(fieldPrice(m, "cachedRead", props.basis, props.monthlyCost))}</td>
-                  <td>{priceCell(fieldPrice(m, "cachedWrite", props.basis, props.monthlyCost))}</td>
+                  <td>{priceCell(fieldPrice(m, "input", props.basis, props.plan))}</td>
+                  <td>{priceCell(fieldPrice(m, "output", props.basis, props.plan))}</td>
+                  <td>{priceCell(fieldPrice(m, "cachedRead", props.basis, props.plan))}</td>
+                  <td>{priceCell(fieldPrice(m, "cachedWrite", props.basis, props.plan))}</td>
                   <td class="text-right whitespace-nowrap">
                     <Show
                       when={m.usage}
@@ -324,31 +323,31 @@ export default function PriceTable(props: PriceTableProps) {
                           tip={props.t.usageTooltip
                             .replace("{pct}", String(usagePct(usage())))
                             .replace("{usage}", String(usage()))
-                            .replace("{credit}", String(props.monthlyCredit))
-                            .replace("{mult}", formatMult(usage() / props.monthlyCost, props.lang))
-                            .replace("{paid}", String(props.monthlyCost))}
+                            .replace("{credit}", String(props.plan.creditsMonthly))
+                            .replace("{mult}", formatMult(usage() / props.plan.priceMonthly, props.lang))
+                            .replace("{paid}", String(props.plan.priceMonthly))}
                           class="inline-block"
                         >
                           <span
                             class={`badge badge-sm ${usageBadge(usage())}`}
-                            classList={{ "font-bold": usage() > props.monthlyCredit }}
+                            classList={{ "font-bold": usage() > props.plan.creditsMonthly }}
                           >
-                            ${usage()} · {formatMult(usage() / props.monthlyCost, props.lang)}×
+                            ${usage()} · {formatMult(usage() / props.plan.priceMonthly, props.lang)}×
                           </span>
                         </Tooltip>
                       )}
                     </Show>
                   </td>
                   <td>
-                    <Show when={m.pattern} fallback={priceCell(requestCost(m, props.basis, props.monthlyCost))}>
+                    <Show when={m.pattern} fallback={priceCell(requestCost(m, props.basis, props.plan))}>
                       <Tooltip tip={patternTooltip(m)} class="block">
-                        {priceCell(requestCost(m, props.basis, props.monthlyCost))}
+                        {priceCell(requestCost(m, props.basis, props.plan))}
                       </Tooltip>
                     </Show>
                   </td>
                   <td class="text-right tabular-nums whitespace-nowrap">
                     <Show
-                      when={requestsPerMonth(m, props.basis, props.monthlyCredit, props.monthlyCost)}
+                      when={requestsPerMonth(m)}
                       fallback={priceCell(null)}
                     >
                       {(rpm) => <span>{formatReqPerMonth(rpm(), props.lang)}</span>}

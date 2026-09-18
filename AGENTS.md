@@ -34,6 +34,7 @@ pnpm scrape           # holt Daten → aktualisiert data/latest.json, data/histo
 pnpm test             # Scraper-Unit-Tests (node --test, Fixture tests/fixtures/go-de.html)
 pnpm dev              # Dev-Server
 pnpm build            # Typecheck + Vite-Build → dist/ (inkl. dist/data/latest.json als statisches Artefakt)
+pnpm smoke            # Smoke-Test auf dist/: Artefakte + Assets + Preview-HTTP (/ und /data/latest.json) — ohne Browser
 pnpm preview          # dist/ lokal serven
 pnpm typecheck        # nur tsc --noEmit
 ```
@@ -164,7 +165,8 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 ## CI/CD (`.github/workflows/price-tracker.yml`)
 
 - Trigger: `workflow_dispatch` (extern per Server-Cron getriggert via `scripts/install-cron.sh`: Mo–Fr alle 2h 06:00–20:00 MEZ/MESZ, Sa/So 06:00+14:00) + täglicher GitHub-Actions-Safety-Net-Lauf (`schedule: "28 20 * * *"` = 20:28 UTC), `push` auf `main`.
-- Pipeline: install (`--frozen-lockfile`) → `pnpm test` → `pnpm scrape` → `pnpm build` → Commit (CHANGELOG.json + data + src/data, `github-actions[bot]`, nur bei Änderungen) → Release (`node scripts/ensure-release.mjs --all` → `gh release create`/`edit` mit Tag = Eintrags-`id`, damit Watcher per E-Mail und RSS-Reader via `releases.atom` benachrichtigt werden) → Sync-Check (`node scripts/check-release-sync.mjs` bricht rot ab, wenn Changelog-Einträge und GitHub-Releases divergieren) → `upload-pages-artifact` (dist) + `upload-artifact` (dist-Zip) → `deploy-pages`.
+- Pipeline: install (`--frozen-lockfile`) → `pnpm test` → `pnpm scrape` → `pnpm build` → `pnpm smoke`
+  (bricht rot ab, bevor kaputte Bundles auf Pages landen) → Commit (CHANGELOG.json + data + src/data, `github-actions[bot]`, nur bei Änderungen) → Release (`node scripts/ensure-release.mjs --all` → `gh release create`/`edit` mit Tag = Eintrags-`id`, damit Watcher per E-Mail und RSS-Reader via `releases.atom` benachrichtigt werden) → Sync-Check (`node scripts/check-release-sync.mjs` bricht rot ab, wenn Changelog-Einträge und GitHub-Releases divergieren) → `upload-pages-artifact` (dist) + `upload-artifact` (dist-Zip) → `deploy-pages`.
 - `scripts/release-notes.mjs` rendert Changelog-Einträge als **rein englisches Markdown mit nur den Fakten** (Titel + Event-Liste — keine Links zu Site/RSS, kein Watch-Hinweis). `scripts/ensure-release.mjs` stellt **pro Changelog-Eintrag genau eine Release** sicher (Tag = Eintrags-`id`) und läuft bei **jedem** Workflow-Lauf (nicht nur bei `changed=true`): `--all` prüft alle Einträge, erstellt fehlende Releases nach (Backfill, `--latest=false` für alle außer dem neuesten Eintrag) und editiert bestehende nur bei geänderten Notizen. Da jeder Run einen eigenen Eintrag bekommt, entsteht pro 2h-Lauf ggf. eine eigene Release — Watcher erhalten entsprechend mehrere E-Mails/RSS-Einträge pro Tag. **Manuelle Korrekturen an Releases erfolgen direkt via `gh` CLI** (`gh release edit <tag> --notes …`), nie über das Script. Sync: `scripts/check-release-sync.mjs` vergleicht jeden Changelog-Eintrag mit seiner Release (Tag = `id`, Notizen) und meldet verwaiste Releases — bei Divergenz rot.
 - Nach einem Daten-Commit (`changed=true`) benachrichtigt der Deploy-Job das Vergleichs-Projekt `all-the-rest/ai-10-usd` per `repository_dispatch` (`event_type=source-updated`, POST auf `/repos/all-the-rest/ai-10-usd/dispatches`). Secret: `AI10USD_DISPATCH_TOKEN` (PAT mit `repo`-Scope bzw. fine-grained mit Contents read/write auf `ai-10-usd`, in **beiden** Tracker-Repos). Fehlt das Secret → Step übersprungen (grün); vorhanden → der Step prüft den HTTP-Status und bricht bei ≠ 2xx **rot** ab (kein stiller Verlust wie beim alten `curl -sS` ohne `-f`).
 - **Lokale Daten-Commits (Push statt CI-Commit):** Wird eine Datenänderung lokal committet und per Push auf `main` gebracht — statt vom CI-Job (der `changed=true` erzeugt und committet) —, feuert der automatische Dispatch **nicht**: Der Scrape im CI findet dann keine Diffs (`changed=false`), der Notify-Step wird übersprungen. Das Vergleichs-Projekt dann manuell triggern:
@@ -178,7 +180,10 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 
 ## Tests
 
-- `pnpm test` = Scraper-Unit-Tests (`tests/scrape.test.mjs`) **plus** ein E2E-Sortier-Test (`tests/sorting.test.mjs`).
+- `pnpm test` = Scraper-Unit-Tests (`tests/scrape.test.mjs`), E2E-Sortier-Test (`tests/sorting.test.mjs`,
+  echte `PriceTable` per SolidJS-SSR) und Share-Vertrags-Test (`tests/share.test.mjs`: `share.ts` ↔ `weighted.ts`
+  laufen durch denselben Vite-SSR-Build — ein fehlender Export bricht den Build und damit den Test rot ab,
+  statt erst im Browser aufzufallen).
 - Der Sortier-Test baut die echte `PriceTable`-Komponente per SolidJS-SSR (`tests/ssr-entry.tsx`, Vite-Build in `tests/.ssr/`, gitignored) und prüft für jede Preisbasis (`list`/`full`/`paid`) × Preisspalte (`input`/`output`/`cachedRead`/`cachedWrite`/`cost`) × Richtung, dass die gerenderte Reihenfolge exakt der Reihenfolge der **angezeigten** Werte (`fieldPrice`/`requestCost`) entspricht — nicht dem rohen Listenpreis. Regression: bei `paid` sortiert der Effektivpreis (DeepSeek V4 Flash vor MiMo V2.5), obwohl beide denselben rohen Input-Preis (0.14) haben.
 - **Screenshot-Tests sind permanent:** neue UI-Features (insb. Share-Cards) bekommen Playwright-Tests in
   `tests/screenshots/` (Suite `playwright.screenshots.config.ts`, `pnpm test:screenshots`) — alle Size-Varianten

@@ -1,7 +1,7 @@
 import { For, Show, createSignal, onMount } from "solid-js";
 import type { Lang, Translation } from "../i18n";
 import Heading, { AnchorLink } from "./Heading";
-import type { Change, ChangelogEntry, PriceField, PricingType } from "../types";
+import type { Change, ChangelogEntry, Plan, PriceField, PricingType } from "../types";
 import { fmt, formatFreeModelName } from "../util";
 import { capCount, fmtCaps } from "../capabilities";
 import { privacyLabelWithValidUntil, privacyRank } from "../privacy";
@@ -10,7 +10,7 @@ interface ChangelogProps {
   entries: ChangelogEntry[];
   t: Translation;
   lang: Lang;
-  monthlyCredit: number;
+  plan: Plan;
 }
 
 // Einträge pro Changelog-Seite (Pagination).
@@ -77,7 +77,7 @@ export default function Changelog(props: ChangelogProps) {
   };
 
   const priceEffective = (p: PricingType): number => {
-    const mult = p.usage === null ? 0 : props.monthlyCredit / p.usage;
+    const mult = p.usage === null ? 0 : props.plan.creditsMonthly / p.usage;
     const val = (x: number | null) => (x === null ? 0 : x * mult);
     return val(p.input) + val(p.output) + val(p.cachedRead) + val(p.cachedWrite);
   };

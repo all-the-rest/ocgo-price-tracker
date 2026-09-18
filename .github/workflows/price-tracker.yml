@@ -57,6 +57,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Smoke test (dist + preview)
+        # Ohne Browser: Artefakte, referenzierte Assets, Preview-HTTP (/, /data/latest.json).
+        # Fängt kaputte Bundles (z. B. fehlende Exporte), bevor etwas auf Pages landet.
+        run: pnpm smoke
+
       - name: Read build stamp
         id: stamp
         run: echo "fetchedAt=$(node -e "console.log(require('./dist/data/latest.json').fetchedAt)")" >> "$GITHUB_OUTPUT"

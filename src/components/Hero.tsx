@@ -1,16 +1,16 @@
 import type { Translation } from "../i18n";
 import Heading from "./Heading";
+import type { Plan } from "../types";
 import { fmtPricing } from "../util";
 
 interface HeroProps {
   t: Translation;
   modelCount: number;
-  monthlyCredit: number;
-  monthlyCost: number;
+  plan: Plan;
 }
 
 export default function Hero(props: HeroProps) {
-  const pricing = (tpl: string) => fmtPricing(tpl, props.monthlyCredit, props.monthlyCost);
+  const pricing = (tpl: string) => fmtPricing(tpl, props.plan.creditsMonthly, props.plan.priceMonthly);
   return (
     <section>
       <h1 class="text-2xl font-bold tracking-tight">{props.t.title}</h1>

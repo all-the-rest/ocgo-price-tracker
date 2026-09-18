@@ -2,6 +2,8 @@ export type PriceField = "input" | "output" | "cachedRead" | "cachedWrite";
 
 export type Basis = "list" | "full" | "paid";
 
+export type PlanId = "go";
+
 export type Modality = "text" | "audio" | "image" | "video" | "pdf";
 
 export interface Capabilities {
@@ -80,14 +82,30 @@ export interface Model {
 
 export type PeakHours = Record<string, [number, number][]>;
 
+/**
+ * Ein Abonnement-Plan (analog cc-price-tracker `Plan`, dort als Array mit
+ * mehreren Einträgen). Aktuell gibt es nur einen Plan (`go`); die Array-Hülle
+ * existiert, damit ein zweiter Plan ohne Datenmigration hinzukommt.
+ */
+export interface Plan {
+  id: PlanId;
+  name: string;
+  priceMonthly: number;
+  creditsMonthly: number;
+  sourceUrl: string;
+}
+
 export interface PriceData {
   fetchedAt: string;
   sourceUrl: string;
   freeModelsSourceUrl: string;
   capabilitiesSourceUrl: string;
   sourceLang: string;
+  /** @deprecated Kompat für ai-10-usd (`comparison-core.mjs` liest diese Felder) — Quelle ist `plans[0]`. */
   monthlyCredit: number;
+  /** @deprecated Kompat für ai-10-usd — Quelle ist `plans[0]`. */
   monthlyCost: number;
+  plans: Plan[];
   peakHours: PeakHours;
   models: Model[];
   freeModels: FreeModel[];

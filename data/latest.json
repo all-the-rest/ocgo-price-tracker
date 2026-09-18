@@ -6,6 +6,15 @@
   "sourceLang": "de",
   "monthlyCredit": 60,
   "monthlyCost": 10,
+  "plans": [
+    {
+      "id": "go",
+      "name": "Go",
+      "priceMonthly": 10,
+      "creditsMonthly": 60,
+      "sourceUrl": "https://opencode.ai/docs/de/go/"
+    }
+  ],
   "peakHours": {
     "deepseekv4.1flash": [
       [

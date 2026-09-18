@@ -916,6 +916,15 @@ test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () =
     sourceLang: "de",
     monthlyCredit: 60,
     monthlyCost: 10,
+    plans: [
+      {
+        id: "go",
+        name: "Go",
+        priceMonthly: 10,
+        creditsMonthly: 60,
+        sourceUrl: "https://opencode.ai/docs/de/go/",
+      },
+    ],
     peakHours: {},
     models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
     freeModels: [
@@ -943,6 +952,15 @@ test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung",
     sourceLang: "de",
     monthlyCredit: 60,
     monthlyCost: 10,
+    plans: [
+      {
+        id: "go",
+        name: "Go",
+        priceMonthly: 10,
+        creditsMonthly: 60,
+        sourceUrl: "https://opencode.ai/docs/de/go/",
+      },
+    ],
     models: [withoutPattern],
     freeModels: [],
   };
@@ -985,6 +1003,15 @@ test("validateSnapshot: kostenlose Zeile (Preise 0) ohne Token-Stats ist gültig
     sourceLang: "de",
     monthlyCredit: 60,
     monthlyCost: 10,
+    plans: [
+      {
+        id: "go",
+        name: "Go",
+        priceMonthly: 10,
+        creditsMonthly: 60,
+        sourceUrl: "https://opencode.ai/docs/de/go/",
+      },
+    ],
     peakHours: {},
     models: [
       {
@@ -1251,6 +1278,15 @@ test("validateSnapshot: kostenloses Modell ohne privacy bricht", () => {
     sourceLang: "de",
     monthlyCredit: 60,
     monthlyCost: 10,
+    plans: [
+      {
+        id: "go",
+        name: "Go",
+        priceMonthly: 10,
+        creditsMonthly: 60,
+        sourceUrl: "https://opencode.ai/docs/de/go/",
+      },
+    ],
     models: parseHtml(fixture),
     freeModels: [{ id: "big-pickle", availableFrom: "2026-08-05", capabilities: null }],
   };
@@ -1337,6 +1373,15 @@ test("validateSnapshot: kostenloses Modell ohne fullId bricht", () => {
     sourceLang: "de",
     monthlyCredit: 60,
     monthlyCost: 10,
+    plans: [
+      {
+        id: "go",
+        name: "Go",
+        priceMonthly: 10,
+        creditsMonthly: 60,
+        sourceUrl: "https://opencode.ai/docs/de/go/",
+      },
+    ],
     peakHours: {},
     models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
     freeModels: [

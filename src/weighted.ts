@@ -1,4 +1,4 @@
-import type { Basis, Model, PriceField } from "./types";
+import type { Basis, Model, Plan, PriceField } from "./types";
 
 export type { PriceField };
 
@@ -12,16 +12,18 @@ const EFFECTIVE_FIELD: Record<PriceField, keyof Model> = {
 /**
  * Preis je Modellfeld für die gewählte Preisbasis:
  * - "list" → Listenpreis (aus der Doku)
- * - "full" → Effektivpreis bei vollem $60-Monatsguthaben (Listenpreis × 60/Nutzung)
+ * - "full" → Effektivpreis bei vollem Monatsguthaben (Listenpreis × credits/Nutzung,
+ *   vom Scraper vorberechnet)
  * - "paid" → Effektivpreis auf Basis dessen, was man tatsächlich zahlt
- *            (Listenpreis × Monatspreis/Nutzung, z. B. $10 → 1,5× bei $15-Nutzung)
+ *            (Listenpreis × Monatspreis/Nutzung, z. B. $10 → 1,5× bei $15-Nutzung).
+ *            Braucht den Plan; ohne Plan → null.
  */
-export function fieldPrice(m: Model, f: PriceField, basis: Basis, monthlyCost: number): number | null {
+export function fieldPrice(m: Model, f: PriceField, basis: Basis, plan?: Plan): number | null {
   const raw = m[f];
   if (basis === "list") return raw;
   if (basis === "paid") {
-    if (raw === null || m.usage === null) return null;
-    return raw * (monthlyCost / m.usage);
+    if (raw === null || plan == null || m.usage === null) return null;
+    return raw * (plan.priceMonthly / m.usage);
   }
   return (m[EFFECTIVE_FIELD[f]] ?? raw) as number | null;
 }
@@ -41,16 +43,16 @@ export function fieldPrice(m: Model, f: PriceField, basis: Basis, monthlyCost: n
  * frischen Token auf Cached-Write (Luna ~28/72, Qwen3.8 Max ~0/100), nicht auf
  * den reinen Input-Preis.
  */
-export function requestCost(m: Model, basis: Basis, monthlyCost: number): number | null {
+export function requestCost(m: Model, basis: Basis, plan?: Plan): number | null {
   if (!m.pattern) {
     // Kostenlose Modelle (Preise 0, kein dokumentiertes Anfragemuster):
     // Kosten pro Anfrage = 0 statt "-".
     return m.usage === null ? 0 : null;
   }
-  const input = fieldPrice(m, "input", basis, monthlyCost);
-  const cached = fieldPrice(m, "cachedRead", basis, monthlyCost);
-  const writeRaw = fieldPrice(m, "cachedWrite", basis, monthlyCost);
-  const output = fieldPrice(m, "output", basis, monthlyCost);
+  const input = fieldPrice(m, "input", basis, plan);
+  const cached = fieldPrice(m, "cachedRead", basis, plan);
+  const writeRaw = fieldPrice(m, "cachedWrite", basis, plan);
+  const output = fieldPrice(m, "output", basis, plan);
   if (input === null || cached === null || output === null) return null;
   const write = writeRaw ?? input;
   const inputEffective = 0.05 * input + 0.95 * write;
@@ -62,19 +64,15 @@ export function requestCost(m: Model, basis: Basis, monthlyCost: number): number
 
 /**
  * Anzahl der Anfragen pro Monat: inkl. Nutzung (usage, der im Plan enthaltene
- * $‑Betrag für das Modell) ÷ Kosten pro Anfrage zum Listenpreis. Unabhängig von
- * der gewählten Preisbasis immer auf Basis des Listenpreises gerechnet.
+ * $‑Betrag für das Modell) ÷ Kosten pro Anfrage zum Listenpreis. Absichtlich
+ * plan-unabhängig — immer auf Listenpreisbasis gerechnet, egal welche
+ * Preisbasis die Tabelle gerade zeigt. Unbegrenzte Nutzung (usage = null,
+ * kostenlose Modelle) → Infinity (sortiert bei absteigender Sortierung ganz
+ * nach oben).
  */
-/**
- * Anzahl der Anfragen pro Monat: inkl. Nutzung (usage, der im Plan enthaltene
- * $‑Betrag für das Modell) ÷ Kosten pro Anfrage zum Listenpreis. Unabhängig von
- * der gewählten Preisbasis immer auf Basis des Listenpreises gerechnet.
- * Unbegrenzte Nutzung (usage = null, kostenlose Modelle) → Infinity
- * (sortiert bei absteigender Sortierung ganz nach oben).
- */
-export function requestsPerMonth(m: Model, basis: Basis, monthlyCredit: number, monthlyCost: number): number | null {
+export function requestsPerMonth(m: Model): number | null {
   if (m.usage === null) return Infinity;
-  const cost = requestCost(m, "list", monthlyCost);
+  const cost = requestCost(m, "list");
   if (cost === null || cost <= 0) return null;
   return m.usage / cost;
 }

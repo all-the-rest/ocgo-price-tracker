@@ -130,10 +130,10 @@ export function matchesShareCaps(
  * displays (`requestsPerMonth` at list basis): usage ÷ list-cost per request,
  * free models (usage = null) → Infinity (top rank, displayed as ∞). No
  * card-side special path: ranking and display value are identical to the
- * table cell. (The zeros are unused params of the shared table function.)
+ * table cell.
  */
 export function shareRequests(m: Model): number | null {
-  return requestsPerMonth(m, "list", 0, 0);
+  return requestsPerMonth(m);
 }
 
 /**

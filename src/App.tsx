@@ -1,10 +1,12 @@
-import { createEffect, createSignal } from "solid-js";
-import type { Basis, ChangelogData, PriceData } from "./types";
+import { createEffect, createSignal, Show } from "solid-js";
+import type { Basis, ChangelogData, PlanId, PriceData } from "./types";
 import { i18n, type Lang } from "./i18n";
 import { VALID_SORT, type FreeSortState, type PrivacySortState, type SortState } from "./sort";
 import { CAP_IDS, type CapId } from "./capabilities";
+import { DEFAULT_PLAN_ID, TAB_PLAN_IDS, isTabPlan, resolvePlan } from "./plans";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
+import PlanTabs from "./components/PlanTabs";
 import PriceTable from "./components/PriceTable";
 import FreeModelsTable from "./components/FreeModelsTable";
 import PrivacyTable from "./components/PrivacyTable";
@@ -26,6 +28,7 @@ const defaultLang: Lang =
   storedLang === "de" || storedLang === "en" ? storedLang : browserLang.startsWith("de") ? "de" : "en";
 
 function readParams(): {
+  plan: PlanId | null;
   sort: SortState | null;
   fsort: FreeSortState | null;
   psort: PrivacySortState | null;
@@ -37,6 +40,8 @@ function readParams(): {
 } {
   const p =
     typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const planRaw = p.get("plan");
+  const plan = isTabPlan(planRaw) ? planRaw : null;
   const [f, d] = (p.get("sort") ?? "").split(":");
   const sort =
     VALID_SORT.includes(f as SortState["field"]) && (d === "asc" || d === "desc")
@@ -65,7 +70,7 @@ function readParams(): {
       : Array.from(new Set(raw.split(",").filter((x): x is CapId => (CAP_IDS as readonly string[]).includes(x))));
   const cap = parseCaps(p.get("cap"));
   const fcap = parseCaps(p.get("fcap"));
-  return { sort, fsort, psort, basis, lang, theme, cap, fcap };
+  return { plan, sort, fsort, psort, basis, lang, theme, cap, fcap };
 }
 const params = readParams();
 
@@ -104,6 +109,7 @@ export default function App() {
   const [basis, setBasis] = createSignal<Basis>(
     params.basis ?? "full"
   );
+  const [planId, setPlanId] = createSignal<PlanId>(params.plan ?? DEFAULT_PLAN_ID);
   const [sort, setSort] = createSignal<SortState>(params.sort ?? { field: "requests", dir: -1 });
   const [freeSort, setFreeSort] = createSignal<FreeSortState>(
     params.fsort ?? { field: "availableFrom", dir: -1 }
@@ -116,6 +122,11 @@ export default function App() {
   const [showTraining, setShowTraining] = createSignal(true);
 
   const t = () => i18n[lang()];
+
+  // Aktuell genau ein Tab-Plan → keine sichtbaren Tabs; die Hülle ist bereit
+  // für weitere Pläne (dann: Tabs einblenden, Modelle pro Plan filtern).
+  const tabPlans = () => (data.plans ?? []).filter((p) => (TAB_PLAN_IDS as readonly string[]).includes(p.id));
+  const plan = () => resolvePlan(data, planId());
 
   createEffect(() => {
     document.documentElement.lang = lang();
@@ -148,6 +159,8 @@ export default function App() {
 
   createEffect(() => {
     const p = new URLSearchParams(window.location.search);
+    if (planId() === DEFAULT_PLAN_ID) p.delete("plan");
+    else p.set("plan", planId());
     const s = sort();
     if (s.field === "cost" && s.dir === 1) p.delete("sort");
     else p.set("sort", `${s.field}:${s.dir === 1 ? "asc" : "desc"}`);
@@ -171,6 +184,7 @@ export default function App() {
   });
 
   const resetAll = () => {
+    setPlanId(DEFAULT_PLAN_ID);
     setSort({ field: "cost", dir: 1 });
     setFreeSort({ field: "availableFrom", dir: -1 });
     setPrivacySort({ field: "tier", dir: 1 });
@@ -189,9 +203,11 @@ export default function App() {
         <Hero
           t={t()}
           modelCount={data.models.length}
-          monthlyCredit={data.monthlyCredit}
-          monthlyCost={data.monthlyCost}
+          plan={plan()}
         />
+        <Show when={tabPlans().length > 1}>
+          <PlanTabs plans={tabPlans()} active={planId()} onSelect={setPlanId} t={t()} />
+        </Show>
         <ShareDialog
           models={data.models}
           lang={lang()}
@@ -213,8 +229,7 @@ export default function App() {
           setCaps={setCaps}
           showTraining={showTraining()}
           setShowTraining={setShowTraining}
-          monthlyCredit={data.monthlyCredit}
-          monthlyCost={data.monthlyCost}
+          plan={plan()}
           peakHours={data.peakHours}
         />
         <FreeModelsTable
@@ -234,7 +249,7 @@ export default function App() {
           sort={privacySort()}
           setSort={setPrivacySort}
         />
-        <Changelog entries={changelogData.entries} t={t()} lang={lang()} monthlyCredit={data.monthlyCredit} />
+        <Changelog entries={changelogData.entries} t={t()} lang={lang()} plan={plan()} />
         <Legal t={t()} />
       </main>
       <Footer t={t()} data={data} lang={lang()} />
