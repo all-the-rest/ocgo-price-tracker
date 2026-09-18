@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-18T04:07:29.297Z",
+  "fetchedAt": "2026-09-18T10:03:10.426Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1274,30 +1274,6 @@
       "provider": "Tencent"
     },
     {
-      "name": "Union Alpha Free",
-      "tier": null,
-      "input": 0,
-      "output": 0,
-      "cachedRead": 0,
-      "cachedWrite": 0,
-      "usage": null,
-      "pattern": null,
-      "capabilities": null,
-      "multiplier": null,
-      "effectiveInput": 0,
-      "effectiveOutput": 0,
-      "effectiveCachedRead": 0,
-      "effectiveCachedWrite": 0,
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": null,
-      "id": null,
-      "provider": null
-    },
-    {
       "name": "Grok 4.6",
       "tier": "≤ 200K tokens",
       "input": 2,
@@ -1587,18 +1563,6 @@
       "provider": "NVIDIA",
       "fullId": "opencode/nemotron-3.5-lightning-free",
       "name": "Nemotron 3.5 Lightning Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "union-alpha",
-      "availableFrom": "2026-09-16",
-      "capabilities": null,
-      "contextWindow": null,
-      "provider": "OpenCode Stealth",
-      "fullId": "opencode/union-alpha",
       "privacy": {
         "training": true,
         "validUntil": null
