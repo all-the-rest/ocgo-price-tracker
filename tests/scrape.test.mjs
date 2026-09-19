@@ -658,6 +658,22 @@ test("extractFreeModelsFromDocs: ignoriert kostenpflichtige Modelle", () => {
   assert.ok(!free.includes("minimax-m3"));
 });
 
+test("extractFreeModelsFromDocs: erkennt deutsche „Kostenlos“-Zeilen (z. B. Jev 1.13 Free)", () => {
+  const html = `<!DOCTYPE html><html><body>
+<h2 id="endpunkte">Endpunkte</h2>
+<table><thead><tr><th>Modell</th><th>ID</th></tr></thead><tbody>
+<tr><td>Jev 1.13 Free</td><td>jev-1.13-free</td></tr>
+<tr><td>Jev 1.13</td><td>jev-1.13</td></tr>
+</tbody></table>
+<h2 id="preise">Preise</h2>
+<table><thead><tr><th>Modell</th><th>Input</th><th>Output</th></tr></thead><tbody>
+<tr><td>Jev 1.13 Free</td><td>Kostenlos</td><td>Kostenlos</td></tr>
+<tr><td>Jev 1.13</td><td>$0.042</td><td>Kostenlos</td></tr>
+</tbody></table>
+</body></html>`;
+  assert.deepEqual(extractFreeModelsFromDocs(html), ["jev-1.13-free"]);
+});
+
 test("upsertChangelogJson: ersetzt Eintrag mit gleicher id und entfernt leere Einträge", () => {
   const existing = {
     entries: [

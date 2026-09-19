@@ -349,7 +349,7 @@ export function parseZenEndpointIds(html) {
  * Parst die Zen-Doku (`https://opencode.ai/docs/de/zen/`) und extrahiert die
  * kostenlosen Modelle. Die „Endpunkte“-Tabelle liefert die Model-IDs (per
  * normalisiertem Namen), die „Preise“-Tabelle markiert die gratis Zeilen
- * (Input-Spalte = „Free“). Beide werden über den Modellnamen korreliert.
+ * (Input-Spalte = „Free“ oder deutsch „Kostenlos“). Beide werden über den Modellnamen korreliert.
  * Ergebnis: deduplizierte, sortierte Liste der kostenlosen Model-IDs.
  */
 export function extractFreeModelsFromDocs(html) {
@@ -361,7 +361,7 @@ export function extractFreeModelsFromDocs(html) {
     const cells = $(tr).find("td");
     const name = $(cells[0]).text().trim();
     const input = $(cells[1]).text().trim().toLowerCase();
-    if (input === "free") {
+    if (input === "free" || input === "kostenlos") {
       const id = idsByName.get(normalizeName(name));
       if (id) free.push(id);
     }
