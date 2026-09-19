@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-18T10:03:10.426Z",
+  "fetchedAt": "2026-09-19T08:34:35.849Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1455,6 +1455,28 @@
       "provider": "OpenCode Stealth",
       "fullId": "opencode/big-pickle",
       "name": "Big Pickle",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "jev-1.13-free",
+      "availableFrom": "2026-09-19",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": false,
+        "toolCall": false
+      },
+      "contextWindow": 64000,
+      "provider": null,
+      "fullId": "opencode/jev-1.13-free",
+      "name": "Jev 1.13 Free",
       "privacy": {
         "training": true,
         "validUntil": null
