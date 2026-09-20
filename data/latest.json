@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-19T08:34:35.849Z",
+  "fetchedAt": "2026-09-20T16:22:22.092Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1463,20 +1463,10 @@
     {
       "id": "jev-1.13-free",
       "availableFrom": "2026-09-19",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": false,
-        "toolCall": false
-      },
-      "contextWindow": 64000,
+      "capabilities": null,
+      "contextWindow": null,
       "provider": null,
       "fullId": "opencode/jev-1.13-free",
-      "name": "Jev 1.13 Free",
       "privacy": {
         "training": true,
         "validUntil": null
