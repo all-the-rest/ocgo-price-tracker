@@ -65,6 +65,7 @@ function buildJsonLd(lang) {
     "@type": "ListItem",
     position: i + 1,
     name: m.name,
+    // Kanonischer Abschnitt-Anker — Wert aus `src/headings.ts` (HEADING_IDS.prices).
     url: meta.canonical + "#prices",
   }));
   const faqItems = (faq[lang] ?? []).map((f) => ({

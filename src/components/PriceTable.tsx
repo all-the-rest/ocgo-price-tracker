@@ -1,5 +1,6 @@
 import { createMemo, For, onCleanup, onMount, Show } from "solid-js";
 import type { Translation } from "../i18n";
+import { HEADING_IDS } from "../headings";
 import Heading from "./Heading";
 import type { Basis, Model, PeakHours, Plan } from "../types";
 import { fmt, fmtContextWindow, fmtPricing } from "../util";
@@ -167,9 +168,9 @@ export default function PriceTable(props: PriceTableProps) {
   };
 
   return (
-    <section id="prices" class="mt-10">
+    <section id={HEADING_IDS.prices} class="mt-10">
       <div class="flex items-center justify-between gap-3">
-        <Heading anchor="prices">{props.t.headingPrices}</Heading>
+        <Heading anchor={HEADING_IDS.prices}>{props.t.headingPrices}</Heading>
         <button class="btn btn-sm" onClick={openShareDialog} aria-haspopup="dialog">
           <span class="icon-[material-symbols--share] h-4 w-4" aria-hidden="true" />
           {props.t.share}

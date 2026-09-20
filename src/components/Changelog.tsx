@@ -1,5 +1,6 @@
 import { For, Show, createSignal, onMount } from "solid-js";
 import type { Lang, Translation } from "../i18n";
+import { HEADING_IDS } from "../headings";
 import Heading, { AnchorLink } from "./Heading";
 import type { Change, ChangelogEntry, Plan, PriceField, PricingType } from "../types";
 import { fmt, formatFreeModelName } from "../util";
@@ -217,8 +218,8 @@ export default function Changelog(props: ChangelogProps) {
   };
 
   return (
-    <section id="changelog" class="mt-10">
-      <Heading anchor="changelog">{props.t.headingChangelog}</Heading>
+    <section id={HEADING_IDS.changelog} class="mt-10">
+      <Heading anchor={HEADING_IDS.changelog}>{props.t.headingChangelog}</Heading>
       <div class="mt-2 max-w-3xl text-sm leading-relaxed text-base-content/80">
         <For each={visibleEntries()}>
           {(entry) => (

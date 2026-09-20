@@ -2,6 +2,7 @@ import { createEffect, createMemo, createSignal, For, onMount } from "solid-js";
 import type { Model, PeakHours } from "../types";
 import type { CapId } from "../capabilities";
 import type { Lang } from "../i18n";
+import { HEADING_IDS } from "../headings";
 import {
   DEFAULT_SHARE,
   SHARE_SIZES,
@@ -99,7 +100,7 @@ export default function ShareDialog(props: ShareDialogProps) {
   const st = () => shareI18n[shareLang()];
 
   onMount(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#share") openShareDialog();
+    if (typeof window !== "undefined" && window.location.hash === `#${HEADING_IDS.share}`) openShareDialog();
   });
 
   const cfg = createMemo<ShareConfig>(() => ({

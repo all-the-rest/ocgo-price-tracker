@@ -1,5 +1,6 @@
 import { createMemo, For, Show } from "solid-js";
 import type { Translation } from "../i18n";
+import { HEADING_IDS } from "../headings";
 import Heading from "./Heading";
 import type { FreeModel, Model, Privacy } from "../types";
 import { fmtDateOnly, formatFreeModelName } from "../util";
@@ -80,8 +81,8 @@ export default function PrivacyTable(props: PrivacyTableProps) {
   };
 
   return (
-    <section id="privacy" class="mt-10">
-      <Heading anchor="privacy">{props.t.headingPrivacy}</Heading>
+    <section id={HEADING_IDS.privacy} class="mt-10">
+      <Heading anchor={HEADING_IDS.privacy}>{props.t.headingPrivacy}</Heading>
       <p class="mt-1 text-sm text-base-content/90">{props.t.privacyNote}</p>
       <div class="mt-4 max-w-full overflow-x-auto">
         <table class="table table-sm table-zebra">

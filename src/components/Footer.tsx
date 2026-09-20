@@ -1,5 +1,6 @@
 import type { Translation } from "../i18n";
 import type { PriceData } from "../types";
+import { HEADING_IDS } from "../headings";
 import { resolvePlan } from "../plans";
 import { BUILD_TIME_ISO } from "../buildInfo";
 import { fmtDate, fmtPricing } from "../util";
@@ -53,10 +54,10 @@ export default function Footer(props: FooterProps) {
           >
             {props.t.rssFeed}
           </a>
-          <a href="#impressum" class="underline" onClick={(e) => scrollToSection("impressum", e)}>
+          <a href={`#${HEADING_IDS.imprint}`} class="underline" onClick={(e) => scrollToSection(HEADING_IDS.imprint, e)}>
             {props.t.impressum}
           </a>
-          <a href="#datenschutz" class="underline" onClick={(e) => scrollToSection("datenschutz", e)}>
+          <a href={`#${HEADING_IDS.privacyPolicy}`} class="underline" onClick={(e) => scrollToSection(HEADING_IDS.privacyPolicy, e)}>
             {props.t.datenschutz}
           </a>
         </div>

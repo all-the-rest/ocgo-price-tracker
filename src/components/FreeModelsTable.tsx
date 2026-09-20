@@ -1,5 +1,6 @@
 import { createMemo, For, Show } from "solid-js";
 import type { Translation } from "../i18n";
+import { HEADING_IDS } from "../headings";
 import Heading from "./Heading";
 import type { FreeModel } from "../types";
 import { fmtContextWindow, fmtDateOnly, formatFreeModelName } from "../util";
@@ -54,8 +55,8 @@ export default function FreeModelsTable(props: FreeModelsTableProps) {
 
   return (
     <Show when={props.freeModels.length > 0}>
-      <section id="free" class="mt-10">
-        <Heading anchor="free">{props.t.headingFree}</Heading>
+      <section id={HEADING_IDS.freeModels} class="mt-10">
+        <Heading anchor={HEADING_IDS.freeModels}>{props.t.headingFree}</Heading>
         <p class="mt-1 text-sm text-base-content/70">{props.t.freeModelsNote}</p>
         <CapabilityFilter value={() => props.caps} setter={props.setCaps} t={props.t} />
         <div class="mt-4 w-full overflow-x-auto">

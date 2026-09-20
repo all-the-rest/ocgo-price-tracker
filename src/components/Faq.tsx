@@ -1,5 +1,6 @@
 import { For } from "solid-js";
 import type { Lang, Translation } from "../i18n";
+import { HEADING_IDS } from "../headings";
 import Heading from "./Heading";
 import { fmtPricing } from "../util";
 import faqJson from "../data/faq.json";
@@ -26,8 +27,8 @@ interface FaqProps {
 export default function Faq(props: FaqProps) {
   const items = () => FAQ[props.lang] ?? [];
   return (
-    <section id="faq" class="mt-10">
-      <Heading anchor="faq">{props.t.headingFaq}</Heading>
+    <section id={HEADING_IDS.faq} class="mt-10">
+      <Heading anchor={HEADING_IDS.faq}>{props.t.headingFaq}</Heading>
       <div class="mt-3 flex max-w-3xl flex-col gap-2">
         <For each={items()}>
           {(item) => (

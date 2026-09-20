@@ -1,5 +1,6 @@
 import { For } from "solid-js";
 import type { Lang, Translation } from "../i18n";
+import { HEADING_IDS } from "../headings";
 import type { Model, Plan } from "../types";
 import Heading from "./Heading";
 import { fmt, fmtContextWindow, fmtPricing } from "../util";
@@ -44,8 +45,8 @@ export default function ModelRanking(props: ModelRankingProps) {
     value === null ? props.t.noValue : !Number.isFinite(value) ? "∞" : formatReqPerMonth(value, props.lang);
 
   return (
-    <section id="ranking" class="mt-10">
-      <Heading anchor="ranking">{props.t.headingRanking}</Heading>
+    <section id={HEADING_IDS.ranking} class="mt-10">
+      <Heading anchor={HEADING_IDS.ranking}>{props.t.headingRanking}</Heading>
       <p class="mt-2 max-w-3xl text-sm leading-relaxed text-base-content/70">
         {fmtPricing(props.t.rankingIntro, props.plan.creditsMonthly, props.plan.priceMonthly)}
       </p>

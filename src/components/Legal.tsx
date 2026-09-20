@@ -1,4 +1,5 @@
 import type { Translation } from "../i18n";
+import { HEADING_IDS } from "../headings";
 import Heading from "./Heading";
 
 interface LegalProps {
@@ -8,8 +9,8 @@ interface LegalProps {
 export default function Legal(props: LegalProps) {
   return (
     <>
-      <section id="impressum" class="mt-10">
-        <Heading anchor="impressum">{props.t.impressum}</Heading>
+      <section id={HEADING_IDS.imprint} class="mt-10">
+        <Heading anchor={HEADING_IDS.imprint}>{props.t.impressum}</Heading>
         <div class="mt-2 text-sm leading-relaxed text-base-content/80">
           <p class="font-medium">Florian Reisinger</p>
           <p>Robert-Stolz-Straße 8</p>
@@ -24,8 +25,8 @@ export default function Legal(props: LegalProps) {
         </div>
       </section>
 
-      <section id="datenschutz" class="mt-10">
-        <Heading anchor="datenschutz">{props.t.datenschutz}</Heading>
+      <section id={HEADING_IDS.privacyPolicy} class="mt-10">
+        <Heading anchor={HEADING_IDS.privacyPolicy}>{props.t.datenschutz}</Heading>
         <div class="mt-2 max-w-3xl space-y-3 text-sm leading-relaxed text-base-content/80">
           <p>
             Ihre Rechte: Auskunft, Berichtigung, Löschung, Einschränkung und Widerspruch — Kontakt
