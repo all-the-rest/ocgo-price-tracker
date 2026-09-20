@@ -10,7 +10,7 @@ const out = (viewport: string, file: string) =>
   path.resolve(process.cwd(), uiReviewConfig.outputDir, "filled", viewport, file);
 
 const THEME_TOGGLE = "input.theme-controller";
-const EXPECTED_TITLE = "Price Tracking for OpenCode Go";
+const EXPECTED_TITLE = "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs";
 
 async function loadWithEmptyStorage(
   page: import("@playwright/test").Page,

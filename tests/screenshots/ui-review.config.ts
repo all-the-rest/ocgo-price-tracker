@@ -37,7 +37,7 @@ export const uiReviewConfig: UiReviewConfig = {
       states: ["filled"],
       elements: ["#privacy", "#changelog"],
       note: "Statische Pricing-Seite (Daten beim Build importiert) — kein sinnvoller Empty-State.",
-      expectedTitle: "Price Tracking for OpenCode Go",
+      expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
     },
     {
       name: "home-de",
@@ -45,7 +45,7 @@ export const uiReviewConfig: UiReviewConfig = {
       states: ["filled"],
       elements: ["#privacy", "#changelog"],
       note: "Deutsche Variante zur i18n-Kontrolle; Default-Lang ist en (Browser-Locale).",
-      expectedTitle: "Price Tracking for OpenCode Go",
+      expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
     },
     {
       name: "home-dark",
@@ -53,7 +53,7 @@ export const uiReviewConfig: UiReviewConfig = {
       states: ["filled"],
       elements: ["#privacy", "#changelog"],
       note: "Dark-Mode-Variante (data-theme=dark) — prüft Farben/Kontrast im dunklen Theme.",
-      expectedTitle: "Price Tracking for OpenCode Go",
+      expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
     },
     {
       name: "home-de-dark",
@@ -61,7 +61,7 @@ export const uiReviewConfig: UiReviewConfig = {
       states: ["filled"],
       elements: ["#privacy", "#changelog"],
       note: "Deutsche Dark-Mode-Variante — prüft i18n + dunkles Theme zusammen.",
-      expectedTitle: "Price Tracking for OpenCode Go",
+      expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
     },
   ],
 };

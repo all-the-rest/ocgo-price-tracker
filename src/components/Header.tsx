@@ -58,7 +58,7 @@ export default function Header(props: HeaderProps) {
           </ul>
         </div>
         <a
-          href={window.location.pathname}
+          href="./"
           class="inline-flex items-center"
           aria-label={
             props.lang === "de" ? "Preis-Tracking für OpenCode Go — Start" : "Price Tracking for OpenCode Go — Home"

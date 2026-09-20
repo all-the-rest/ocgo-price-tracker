@@ -33,7 +33,7 @@ import path from "node:path";
 import process from "node:process";
 import { SHARE_SIZES, SHARE_TOP_N, autoTopN } from "../../src/share";
 
-const EXPECTED_TITLE = "Price Tracking for OpenCode Go";
+const EXPECTED_TITLE = "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs";
 const OUT_DIR = path.resolve(process.cwd(), "test-results", "ui-screenshots", "share-card");
 const SITE = "ocgo-pricing.all-the.rest";
 

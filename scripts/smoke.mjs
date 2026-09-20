@@ -70,6 +70,51 @@ async function main() {
       ok("GET / → 200");
       if (!root.includes('id="root"')) fail("GET / enthält keinen App-Root (id=\"root\") — kaputtes Bundle?");
       else ok("App-Root vorhanden");
+      // SEO: vorgerenderter Inhalt statt leerem SPA-Root.
+      if (!/<div id="root">[\s\S]{200,}<\/div>\s*<\/body>/.test(root)) {
+        fail("GET / enthält kein vorgerendertes Markup in #root (Prerender fehlt?)");
+      } else ok("vorgerendertes Markup in #root");
+      if (!root.includes("<h1")) fail("GET / enthält kein <h1>");
+      else ok("<h1> vorhanden");
+      if (!/application\/ld\+json/.test(root)) fail("GET / enthält kein JSON-LD");
+      else {
+        const ld = root.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+        try {
+          JSON.parse(ld[1].replace(/\\u003c/g, "<"));
+          ok("JSON-LD parsebar");
+        } catch (e) {
+          fail(`JSON-LD nicht parsebar: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+      if (!root.includes('hreflang="de"')) fail("GET / ohne hreflang de");
+      else ok("hreflang vorhanden");
+    }
+
+    // Sprach-Subroute Deutsch.
+    try {
+      const res = await fetch(`${BASE}/de/`);
+      if (!res.ok) fail(`GET /de/ → HTTP ${res.status}`);
+      else {
+        const de = await res.text();
+        ok("GET /de/ → 200");
+        if (!/lang="de"/.test(de)) fail("/de/ hat nicht lang=\"de\"");
+        else ok("/de/ lang=de");
+        if (!/canonical" href="[^"]*\/de\/"/.test(de)) fail("/de/ canonical zeigt nicht auf /de/");
+        else ok("/de/ canonical");
+      }
+    } catch (e) {
+      fail(`/de/: ${e instanceof Error ? e.message : String(e)}`);
+    }
+
+    // SEO-Dateien.
+    for (const file of ["robots.txt", "sitemap.xml"]) {
+      try {
+        const res = await fetch(`${BASE}/${file}`);
+        if (!res.ok) fail(`GET /${file} → HTTP ${res.status}`);
+        else ok(`GET /${file} → 200`);
+      } catch (e) {
+        fail(`/${file}: ${e instanceof Error ? e.message : String(e)}`);
+      }
     }
 
     try {

@@ -1,6 +1,7 @@
 import type { Translation } from "../i18n";
 import type { PriceData } from "../types";
 import { resolvePlan } from "../plans";
+import { BUILD_TIME_ISO } from "../buildInfo";
 import { fmtDate, fmtPricing } from "../util";
 
 interface FooterProps {

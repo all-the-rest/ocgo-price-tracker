@@ -64,7 +64,7 @@ export default function ShareDialog(props: ShareDialogProps) {
   const qpLang = qp?.get("lang");
   let storedShareLang: string | null = null;
   try {
-    storedShareLang = typeof localStorage !== "undefined" ? localStorage.getItem("ocgo-share-lang") : null;
+    storedShareLang = typeof window !== "undefined" ? localStorage.getItem("ocgo-share-lang") : null;
   } catch {
     storedShareLang = null;
   }

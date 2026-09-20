@@ -1,6 +1,7 @@
-import { createEffect, createSignal, Show } from "solid-js";
+import { createEffect, createSignal, onMount, Show } from "solid-js";
 import type { Basis, ChangelogData, PlanId, PriceData } from "./types";
 import { i18n, type Lang } from "./i18n";
+import { BUILD_TIME_ISO } from "./buildInfo";
 import { VALID_SORT, type FreeSortState, type PrivacySortState, type SortState } from "./sort";
 import { CAP_IDS, type CapId } from "./capabilities";
 import { DEFAULT_PLAN_ID, TAB_PLAN_IDS, isTabPlan, resolvePlan } from "./plans";
@@ -8,8 +9,10 @@ import Header from "./components/Header";
 import Hero from "./components/Hero";
 import PlanTabs from "./components/PlanTabs";
 import PriceTable from "./components/PriceTable";
+import ModelRanking from "./components/ModelRanking";
 import FreeModelsTable from "./components/FreeModelsTable";
 import PrivacyTable from "./components/PrivacyTable";
+import Faq from "./components/Faq";
 import Changelog from "./components/Changelog";
 import Legal from "./components/Legal";
 import Footer from "./components/Footer";
@@ -20,8 +23,10 @@ import changelogJson from "./data/changelog.json";
 const data = dataJson as unknown as PriceData;
 const changelogData = changelogJson as unknown as ChangelogData;
 
-const storedLang = typeof localStorage !== "undefined" ? localStorage.getItem("lang") : null;
-const storedTheme = typeof localStorage !== "undefined" ? localStorage.getItem("theme") : null;
+// `typeof window` statt `typeof localStorage`: In Node (SSR-Build) würde der
+// Zugriff auf das globale `localStorage` eine Experimental-Warnung auslösen.
+const storedLang = typeof window !== "undefined" ? localStorage.getItem("lang") : null;
+const storedTheme = typeof window !== "undefined" ? localStorage.getItem("theme") : null;
 const browserLang =
   typeof navigator !== "undefined" ? (navigator.language || "").toLowerCase() : "";
 const defaultLang: Lang =
@@ -72,7 +77,6 @@ function readParams(): {
   const fcap = parseCaps(p.get("fcap"));
   return { plan, sort, fsort, psort, basis, lang, theme, cap, fcap };
 }
-const params = readParams();
 
 function prefersDarkSystem(): boolean {
   return (
@@ -93,9 +97,43 @@ function resolveInitialDark(
   return prefersDarkSystem();
 }
 
-export default function App() {
-  const [lang, setLang] = createSignal<Lang>(params.lang ?? defaultLang);
-  const [dark, _setDark] = createSignal<boolean>(resolveInitialDark(params.theme, storedTheme));
+/**
+ * Kanonischer Pfad für eine Sprache: Englisch ohne Präfix, Deutsch unter `/de`.
+ * Die Seiten werden beim Build für beide Sprachen vorgerendert
+ * (`dist/index.html`, `dist/de/index.html`).
+ */
+function langPath(lang: Lang): string {
+  const raw = typeof window !== "undefined" ? window.location.pathname : "/";
+  const stripped = raw.replace(/^\/de(?=\/|$)/, "") || "/";
+  if (lang === "en") return stripped;
+  return stripped === "/" ? "/de/" : "/de" + stripped;
+}
+
+/** Sprache aus dem Pfadpräfix — synchron, damit die Hydration zum File passt. */
+function pathLang(): Lang {
+  if (typeof window === "undefined") return "en";
+  return /^\/de(\/|$)/.test(window.location.pathname) ? "de" : "en";
+}
+
+/** Vom Inline-Script in index.html gesetztes Theme (vermeidet Hell-Flackern). */
+function initialDark(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    (window as unknown as { __OCGO_THEME_DARK__?: boolean }).__OCGO_THEME_DARK__ === true
+  );
+}
+
+interface AppProps {
+  /** Beim Prerender erzwungene Sprache (Server). Client leitet sie aus dem Pfad ab. */
+  initialLang?: Lang;
+}
+
+export default function App(props: AppProps = {}) {
+  // SSR- und Client-Erstrender müssen identisch sein: Default `en` (bzw. die
+  // beim Prerender erzwungene Sprache). Gespeicherte Sprache/Browser-Locale und
+  // `?lang=…`/Sortierung/Filter werden erst NACH der Hydration angewendet.
+  const [lang, setLang] = createSignal<Lang>(props.initialLang ?? pathLang());
+  const [dark, _setDark] = createSignal<boolean>(initialDark());
   // Explicit user toggle: always persist, so first load (system default)
   // leaves localStorage untouched until the user actually toggles.
   const setDark = (v: boolean) => {
@@ -106,22 +144,45 @@ export default function App() {
       // ignore (private mode etc.)
     }
   };
-  const [basis, setBasis] = createSignal<Basis>(
-    params.basis ?? "full"
-  );
-  const [planId, setPlanId] = createSignal<PlanId>(params.plan ?? DEFAULT_PLAN_ID);
-  const [sort, setSort] = createSignal<SortState>(params.sort ?? { field: "requests", dir: -1 });
-  const [freeSort, setFreeSort] = createSignal<FreeSortState>(
-    params.fsort ?? { field: "availableFrom", dir: -1 }
-  );
-  const [privacySort, setPrivacySort] = createSignal<PrivacySortState>(
-    params.psort ?? { field: "tier", dir: 1 }
-  );
-  const [caps, setCaps] = createSignal<CapId[]>(params.cap ?? []);
-  const [freeCaps, setFreeCaps] = createSignal<CapId[]>(params.fcap ?? []);
+  const [basis, setBasis] = createSignal<Basis>("full");
+  const [planId, setPlanId] = createSignal<PlanId>(DEFAULT_PLAN_ID);
+  const [sort, setSort] = createSignal<SortState>({ field: "requests", dir: -1 });
+  const [freeSort, setFreeSort] = createSignal<FreeSortState>({ field: "availableFrom", dir: -1 });
+  const [privacySort, setPrivacySort] = createSignal<PrivacySortState>({ field: "tier", dir: 1 });
+  const [caps, setCaps] = createSignal<CapId[]>([]);
+  const [freeCaps, setFreeCaps] = createSignal<CapId[]>([]);
   const [showTraining, setShowTraining] = createSignal(true);
 
   const t = () => i18n[lang()];
+
+  onMount(() => {
+    // Gespeicherte Sprache, `?lang=…` und alle weiteren Query-Parameter erst
+    // nach der Hydration anwenden — vorher rendert der Client exakt das
+    // vorgerenderte Markup.
+    const p = readParams();
+    // Reihenfolge: explizites `?lang=` gewinnt, sonst die gespeicherte Wahl,
+    // sonst bleibt die aus dem Pfadpräfix abgeleitete Sprache bestehen.
+    // Sprache: Der Pfad (`/de/`) ist die Quelle der Wahrheit; `?lang=` gewinnt
+    // als expliziter Alias. Auf der präfixlosen Standardseite wird eine frühere
+    // Wahl aus localStorage angewandt, sonst (ohne Wahl) die Browser-Sprache
+    // (`de*` → `/de/`). Beides läuft erst nach der Hydration und führt über den
+    // URL-Effekt auf die kanonische Pfadform — nicht umgekehrt, sonst würde
+    // `/de/` überschrieben. Crawler (ohne navigator) bleiben auf Englisch.
+    const stored: Lang | null = storedLang === "de" || storedLang === "en" ? storedLang : null;
+    const browserDe =
+      typeof navigator !== "undefined" && (navigator.language || "").toLowerCase().startsWith("de");
+    if (p.lang) setLang(p.lang);
+    else if (pathLang() === "en" && stored) setLang(stored);
+    else if (pathLang() === "en" && browserDe) setLang("de");
+    if (p.plan) setPlanId(p.plan);
+    if (p.basis) setBasis(p.basis);
+    if (p.sort) setSort(p.sort);
+    if (p.fsort) setFreeSort(p.fsort);
+    if (p.psort) setPrivacySort(p.psort);
+    if (p.cap) setCaps(p.cap);
+    if (p.fcap) setFreeCaps(p.fcap);
+    _setDark(resolveInitialDark(p.theme, storedTheme));
+  });
 
   // Aktuell genau ein Tab-Plan → keine sichtbaren Tabs; die Hülle ist bereit
   // für weitere Pläne (dann: Tabs einblenden, Modelle pro Plan filtern).
@@ -172,14 +233,17 @@ export default function App() {
     else p.set("psort", `${ps.field}:${ps.dir === 1 ? "asc" : "desc"}`);
     if (basis() === defaultBasis) p.delete("basis");
     else p.set("basis", basis());
-    if (lang() === defaultLang) p.delete("lang");
-    else p.set("lang", lang());
+    // Sprache steckt jetzt im Pfad (`/` bzw. `/de/`) — den Alias `?lang`
+    // entfernen, damit die kanonische URL eindeutig bleibt (alte Links werden
+    // beim Laden weiterhin akzeptiert, siehe onMount).
+    p.delete("lang");
     if (caps().length === 0) p.delete("cap");
     else p.set("cap", caps().join(","));
     if (freeCaps().length === 0) p.delete("fcap");
     else p.set("fcap", freeCaps().join(","));
     const qs = p.toString();
-    const url = (qs ? window.location.pathname + "?" + qs : window.location.pathname) + window.location.hash;
+    const base = langPath(lang());
+    const url = (qs ? base + "?" + qs : base) + window.location.hash;
     history.replaceState(null, "", url);
   });
 
@@ -192,7 +256,7 @@ export default function App() {
     setLang(defaultLang);
     setCaps([]);
     setFreeCaps([]);
-    history.replaceState(null, "", window.location.pathname);
+    history.replaceState(null, "", langPath(defaultLang));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -212,7 +276,7 @@ export default function App() {
           models={data.models}
           lang={lang()}
           dark={dark()}
-          fetchedAt={data.fetchedAt}
+          fetchedAt={BUILD_TIME_ISO}
           site="ocgo-pricing.all-the.rest"
           peakHours={data.peakHours}
           caps={caps()}
@@ -232,6 +296,7 @@ export default function App() {
           plan={plan()}
           peakHours={data.peakHours}
         />
+        <ModelRanking models={data.models} t={t()} lang={lang()} plan={plan()} />
         <FreeModelsTable
           freeModels={data.freeModels}
           t={t()}
@@ -249,6 +314,7 @@ export default function App() {
           sort={privacySort()}
           setSort={setPrivacySort}
         />
+        <Faq t={t()} lang={lang()} credit={plan().creditsMonthly} cost={plan().priceMonthly} />
         <Changelog entries={changelogData.entries} t={t()} lang={lang()} plan={plan()} />
         <Legal t={t()} />
       </main>

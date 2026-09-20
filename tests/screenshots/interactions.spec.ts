@@ -19,7 +19,7 @@ import process from "node:process";
 import { readFileSync } from "node:fs";
 import { fmtContextWindow } from "../../src/util";
 
-const EXPECTED_TITLE = "Price Tracking for OpenCode Go";
+const EXPECTED_TITLE = "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs";
 const OUT_DIR = path.resolve(process.cwd(), "test-results", "ui-screenshots", "interactions");
 
 function viewportForProject(projectName: string): "mobile" | "desktop" {
