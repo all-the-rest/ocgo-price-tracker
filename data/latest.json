@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-20T16:22:22.092Z",
+  "fetchedAt": "2026-09-21T16:01:12.846Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1281,6 +1281,82 @@
       "contextWindow": 256000,
       "id": "opencode-go/hy3",
       "provider": "Tencent"
+    },
+    {
+      "name": "Grok 4.7",
+      "tier": "≤ 200K tokens",
+      "input": 2,
+      "output": 6,
+      "cachedRead": 0.5,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 390,
+        "cachedRead": 32500,
+        "output": 120
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 8,
+      "effectiveOutput": 24,
+      "effectiveCachedRead": 2,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 500000,
+      "id": "opencode-go/grok-4.7",
+      "provider": "xAI"
+    },
+    {
+      "name": "Grok 4.7",
+      "tier": "> 200K tokens",
+      "input": 4,
+      "output": 12,
+      "cachedRead": 1,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 390,
+        "cachedRead": 32500,
+        "output": 120
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 16,
+      "effectiveOutput": 48,
+      "effectiveCachedRead": 4,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 500000,
+      "id": "opencode-go/grok-4.7",
+      "provider": "xAI"
     },
     {
       "name": "Grok 4.6",
