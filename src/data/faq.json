@@ -13,10 +13,6 @@
       "a": "Model price × documented request pattern: input tokens at 5% input price + 95% cache-write price, cached tokens at the cached-read price, output tokens at the output price."
     },
     {
-      "q": "Which model gives the most requests for the money?",
-      "a": "See the model ranking above — it lists models by requests per month on the full credit."
-    },
-    {
       "q": "Are there free models?",
       "a": "Yes, via OpenCode Zen. They are listed in the free models table and cost nothing per request."
     },
@@ -37,10 +33,6 @@
     {
       "q": "Wie werden die Kosten pro Anfrage berechnet?",
       "a": "Modellpreis × dokumentiertes Anfragemuster: Input-Tokens zu 5% Input-Preis + 95% Cached-Write-Preis, Cached-Tokens zum Cached-Read-Preis, Output-Tokens zum Output-Preis."
-    },
-    {
-      "q": "Welches Modell liefert die meisten Anfragen fürs Geld?",
-      "a": "Siehe Modell-Ranking oben — dort stehen die Modelle nach Anfragen pro Monat beim vollen Guthaben."
     },
     {
       "q": "Gibt es kostenlose Modelle?",

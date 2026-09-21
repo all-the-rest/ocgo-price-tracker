@@ -9,7 +9,6 @@ import Header from "./components/Header";
 import Hero from "./components/Hero";
 import PlanTabs from "./components/PlanTabs";
 import PriceTable from "./components/PriceTable";
-import ModelRanking from "./components/ModelRanking";
 import FreeModelsTable from "./components/FreeModelsTable";
 import PrivacyTable from "./components/PrivacyTable";
 import Faq from "./components/Faq";
@@ -296,7 +295,6 @@ export default function App(props: AppProps = {}) {
           plan={plan()}
           peakHours={data.peakHours}
         />
-        <ModelRanking models={data.models} t={t()} lang={lang()} plan={plan()} />
         <FreeModelsTable
           freeModels={data.freeModels}
           t={t()}

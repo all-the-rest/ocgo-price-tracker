@@ -36,7 +36,6 @@ describe("HEADING_IDS (src/headings.ts)", () => {
       "privacy",
       "privacyPolicy",
       "prices",
-      "ranking",
       "share",
     ]) {
       assert.ok(keys.includes(k), `HEADING_IDS fehlt Schlüssel: ${k}`);
@@ -110,7 +109,6 @@ describe("Komponenten nutzen HEADING_IDS (keine hartkodierten Anker)", () => {
   it("alle Abschnitts-Komponenten importieren HEADING_IDS", () => {
     const consumers = [
       "PriceTable.tsx",
-      "ModelRanking.tsx",
       "FreeModelsTable.tsx",
       "PrivacyTable.tsx",
       "Faq.tsx",
