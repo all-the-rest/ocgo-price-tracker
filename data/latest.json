@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-21T16:01:12.846Z",
+  "fetchedAt": "2026-09-21T23:27:46.676Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -364,7 +364,89 @@
       "provider": "Meituan"
     },
     {
-      "name": "MiMo V2.5",
+      "name": "MiMo-V2.6-Flash",
+      "tier": null,
+      "input": 0.14,
+      "output": 0.28,
+      "cachedRead": 0.0028,
+      "cachedWrite": null,
+      "usage": 60,
+      "pattern": {
+        "input": 830,
+        "cachedRead": 71500,
+        "output": 295
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "audio",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 1,
+      "effectiveInput": 0.14,
+      "effectiveOutput": 0.28,
+      "effectiveCachedRead": 0.0028,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1048576,
+      "id": "opencode-go/mimo-v2.6-flash",
+      "provider": "Xiaomi"
+    },
+    {
+      "name": "MiMo-V2.6-Pro",
+      "tier": null,
+      "input": 0.435,
+      "output": 0.87,
+      "cachedRead": 0.003625,
+      "cachedWrite": null,
+      "usage": 15,
+      "pattern": {
+        "input": 790,
+        "cachedRead": 86000,
+        "output": 305
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "audio",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 1.74,
+      "effectiveOutput": 3.48,
+      "effectiveCachedRead": 0.0145,
+      "effectiveCachedWrite": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1048576,
+      "id": "opencode-go/mimo-v2.6-pro",
+      "provider": "Xiaomi"
+    },
+    {
+      "name": "MiMo-V2.5",
       "tier": null,
       "input": 0.14,
       "output": 0.28,
@@ -404,7 +486,7 @@
       "provider": "Xiaomi"
     },
     {
-      "name": "MiMo V2.5 Pro",
+      "name": "MiMo-V2.5-Pro",
       "tier": null,
       "input": 0.435,
       "output": 0.87,
@@ -1298,7 +1380,8 @@
       "capabilities": {
         "input": [
           "text",
-          "image"
+          "image",
+          "pdf"
         ],
         "output": [
           "text"
@@ -1336,7 +1419,8 @@
       "capabilities": {
         "input": [
           "text",
-          "image"
+          "image",
+          "pdf"
         ],
         "output": [
           "text"
@@ -1590,6 +1674,32 @@
       "provider": "Xiaomi",
       "fullId": "opencode/mimo-v2.5-free",
       "name": "MiMo V2.5 Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "mimo-v2.6-flash-free",
+      "availableFrom": "2026-09-21",
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "audio",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 200000,
+      "provider": "Mimo",
+      "fullId": "opencode/mimo-v2.6-flash-free",
+      "name": "MiMo-V2.6-Flash Free",
       "privacy": {
         "training": true,
         "validUntil": null
