@@ -80887,7 +80887,7 @@
           "provider": "Meituan"
         },
         {
-          "name": "MiMo-V2.6-Flash",
+          "name": "MiMo V2.6 Flash",
           "tier": null,
           "input": 0.14,
           "output": 0.28,
@@ -80928,7 +80928,7 @@
           "provider": "Xiaomi"
         },
         {
-          "name": "MiMo-V2.6-Pro",
+          "name": "MiMo V2.6 Pro",
           "tier": null,
           "input": 0.435,
           "output": 0.87,
@@ -80969,7 +80969,7 @@
           "provider": "Xiaomi"
         },
         {
-          "name": "MiMo-V2.5",
+          "name": "MiMo V2.5",
           "tier": null,
           "input": 0.14,
           "output": 0.28,
@@ -81009,7 +81009,7 @@
           "provider": "Xiaomi"
         },
         {
-          "name": "MiMo-V2.5-Pro",
+          "name": "MiMo V2.5 Pro",
           "tier": null,
           "input": 0.435,
           "output": 0.87,
@@ -82222,7 +82222,7 @@
           "contextWindow": 200000,
           "provider": "Mimo",
           "fullId": "opencode/mimo-v2.6-flash-free",
-          "name": "MiMo-V2.6-Flash Free",
+          "name": "MiMo V2.6 Flash Free",
           "privacy": {
             "training": true,
             "validUntil": null

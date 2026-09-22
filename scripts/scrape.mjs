@@ -290,6 +290,39 @@ function splitTier(rawName) {
 const normalizeName = (s) => s.toLowerCase().replace(/[\s-]+/g, "");
 
 /**
+ * Kanonische Anzeige-Schreibweisen für Modelle, deren Name in der Doku
+ * zwischen Varianten schwankt (z. B. "MiMo-V2.5" mit Bindestrich vs.
+ * "MiMo V2.5" mit Leerzeichen). Schlüssel: normalisierter Name, Wert: die in
+ * `data/latest.json` und im Changelog verwendete Schreibweise. Neue Varianten
+ * hier ergänzen — das Diff matcht zusätzlich normalisiert (computeDiff), sodass
+ * eine reine Umbenennung niemals als model_added/model_removed gebucht wird.
+ */
+const MODEL_NAME_ALIASES = {
+  "mimov2.5": "MiMo V2.5",
+  "mimov2.5pro": "MiMo V2.5 Pro",
+  "mimov2.6flash": "MiMo V2.6 Flash",
+  "mimov2.6pro": "MiMo V2.6 Pro",
+};
+
+/**
+ * Normalisiert die Schreibweise eines Modellnamens auf die kanonische Form
+ * (MODEL_NAME_ALIASES); unbekannte Namen bleiben unverändert.
+ */
+export function canonicalModelName(name) {
+  return MODEL_NAME_ALIASES[normalizeName(name)] ?? name;
+}
+
+/**
+ * Normalisiert einen kostenlosen Zen-Anzeigenamen ("MiMo-V2.6-Flash Free" →
+ * "MiMo V2.6 Flash Free"); das " Free"-Suffix bleibt erhalten.
+ */
+export function canonicalFreeName(name) {
+  const m = /^(.*?)\s+free$/i.exec((name ?? "").trim());
+  if (!m) return canonicalModelName(name);
+  return `${canonicalModelName(m[1])} Free`;
+}
+
+/**
  * Fallback-Anfragemuster für Modelle, die in der Doku kein eigenes Muster
  * angeben, aber zur selben Modellfamilie gehören (normalisierte Namen).
  * Ohne ein Muster (eigenes oder Fallback) schlägt die zod-Validierung fehl.
@@ -547,7 +580,10 @@ function parseModel(cells, colMap, $usageCell = null) {
     return cell;
   };
 
-  const { name, tier } = splitTier(at(colMap.name).trim());
+  const { name: rawName, tier } = splitTier(at(colMap.name).trim());
+  // Schreibweisen normalisieren ("MiMo-V2.5" → "MiMo V2.5"): reine
+  // Bindestrich-/Leerzeichen-Varianten dürfen nie als add/remove diffen.
+  const name = canonicalModelName(rawName);
   const input = parsePrice(at(colMap.input));
   const output = parsePrice(at(colMap.output));
   const cachedRead = parsePrice(at(colMap.cachedRead));
@@ -945,6 +981,14 @@ export function parseHtml(html) {
 export const modelKey = (model) => (model.tier ? `${model.name} (${model.tier})` : model.name);
 
 /**
+ * Normalisierter Modell-Key für stille Anreicherungs-Vergleiche in main():
+ * reine Schreibvarianten ("MiMo-V2.5" vs. "MiMo V2.5") matchen, damit kein
+ * Phantom-Update die Daten-Dateien schreibt (Changelog-Events verhindert
+ * ohnehin der normalisierte Diff).
+ */
+export const normModelKey = (m) => normalizeName(modelKey(m));
+
+/**
  * Liest die in der Doku-Tabelle eingepreisten Nutzungs-Boni (seit 2026-09 zeigt
  * die Nutzungs-Zelle `<del>$15</del> <strong>$60</strong><br>
  * <small>4x · Endet am 20. Sept.</small>`). Liefert eine Map normalisierter
@@ -1231,7 +1275,9 @@ export function enrichFreeModels(freeModels, providerModels, metadataModels, goM
     // `id` bleibt der stabile Schlüssel (Merge, Changelog, Zen-Endpunkte).
     f.fullId = resolveOpencodeId(f.id, f.id) ?? `opencode/${f.id}`;
     const publicName = md?.name?.replace(/\s*\([^)]*\)\s*$/, "").trim();
-    if (publicName) f.name = publicName;
+    // Schreibweise normalisieren ("MiMo-V2.6-Flash Free" → "MiMo V2.6 Flash
+    // Free"); Namensänderungen erzeugen ohnehin keine Changelog-Events.
+    if (publicName) f.name = canonicalFreeName(publicName);
     f.privacy = FREE_MODEL_PRIVACY_OVERRIDES[normalizeName(f.id)] ?? { training: true, validUntil: null };
   }
   return freeModels;
@@ -1242,13 +1288,16 @@ export function enrichFreeModels(freeModels, providerModels, metadataModels, goM
  * Diffs im Stil der Pricing-Änderungen (undefined und null gelten als gleich).
  */
 export function computeCapabilityDiff(prevModels, nextModels) {
-  const prev = new Map(prevModels.map((m) => [modelKey(m), m]));
+  // Matching auf normalisiertem Key: reine Schreibvarianten ("MiMo-V2.5" vs.
+  // "MiMo V2.5") matchen, statt als add/remove zu diffen. Event-Key ist die
+  // bisherige Schreibweise (stabil).
+  const prev = new Map(prevModels.map((m) => [normalizeName(modelKey(m)), m]));
   const diffs = [];
   for (const m of nextModels) {
-    const before = prev.get(modelKey(m));
+    const before = prev.get(normalizeName(modelKey(m)));
     if (!before) continue;
     if (!capabilitiesEqual(before.capabilities, m.capabilities)) {
-      diffs.push({ key: modelKey(m), from: before.capabilities ?? null, to: m.capabilities ?? null });
+      diffs.push({ key: modelKey(before), from: before.capabilities ?? null, to: m.capabilities ?? null });
     }
   }
   return diffs;
@@ -1262,13 +1311,14 @@ export function computeCapabilityDiff(prevModels, nextModels) {
  * (Stufe unverändert, z. B. ZDR-Verlängerung) erzeugen ebenfalls keinen Event.
  */
 export function computePrivacyDiff(prevModels, nextModels) {
-  const prev = new Map(prevModels.map((m) => [modelKey(m), m]));
+  // Matching auf normalisiertem Key (siehe computeCapabilityDiff).
+  const prev = new Map(prevModels.map((m) => [normalizeName(modelKey(m)), m]));
   const diffs = [];
   for (const m of nextModels) {
-    const before = prev.get(modelKey(m));
+    const before = prev.get(normalizeName(modelKey(m)));
     if (!before || before.privacy == null) continue;
     if (!privacyStatusEqual(before.privacy, m.privacy)) {
-      diffs.push({ key: modelKey(m), from: before.privacy ?? null, to: m.privacy ?? null });
+      diffs.push({ key: modelKey(before), from: before.privacy ?? null, to: m.privacy ?? null });
     }
   }
   return diffs;
@@ -1311,12 +1361,23 @@ export const pricingOf = (model) => ({
  */
 const diffKey = (m) => (isOffPeakTier(m.tier) ? m.name : modelKey(m));
 
-export function computeDiff(prevModels, nextModels) {
-  const prev = new Map(prevModels.map((m) => [diffKey(m), m]));
-  const next = new Map(nextModels.map((m) => [diffKey(m), m]));
+/**
+ * Normalisierter Vergleichs-Key: Bindestrich-/Leerzeichen-Varianten desselben
+ * Modellnamens ("MiMo-V2.5" vs. "MiMo V2.5") matchen — eine reine Umbenennung
+ * wird nie als model_added/model_removed gebucht.
+ */
+const normDiffKey = (m) => normalizeName(diffKey(m));
 
-  const added = [...next.keys()].filter((k) => !prev.has(k));
-  const removed = [...prev.keys()].filter((k) => !next.has(k));
+export function computeDiff(prevModels, nextModels) {
+  const prev = new Map(prevModels.map((m) => [normDiffKey(m), m]));
+  const next = new Map(nextModels.map((m) => [normDiffKey(m), m]));
+
+  // Anzeige-Key für Events: bei Treffern die bisherige Schreibweise (stabil),
+  // bei echten Neuzugängen/Abgängen die eigene.
+  const displayKey = (k) => (prev.has(k) ? diffKey(prev.get(k)) : diffKey(next.get(k)));
+
+  const added = [...next.keys()].filter((k) => !prev.has(k)).map(displayKey);
+  const removed = [...prev.keys()].filter((k) => !next.has(k)).map(displayKey);
 
   const changed = [];
   for (const key of next.keys()) {
@@ -1331,7 +1392,7 @@ export function computeDiff(prevModels, nextModels) {
       near(from.cachedRead, to.cachedRead) &&
       near(from.cachedWrite, to.cachedWrite) &&
       from.usage === to.usage;
-    if (!same) changed.push({ key, from, to, offPeak: isOffPeakTier(after.tier) });
+    if (!same) changed.push({ key: displayKey(key), from, to, offPeak: isOffPeakTier(after.tier) });
   }
 
   return { added, removed, changed };
@@ -1341,18 +1402,27 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
   if (prevModels === null) return [];
 
   const { added, removed, changed } = computeDiff(prevModels, nextModels);
-  const nextById = new Map(nextModels.map((m) => [diffKey(m), m]));
-  const prevById = new Map((prevModels ?? []).map((m) => [diffKey(m), m]));
+  // Lookup auf normalisiertem Key: der Event-Key ist die stabile
+  // Anzeige-Schreibweise und kann von der jeweils anderen Seite abweichen.
+  const nextById = new Map(nextModels.map((m) => [normalizeName(diffKey(m)), m]));
+  const prevById = new Map((prevModels ?? []).map((m) => [normalizeName(diffKey(m)), m]));
+  // firstSeen ist nach Anzeige-Namen geschlüsselt (Historie) — zusätzlich
+  // normalisiert nachschlagen, damit ein Schreibwechsel weder `days` noch die
+  // 72h-Unterdrückung verfälscht. Nicht-String-Keys (Legacy) überspringen.
+  const firstSeenNorm = new Map(
+    [...firstSeen].filter(([k]) => typeof k === "string").map(([k, v]) => [normalizeName(k), v])
+  );
+  const seenSince = (key) => firstSeen.get(key) ?? firstSeenNorm.get(normalizeName(key));
   const changes = [];
 
   for (const key of added) {
-    const model = nextById.get(key);
+    const model = nextById.get(normalizeName(key));
     changes.push({ type: "model_added", model: key, pricing: model ? pricingOf(model) : null });
   }
   for (const key of removed) {
-    const first = firstSeen.get(key);
+    const first = seenSince(key);
     const days = first ? Math.max(0, Math.round((Date.parse(today) - Date.parse(first)) / 86_400_000)) : 0;
-    const prevModel = prevById.get(key);
+    const prevModel = prevById.get(normalizeName(key));
     changes.push({
       type: "model_removed",
       model: key,
@@ -1385,7 +1455,7 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
   const todayMs = Number.isNaN(Date.parse(today)) ? null : Date.parse(today);
   const addedWithin72h = (key) => {
     if (todayMs == null) return false;
-    const fs = firstSeen.get(key);
+    const fs = seenSince(key);
     if (fs == null) return false;
     const diffDays = Math.round((todayMs - Date.parse(fs)) / 86_400_000);
     return diffDays >= 0 && diffDays <= 3;
@@ -1789,8 +1859,10 @@ async function main() {
       // Auch kostenlose Modelle erfassen: deren Fähigkeiten werden oft
       // verzögert (models.dev) nachgeliefert — für die 72h-Unterdrückung der
       // capabilities_changed-Events muss das Erstbeobachtungsdatum herhalten.
+      // Legacy-Snapshots führen freie IDs als reine Strings (ohne Objekt).
       for (const f of snap.freeModels ?? []) {
-        if (!firstSeen.has(f.id)) firstSeen.set(f.id, day);
+        const fid = typeof f === "string" ? f : f?.id;
+        if (fid && !firstSeen.has(fid)) firstSeen.set(fid, day);
       }
     }
 
@@ -1821,12 +1893,12 @@ async function main() {
     // Stille, strukturelle privacy-Änderungen (Feld erstmals befüllt oder
     // Familien-Fallback): Daten-Dateien schreiben, aber KEINE Changelog-Events.
     const prevPrivacy = new Map([
-      ...(prev?.models ?? []).map((m) => [modelKey(m), m.privacy]),
+      ...(prev?.models ?? []).map((m) => [normModelKey(m), m.privacy]),
       ...(Array.isArray(prev?.freeModels) ? prev.freeModels : []).map((f) => [f.id, f.privacy]),
     ]);
     const privacyPopulated =
       prev !== null &&
-      [...models.map((m) => [modelKey(m), m.privacy]), ...freeModels.map((f) => [f.id, f.privacy])].some(
+      [...models.map((m) => [normModelKey(m), m.privacy]), ...freeModels.map((f) => [f.id, f.privacy])].some(
         ([key, p]) => p !== null && prevPrivacy.get(key) == null
       );
 
@@ -1834,7 +1906,7 @@ async function main() {
     // Daten-Dateien schreiben, aber KEINE Changelog-Events.
     const privacySilentUpdate =
       prev !== null &&
-      [...models.map((m) => [modelKey(m), m.privacy]), ...freeModels.map((f) => [f.id, f.privacy])].some(
+      [...models.map((m) => [normModelKey(m), m.privacy]), ...freeModels.map((f) => [f.id, f.privacy])].some(
         ([key, p]) => {
           const before = prevPrivacy.get(key);
           return p !== null && before != null && privacyStatusEqual(before, p) && !privacyEqual(before, p);
@@ -1849,11 +1921,11 @@ async function main() {
 
     // Modell-IDs befüllt/geändert (`opencode(-go)/<id>` für die UI):
     // Daten-Dateien schreiben, aber KEINE Changelog-Events — reine Anreicherung.
-    const prevIds = new Map((prev?.models ?? []).map((m) => [modelKey(m), m.id ?? null]));
+    const prevIds = new Map((prev?.models ?? []).map((m) => [normModelKey(m), m.id ?? null]));
     const modelIdsPopulated =
       prev !== null &&
       models.some((m) => {
-        const before = prevIds.get(modelKey(m)) ?? null;
+        const before = prevIds.get(normModelKey(m)) ?? null;
         return (m.id ?? null) !== before; // null↔Wert oder Wert↔Wert (Präfix-Änderung)
       });
 
@@ -1861,12 +1933,12 @@ async function main() {
     // aber KEINE Changelog-Events — reine Anreicherung. Erstbefüllung (vorheriger
     // Lauf hatte null/fehlend, jetzt ein Wert) zählt als Änderung.
     const prevCtx = new Map([
-      ...(prev?.models ?? []).map((m) => [modelKey(m), m.contextWindow ?? null]),
+      ...(prev?.models ?? []).map((m) => [normModelKey(m), m.contextWindow ?? null]),
       ...(Array.isArray(prev?.freeModels) ? prev.freeModels : []).map((f) => [f.id, f.contextWindow ?? null]),
     ]);
     const contextWindowPopulated =
       prev !== null &&
-      [...models.map((m) => [modelKey(m), m.contextWindow ?? null]), ...freeModels.map((f) => [f.id, f.contextWindow ?? null])].some(
+      [...models.map((m) => [normModelKey(m), m.contextWindow ?? null]), ...freeModels.map((f) => [f.id, f.contextWindow ?? null])].some(
         ([key, cw]) => cw !== (prevCtx.get(key) ?? null)
       );
 
@@ -1874,12 +1946,12 @@ async function main() {
     // aber KEINE Changelog-Events — reine Anreicherung. Erstbefüllung (vorheriger
     // Lauf hatte null/fehlend, jetzt ein Wert) zählt als Änderung.
     const prevProv = new Map([
-      ...(prev?.models ?? []).map((m) => [modelKey(m), m.provider ?? null]),
+      ...(prev?.models ?? []).map((m) => [normModelKey(m), m.provider ?? null]),
       ...(Array.isArray(prev?.freeModels) ? prev.freeModels : []).map((f) => [f.id, f.provider ?? null]),
     ]);
     const providerPopulated =
       prev !== null &&
-      [...models.map((m) => [modelKey(m), m.provider ?? null]), ...freeModels.map((f) => [f.id, f.provider ?? null])].some(
+      [...models.map((m) => [normModelKey(m), m.provider ?? null]), ...freeModels.map((f) => [f.id, f.provider ?? null])].some(
         ([key, p]) => p !== (prevProv.get(key) ?? null)
       );
 

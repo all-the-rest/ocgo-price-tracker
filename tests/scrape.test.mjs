@@ -34,6 +34,8 @@ import {
   computePrivacyDiff,
   normalizeChangelogIds,
   parseGermanDate,
+  canonicalModelName,
+  canonicalFreeName,
 } from "../scripts/scrape.mjs";
 
 const fixture = readFileSync(
@@ -420,6 +422,103 @@ test("computeDiff: erkennt Preisänderung mit Float-Toleranz", () => {
   assert.equal(diff.changed[0].key, "Alpha");
   assert.equal(diff.changed[0].from.input, 1);
   assert.equal(diff.changed[0].to.input, 1.5);
+});
+
+test("canonicalModelName: normalisiert MiMo-Bindestrich-Schreibweisen", () => {
+  assert.equal(canonicalModelName("MiMo-V2.5"), "MiMo V2.5");
+  assert.equal(canonicalModelName("MiMo-V2.5-Pro"), "MiMo V2.5 Pro");
+  assert.equal(canonicalModelName("MiMo-V2.6-Flash"), "MiMo V2.6 Flash");
+  assert.equal(canonicalModelName("MiMo-V2.6-Pro"), "MiMo V2.6 Pro");
+  assert.equal(canonicalModelName("MiMo V2.5"), "MiMo V2.5");
+  assert.equal(canonicalModelName("GLM-5.2"), "GLM-5.2");
+  assert.equal(canonicalModelName("Grok 4.5"), "Grok 4.5");
+});
+
+test("canonicalFreeName: normalisiert Free-Anzeigenamen, behält Suffix", () => {
+  assert.equal(canonicalFreeName("MiMo-V2.6-Flash Free"), "MiMo V2.6 Flash Free");
+  assert.equal(canonicalFreeName("Ox Alpha Free"), "Ox Alpha Free");
+});
+
+test("computeDiff: reine Schreibvariante (Bindestrich vs. Leerzeichen) ist kein add/remove", () => {
+  // Regression 2026-09-21: Die Doku wechselte "MiMo V2.5" → "MiMo-V2.5" bei
+  // identischen Preisen — das wurde fälschlich als model_added + model_removed
+  // gebucht. Eine reine Umbenennung darf nie ein add/remove werden.
+  const prev = [
+    { name: "MiMo V2.5", tier: null, usage: 60, input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
+    { name: "MiMo V2.5 Pro", tier: null, usage: 15, input: 0.435, output: 0.87, cachedRead: 0.003625, cachedWrite: null },
+  ];
+  const next = [
+    { name: "MiMo-V2.5", tier: null, usage: 60, input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
+    { name: "MiMo-V2.5-Pro", tier: null, usage: 15, input: 0.435, output: 0.87, cachedRead: 0.003625, cachedWrite: null },
+  ];
+  const diff = computeDiff(prev, next);
+  assert.deepEqual(diff.added, []);
+  assert.deepEqual(diff.removed, []);
+  assert.deepEqual(diff.changed, []);
+  assert.deepEqual(buildChanges(prev, next, [], [], "2026-09-22", new Map()), []);
+});
+
+test("buildChanges: Legacy-firstSeen mit undefined-Key bricht nicht", () => {
+  // Alte History-Snapshots führen freie IDs als reine Strings → f.id ist
+  // undefined und landet als Key in firstSeen (seit dem firstSeen-Root-Fix
+  // nicht mehr, defensiv trotzdem abgedeckt).
+  const fs = new Map([[undefined, "2026-08-05"]]);
+  assert.deepEqual(buildChanges(base, base, [], [], "2026-09-22", fs), []);
+});
+
+test("buildChanges: Schreibvariante mit Preisänderung → price_changed in stabiler Schreibweise", () => {
+  const prev = [
+    { name: "MiMo V2.5", tier: null, usage: 60, input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
+  ];
+  const next = [
+    { name: "MiMo-V2.5", tier: null, usage: 60, input: 0.2, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
+  ];
+  assert.deepEqual(buildChanges(prev, next, [], [], "2026-09-22", new Map()), [
+    {
+      type: "price_changed",
+      model: "MiMo V2.5",
+      from: { input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: 60 },
+      to: { input: 0.2, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: 60 },
+      fields: ["input"],
+    },
+  ]);
+});
+
+test("computeCapabilityDiff/computePrivacyDiff: matchen trotz Schreibvariante", () => {
+  const prev = [
+    {
+      name: "MiMo V2.5",
+      tier: null,
+      capabilities: { input: ["text"], output: ["text"], reasoning: false, toolCall: true },
+      privacy: { training: false, retentionDays: true, validUntil: null },
+    },
+  ];
+  const same = [
+    {
+      name: "MiMo-V2.5",
+      tier: null,
+      capabilities: { input: ["text"], output: ["text"], reasoning: false, toolCall: true },
+      privacy: { training: false, retentionDays: true, validUntil: null },
+    },
+  ];
+  assert.deepEqual(computeCapabilityDiff(prev, same), []);
+  assert.deepEqual(computePrivacyDiff(prev, same), []);
+  const changedCaps = [{ ...same[0], capabilities: { input: ["text", "image"], output: ["text"], reasoning: false, toolCall: true } }];
+  assert.deepEqual(computeCapabilityDiff(prev, changedCaps).map((d) => d.key), ["MiMo V2.5"]);
+});
+
+test("parseHtml: Bindestrich-Schreibweise wird auf kanonische Namen normalisiert", () => {
+  const hyphen = fixture.replace("<td>MiMo V2.5</td>", "<td>MiMo-V2.5</td>").replace("<td>MiMo V2.5 Pro</td>", "<td>MiMo-V2.5-Pro</td>");
+  assert.ok(hyphen !== fixture);
+  const models = parseHtml(hyphen);
+  const mimo = models.find((m) => m.name === "MiMo V2.5");
+  const pro = models.find((m) => m.name === "MiMo V2.5 Pro");
+  assert.ok(mimo);
+  assert.ok(pro);
+  // Muster (in der Doku mit Bindestrich gelistet) und Datenschutz bleiben zugeordnet.
+  assert.deepEqual(mimo.pattern, { input: 830, cachedRead: 71500, output: 295 });
+  assert.deepEqual(pro.pattern, { input: 790, cachedRead: 86000, output: 305 });
+  assert.ok(mimo.privacy);
 });
 
 test("buildChanges: Baseline ohne Vorgänger erzeugt keinen Eintrag", () => {
