@@ -29,7 +29,6 @@ describe("HEADING_IDS (src/headings.ts)", () => {
     const keys = values.map((v) => v.key).sort();
     for (const k of [
       "changelog",
-      "faq",
       "freeModels",
       "go",
       "imprint",
@@ -111,7 +110,6 @@ describe("Komponenten nutzen HEADING_IDS (keine hartkodierten Anker)", () => {
       "PriceTable.tsx",
       "FreeModelsTable.tsx",
       "PrivacyTable.tsx",
-      "Faq.tsx",
       "Changelog.tsx",
       "Hero.tsx",
       "Legal.tsx",

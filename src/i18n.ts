@@ -105,7 +105,6 @@ export const i18n = {
     impressum: "Impressum",
     datenschutz: "Datenschutz",
     share: "Teilen",
-    headingFaq: "Häufige Fragen",
     footer: "Automatisch täglich aktualisiert. Kein offizielles OpenCode-Angebot. OpenCode ist eine Marke von anomalyco; diese Seite ist weder mit anomalyco verbunden noch von ihr gesponsert.",
   },
   en: {
@@ -212,7 +211,6 @@ export const i18n = {
     impressum: "Impressum",
     datenschutz: "Privacy",
     share: "Share",
-    headingFaq: "Frequently asked questions",
     footer: "Updated automatically every day. Not an official OpenCode offering. OpenCode is a trademark of anomalyco; this site is neither affiliated with nor sponsored by anomalyco.",
   },
 } as const;

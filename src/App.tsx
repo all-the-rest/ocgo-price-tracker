@@ -11,7 +11,6 @@ import PlanTabs from "./components/PlanTabs";
 import PriceTable from "./components/PriceTable";
 import FreeModelsTable from "./components/FreeModelsTable";
 import PrivacyTable from "./components/PrivacyTable";
-import Faq from "./components/Faq";
 import Changelog from "./components/Changelog";
 import Legal from "./components/Legal";
 import Footer from "./components/Footer";
@@ -312,7 +311,6 @@ export default function App(props: AppProps = {}) {
           sort={privacySort()}
           setSort={setPrivacySort}
         />
-        <Faq t={t()} lang={lang()} credit={plan().creditsMonthly} cost={plan().priceMonthly} />
         <Changelog entries={changelogData.entries} t={t()} lang={lang()} plan={plan()} />
         <Legal t={t()} />
       </main>

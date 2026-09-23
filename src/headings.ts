@@ -2,7 +2,7 @@
  * Zentrale, sprachstabile Heading-Anker.
  *
  * Alle `id`-Attribute von Abschnitts-Überschriften (h1/h2/h3) und alle
- * URL-Hashes (`#prices`, `#faq`, …) stammen aus dieser einen Quelle und
+ * URL-Hashes (`#prices`, `#changelog`, …) stammen aus dieser einen Quelle und
  * sind IMMER aus dem englischen Heading abgeleitet — identisch in EN und DE,
  * stabil über Sprachwechsel (`/` ↔ `/de/`) und den `?lang=`-Alias.
  *
@@ -11,8 +11,7 @@
  *   Komponenten (Ausnahme: dynamische IDs wie Changelog-Einträge/Dialog).
  * - Reine Konstanten — kein `Date`/`window`, damit SSR (`renderToString`,
  *   `scripts/prerender.mjs`) und Client identisch rendern (hydration-safe).
- * - Kurzformen (`faq`) statt Voll-Slugs, wo der kurze Anker der
- *   etablierte Deep-Link ist; `privacy` ist die Daten-Tabelle, daher heißt
+ * - `privacy` ist die Daten-Tabelle, daher heißt
  *   der rechtliche Abschnitt disambiguiert `privacy-policy`.
  * - `imprint`: Das EN-Heading behält den deutschen Rechtsbegriff
  *   („Impressum“), der EN-abgeleitete Slug ist also identisch (`impressum`).
@@ -24,8 +23,6 @@ export const HEADING_IDS = {
   freeModels: "free-models",
   /** Datenschutz-Tabelle (EN „Privacy“). */
   privacy: "privacy",
-  /** FAQ (EN „Frequently asked questions“). */
-  faq: "faq",
   /** Changelog (EN „Changelog“). */
   changelog: "changelog",
   /** Go-Empfehlungskarte im Hero (EN „OpenCode Go“). */

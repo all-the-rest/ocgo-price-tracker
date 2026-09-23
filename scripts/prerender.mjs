@@ -27,11 +27,6 @@ process.env.BUILD_STAMP ??= new Date().toISOString();
 const STAMP = process.env.BUILD_STAMP;
 
 const data = JSON.parse(readFileSync(join(ROOT, "data", "latest.json"), "utf8"));
-const faq = JSON.parse(readFileSync(join(ROOT, "src", "data", "faq.json"), "utf8"));
-const plan = (data.plans ?? [])[0] ?? {
-  creditsMonthly: data.monthlyCredit,
-  priceMonthly: data.monthlyCost,
-};
 
 const META = {
   en: {
@@ -52,12 +47,6 @@ const META = {
   },
 };
 
-function substitute(text) {
-  return String(text)
-    .replaceAll("{credit}", "$" + plan.creditsMonthly)
-    .replaceAll("{cost}", "$" + plan.priceMonthly);
-}
-
 function buildJsonLd(lang) {
   const meta = META[lang];
   const name = lang === "de" ? "OpenCode Go Preis-Tracker" : "OpenCode Go Price Tracker";
@@ -67,11 +56,6 @@ function buildJsonLd(lang) {
     name: m.name,
     // Kanonischer Abschnitt-Anker — Wert aus `src/headings.ts` (HEADING_IDS.prices).
     url: meta.canonical + "#prices",
-  }));
-  const faqItems = (faq[lang] ?? []).map((f) => ({
-    "@type": "Question",
-    name: f.q,
-    acceptedAnswer: { "@type": "Answer", text: substitute(f.a) },
   }));
   const graph = [
     {
@@ -87,11 +71,6 @@ function buildJsonLd(lang) {
       "@type": "ItemList",
       name: lang === "de" ? "OpenCode Go Modelle" : "OpenCode Go models",
       itemListElement: items,
-    },
-    {
-      "@context": "https://schema.org",
-      "@type": "FAQPage",
-      mainEntity: faqItems,
     },
   ];
   // `<` escapen, damit ein "</script>" in Daten das Tag nicht schließen kann.

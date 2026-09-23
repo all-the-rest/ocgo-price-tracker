@@ -56,18 +56,11 @@ test("SEO: Sprach-Metadaten, Canonical und hreflang", { skip }, () => {
   assert.match(de, /<title>OpenCode Go Preise/);
 });
 
-test("SEO: JSON-LD (WebSite, ItemList, FAQPage) ist valide", { skip }, () => {
+test("SEO: JSON-LD (WebSite, ItemList) ist valide", { skip }, () => {
   const graph = jsonLdOf(read("index.html"));
   const types = graph.map((node) => node["@type"]);
-  assert.deepEqual(types, ["WebSite", "ItemList", "FAQPage"]);
+  assert.deepEqual(types, ["WebSite", "ItemList"]);
   assert.ok(graph[1].itemListElement.length > 0, "ItemList ohne Modelle");
-  assert.ok(graph[2].mainEntity.length > 0, "FAQPage ohne Fragen");
-  for (const q of graph[2].mainEntity) {
-    assert.ok(q.name && q.acceptedAnswer?.text, "FAQ-Eintrag unvollständig");
-  }
-  // Deutsche Datei: FAQ auf Deutsch.
-  const deGraph = jsonLdOf(read("de", "index.html"));
-  assert.ok(deGraph[2].mainEntity[0].name.startsWith("Was "));
 });
 
 test("SEO: robots.txt und sitemap.xml", { skip }, () => {
