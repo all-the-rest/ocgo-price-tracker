@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-23T14:46:19.313Z",
+  "fetchedAt": "2026-09-23T23:02:29.730Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1550,6 +1550,84 @@
       "contextWindow": 500000,
       "id": "opencode-go/grok-4.6",
       "provider": "xAI"
+    },
+    {
+      "name": "GPT 6 Luna",
+      "tier": "≤ 272K tokens",
+      "input": 0.1,
+      "output": 0.5,
+      "cachedRead": 0.01,
+      "cachedWrite": 0.125,
+      "usage": 15,
+      "pattern": {
+        "input": 1000,
+        "cachedRead": 50000,
+        "output": 220
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 0.4,
+      "effectiveOutput": 2,
+      "effectiveCachedRead": 0.04,
+      "effectiveCachedWrite": 0.5,
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 1050000,
+      "id": "opencode-go/gpt-6-luna",
+      "provider": "OpenAI"
+    },
+    {
+      "name": "GPT 6 Luna",
+      "tier": "> 272K tokens",
+      "input": 0.2,
+      "output": 0.75,
+      "cachedRead": 0.02,
+      "cachedWrite": 0.25,
+      "usage": 15,
+      "pattern": {
+        "input": 1000,
+        "cachedRead": 50000,
+        "output": 220
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": 4,
+      "effectiveInput": 0.8,
+      "effectiveOutput": 3,
+      "effectiveCachedRead": 0.08,
+      "effectiveCachedWrite": 1,
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 1050000,
+      "id": "opencode-go/gpt-6-luna",
+      "provider": "OpenAI"
     },
     {
       "name": "GPT 5.6 Luna",
