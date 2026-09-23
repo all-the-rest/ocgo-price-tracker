@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-21T23:27:46.676Z",
+  "fetchedAt": "2026-09-23T14:10:16.912Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -381,8 +381,7 @@
           "text",
           "image",
           "audio",
-          "video",
-          "pdf"
+          "video"
         ],
         "output": [
           "text"
@@ -422,8 +421,7 @@
           "text",
           "image",
           "audio",
-          "video",
-          "pdf"
+          "video"
         ],
         "output": [
           "text"
@@ -1365,6 +1363,30 @@
       "provider": "Tencent"
     },
     {
+      "name": "Space Bunny Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": null,
+      "pattern": null,
+      "capabilities": null,
+      "multiplier": null,
+      "effectiveInput": 0,
+      "effectiveOutput": 0,
+      "effectiveCachedRead": 0,
+      "effectiveCachedWrite": 0,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": null,
+      "id": null,
+      "provider": null
+    },
+    {
       "name": "Grok 4.7",
       "tier": "≤ 200K tokens",
       "input": 2,
@@ -1687,8 +1709,7 @@
           "text",
           "image",
           "audio",
-          "video",
-          "pdf"
+          "video"
         ],
         "output": [
           "text"
@@ -1770,6 +1791,18 @@
       "provider": "NVIDIA",
       "fullId": "opencode/nemotron-3.5-lightning-free",
       "name": "Nemotron 3.5 Lightning Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "space-bunny-free",
+      "availableFrom": "2026-09-23",
+      "capabilities": null,
+      "contextWindow": null,
+      "provider": null,
+      "fullId": "opencode/space-bunny-free",
       "privacy": {
         "training": true,
         "validUntil": null
