@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-23T23:02:29.730Z",
+  "fetchedAt": "2026-09-25T12:10:07.296Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -732,9 +732,7 @@
       "capabilities": {
         "input": [
           "text",
-          "image",
-          "video",
-          "pdf"
+          "image"
         ],
         "output": [
           "text"
@@ -752,7 +750,7 @@
         "retentionDays": true,
         "validUntil": null
       },
-      "contextWindow": 1000000,
+      "contextWindow": 262144,
       "id": "opencode-go/qwen3.8-max",
       "provider": "Alibaba"
     },
