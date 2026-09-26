@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-26T19:32:41.490Z",
+  "fetchedAt": "2026-09-26T19:39:07.901Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1393,7 +1393,7 @@
       },
       "contextWindow": 1048576,
       "id": "opencode-go/space-bunny-free",
-      "provider": null
+      "provider": "OpenCode Stealth"
     },
     {
       "name": "LongCat 2.5 Preview Free",
@@ -1957,7 +1957,7 @@
         "toolCall": true
       },
       "contextWindow": 1048576,
-      "provider": null,
+      "provider": "OpenCode Stealth",
       "fullId": "opencode-go/space-bunny-free",
       "name": "Space Bunny Free",
       "privacy": {

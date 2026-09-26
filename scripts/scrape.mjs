@@ -169,6 +169,10 @@ function toProvider(md) {
 const STEALTH_PROVIDER = "OpenCode Stealth";
 const STEALTH_IDS = new Set([
   "big-pickle", // Stealth-Modell, Lab unbekannt
+  // Die Zen-Doku nennt Space Bunny Free ausdrücklich „ein Stealth-Modell, das
+  // für begrenzte Zeit kostenlos auf OpenCode verfügbar ist"; models.dev führt
+  // es ohne Hersteller, daher wäre die Ableitung `null`.
+  "space-bunny-free",
   "union-alpha", // Stealth-Modell, Lab unbekannt
 ]);
 

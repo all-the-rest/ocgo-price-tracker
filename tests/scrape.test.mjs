@@ -1564,12 +1564,26 @@ test("enrichFreeModels: Stealth-IDs bekommen OpenCode Stealth", () => {
     [
       { id: "big-pickle", availableFrom: "2026-08-05" },
       { id: "union-alpha", availableFrom: "2026-09-16" },
+      { id: "space-bunny-free", availableFrom: "2026-09-23" },
     ],
     {},
     {}
   );
   assert.equal(enriched[0].provider, "OpenCode Stealth");
   assert.equal(enriched[1].provider, "OpenCode Stealth");
+  // Zen-Doku: „Space Bunny Free ist ein Stealth-Modell …“; models.dev führt es
+  // ohne Hersteller ⇒ ohne STEALTH_IDS wäre die Ableitung null.
+  assert.equal(enriched[2].provider, "OpenCode Stealth");
+});
+
+test("enrichCapabilities: Space Bunny Free (Go-Preiszeile) → OpenCode Stealth", () => {
+  const models = [{ name: "Space Bunny Free", tier: null }];
+  const goModels = {
+    "space-bunny-free": { id: "space-bunny-free", name: "Space Bunny Free", family: "space-bunny" },
+  };
+  const enriched = enrichCapabilities(models, {}, {}, goModels);
+  assert.equal(enriched[0].id, "opencode-go/space-bunny-free");
+  assert.equal(enriched[0].provider, "OpenCode Stealth");
 });
 
 test("enrichFreeModels: setzt fullId mit opencode-Prefix (Fallback ohne models.dev-Treffer)", () => {
