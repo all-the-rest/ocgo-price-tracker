@@ -49,6 +49,8 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Test scraper
+        # Nur bei Code-Änderungen (push/PR), nicht bei regelmäßigen Scrape-Läufen.
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         run: pnpm test
 
       - name: Scrape prices
