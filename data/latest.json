@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-25T12:10:07.296Z",
+  "fetchedAt": "2026-09-26T14:41:22.351Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1396,6 +1396,40 @@
       "provider": null
     },
     {
+      "name": "LongCat 2.5 Preview Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": null,
+      "pattern": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "multiplier": null,
+      "effectiveInput": 0,
+      "effectiveOutput": 0,
+      "effectiveCachedRead": 0,
+      "effectiveCachedWrite": 0,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "id": "opencode-go/longcat-2.5-preview-free",
+      "provider": "Longcat"
+    },
+    {
       "name": "Grok 4.7",
       "tier": "≤ 200K tokens",
       "input": 2,
@@ -1758,6 +1792,29 @@
       "provider": "Ling",
       "fullId": "opencode/ling-3.0-flash-fin-free",
       "name": "Ling 3.0 Flash Fin Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "longcat-2.5-preview-free",
+      "availableFrom": "2026-09-26",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1000000,
+      "provider": "Longcat",
+      "fullId": "opencode-go/longcat-2.5-preview-free",
+      "name": "LongCat 2.5 Preview Free",
       "privacy": {
         "training": true,
         "validUntil": null
