@@ -28,6 +28,7 @@ import {
   parseCreditFactor,
   parseMonthlyPricing,
   parsePeakHours,
+  parsePeakRanges,
   parsePrivacyNotes,
   validUntilFor,
   ScrapeError,
@@ -92,6 +93,73 @@ test("parsePeakHours: ordnet den gemeinsamen Flash/Pro-Hinweis beiden Modellen z
     deepseekv4flash: [[1, 4], [6, 10]],
     deepseekv4pro: [[1, 4], [6, 10]],
   });
+});
+
+test("parsePeakHours: zwei Notizen / zwei Provider erhalten je ihr eigenes Fenster", () => {
+  const $ = cheerio.load(
+    "<main>" +
+      "<p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC; all other hours are Off-Peak.</p>" +
+      "<p><strong>Grok 4.7:</strong> Peak hours are 08:00-12:00 UTC; all other hours are Off-Peak.</p>" +
+      "</main>"
+  );
+  const models = [
+    { name: "DeepSeek V4 Flash", tier: "Off-Peak" },
+    { name: "DeepSeek V4 Flash", tier: "Peak" },
+    { name: "Grok 4.7", tier: "Off-Peak" },
+    { name: "Grok 4.7", tier: "Peak" },
+  ];
+  assert.deepEqual(parsePeakHours($, models), {
+    deepseekv4flash: [[1, 4]],
+    "grok4.7": [[8, 12]],
+  });
+});
+
+test("parsePeakHours: Peak-Modell ohne Notiz → ScrapeError nennt das Modell", () => {
+  const $ = cheerio.load(
+    "<main><p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC.</p></main>"
+  );
+  const models = [
+    { name: "DeepSeek V4 Flash", tier: "Peak" },
+    { name: "Grok 4.7", tier: "Peak" },
+  ];
+  assert.throws(() => parsePeakHours($, models), (err) => {
+    assert.ok(err instanceof ScrapeError);
+    assert.match(err.message, /Grok 4\.7/);
+    return true;
+  });
+});
+
+test("parsePeakHours: Peak-/UTC-Notiz ohne Peak-Modell → ScrapeError", () => {
+  const $ = cheerio.load(
+    "<main>" +
+      "<p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC.</p>" +
+      "<p><strong>Alle Peak-Preise:</strong> gelten täglich von 00:00-23:00 UTC für Neukunden.</p>" +
+      "</main>"
+  );
+  const models = [{ name: "DeepSeek V4 Flash", tier: "Peak" }];
+  assert.throws(() => parsePeakHours($, models), ScrapeError);
+});
+
+test("parsePeakHours: zwei Notizen mit widersprüchlichen Fenstern → ScrapeError", () => {
+  const $ = cheerio.load(
+    "<main>" +
+      "<p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC.</p>" +
+      "<p><strong>DeepSeek V4 Flash:</strong> Peak hours are 06:00-10:00 UTC.</p>" +
+      "</main>"
+  );
+  const models = [{ name: "DeepSeek V4 Flash", tier: "Peak" }];
+  assert.throws(() => parsePeakHours($, models), (err) => {
+    assert.ok(err instanceof ScrapeError);
+    assert.match(err.message, /Widersprüchliche Peak-Zeitfenster/);
+    assert.match(err.message, /DeepSeek V4 Flash/);
+    return true;
+  });
+});
+
+test("parsePeakRanges: ungültiges Fenster → ScrapeError", () => {
+  assert.throws(() => parsePeakRanges("Peak hours are 99:00-04:00 UTC"), ScrapeError);
+  assert.throws(() => parsePeakRanges("Peak hours are 04:00-01:00 UTC"), ScrapeError);
+  assert.throws(() => parsePeakRanges("Peak hours ohne Zahl UTC"), ScrapeError);
 });
 
 test("parseHtml: MiMo V2.5 Pro mit kleinen Preisen und ×4", () => {

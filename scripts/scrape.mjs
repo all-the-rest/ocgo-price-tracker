@@ -949,25 +949,77 @@ function sharedModelPrefix(a, b) {
 }
 
 /**
- * Parst die UTC-Peak-Zeitfenster aus dem Hinweis unter der Preistabelle. Die
- * Modellnamen kommen aus den Peak-/Off-Peak-Zeilen, damit ein Hinweis wie
- * "DeepSeek V4 Flash / Pro" beide Modell-IDs zuverlässig abdeckt.
+ * Parst die UTC-Peak-Zeitfenster aus den Hinweisen unter der Preistabelle.
+ *
+ * Es werden **alle** Notizen gesammelt (`main p, main li`, DOM-Reihenfolge),
+ * die `peak`/`spitzenzeiten`/`stoßzeiten` UND `UTC` nennen — nicht nur die
+ * erste: eine zweite Notiz für einen weiteren Anbieter darf nicht still
+ * verloren gehen. Die Modellnamen kommen aus den Peak-/Off-Peak-Zeilen, damit
+ * ein Hinweis wie "DeepSeek V4 Flash / Pro" beide Modell-IDs zuverlässig
+ * abdeckt. Jede Notiz muss mindestens ein Peak-Modell treffen, und **jedes**
+ * Peak-Modell braucht ein Zeitfenster — sonst `ScrapeError` (lieber CI rot als
+ * ein Modell ohne Fenster, das stillschweigend als „immer Off-Peak" angezeigt
+ * würde). Widersprüchliche Fenster für dasselbe Modell brechen ebenfalls ab.
  */
 export function parsePeakHours($, models = []) {
   const peakModels = [...new Set(models.filter((m) => isPeakTier(m.tier)).map((m) => m.name))];
   if (peakModels.length === 0) return {};
 
-  const peakText = $("main p, main li")
+  const peakNotes = $("main p, main li")
     .map((_, el) => $(el).text().replace(/\s+/g, " ").trim())
     .get()
-    .find((text) => /\bpeak\b|spitzenzeiten|stoßzeiten/i.test(text) && /UTC\b/i.test(text));
-  if (!peakText) {
+    .filter((text) => /\bpeak\b|spitzenzeiten|stoßzeiten/i.test(text) && /UTC\b/i.test(text));
+  if (peakNotes.length === 0) {
     throw new ScrapeError("Peak-/Off-Peak-Modelle gefunden, aber kein UTC-Zeitfenster im Dokument");
   }
 
+  const windows = new Map();
+  for (const note of peakNotes) {
+    const ranges = parsePeakRanges(note);
+    const subject = normalizeName(note.split(":", 1)[0]);
+    // Zuordnung bewusst konservativ: exakter Name im Subject ODER gemeinsamer
+    // Modell-Präfix (z. B. "DeepSeek V4 Flash / Pro" → beide DeepSeek-Modelle).
+    const matched = peakModels.filter((name) => {
+      const norm = normalizeName(name);
+      if (subject.includes(norm)) return true;
+      return peakModels.some((other) => {
+        if (other === name) return false;
+        const prefix = sharedModelPrefix(name, other);
+        return prefix !== "" && subject.includes(prefix);
+      });
+    });
+    if (matched.length === 0) {
+      throw new ScrapeError(`Peak-Zeitfenster konnte keinem Modell zugeordnet werden: "${note}"`);
+    }
+    for (const name of matched) {
+      const norm = normalizeName(name);
+      const existing = windows.get(norm);
+      if (existing && !sameRanges(existing, ranges)) {
+        throw new ScrapeError(
+          `Widersprüchliche Peak-Zeitfenster für "${name}": ${formatPeakRanges(existing)} vs. ${formatPeakRanges(ranges)}`
+        );
+      }
+      windows.set(norm, ranges);
+    }
+  }
+
+  // Kern-Guard: kein Peak-Modell darf ohne dokumentiertes Fenster durchrutschen
+  // (sonst würde es still als „immer Off-Peak" ohne Countdown angezeigt).
+  const missing = peakModels.filter((name) => !windows.has(normalizeName(name)));
+  if (missing.length > 0) {
+    throw new ScrapeError(`Peak-Modelle ohne UTC-Zeitfenster: ${missing.join(", ")}`);
+  }
+  return Object.fromEntries(windows);
+}
+
+/**
+ * Extrahiert die Uhrzeit-Fenster aus einem Peak-Notiz-Text. Ein unparsebares
+ * Fenster (z. B. `99:00-04:00`) oder ein Text ganz ohne Fenster → `ScrapeError`.
+ */
+export function parsePeakRanges(text) {
   const ranges = [];
   const rangePattern = /(\d{1,2})(?::(\d{2}))?\s*[-–]\s*(\d{1,2})(?::(\d{2}))?/g;
-  for (const match of peakText.matchAll(rangePattern)) {
+  for (const match of text.matchAll(rangePattern)) {
     const startMinute = match[2] === undefined ? 0 : Number(match[2]);
     const endMinute = match[4] === undefined ? 0 : Number(match[4]);
     const start = Number(match[1]);
@@ -986,23 +1038,19 @@ export function parsePeakHours($, models = []) {
     ranges.push([start, end]);
   }
   if (ranges.length === 0) {
-    throw new ScrapeError(`Keine gültigen UTC-Peak-Zeitfenster gefunden: "${peakText}"`);
+    throw new ScrapeError(`Keine gültigen UTC-Peak-Zeitfenster gefunden: "${text}"`);
   }
+  return ranges;
+}
 
-  const subject = normalizeName(peakText.split(":", 1)[0]);
-  const matched = peakModels.filter((name) => {
-    const norm = normalizeName(name);
-    if (subject.includes(norm)) return true;
-    return peakModels.some((other) => {
-      if (other === name) return false;
-      const prefix = sharedModelPrefix(name, other);
-      return prefix !== "" && subject.includes(prefix);
-    });
-  });
-  if (matched.length === 0) {
-    throw new ScrapeError(`Peak-Zeitfenster konnte keinem Modell zugeordnet werden: "${peakText}"`);
-  }
-  return Object.fromEntries(matched.map((name) => [normalizeName(name), ranges]));
+function sameRanges(a, b) {
+  return a.length === b.length && a.every((r, i) => r[0] === b[i][0] && r[1] === b[i][1]);
+}
+
+function formatPeakRanges(ranges) {
+  return ranges
+    .map(([start, end]) => `${String(start).padStart(2, "0")}:00-${String(end).padStart(2, "0")}:00`)
+    .join(", ");
 }
 
 /**
