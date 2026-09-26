@@ -17,6 +17,7 @@ import {
   modelKey,
   extractFreeModelsFromDocs,
   parseZenEndpointIds,
+  parseZenFreeModelPrivacy,
   patternPartMatches,
   enrichCapabilities,
   computeCapabilityDiff,
@@ -773,6 +774,52 @@ test("extractFreeModelsFromDocs: erkennt deutsche „Kostenlos“-Zeilen (z. B. 
   assert.deepEqual(extractFreeModelsFromDocs(html), ["jev-1.13-free"]);
 });
 
+test("parseZenFreeModelPrivacy: klassifiziert ZDR, Training und „keine Aussage“", () => {
+  const html = `<!DOCTYPE html><html><body>
+<h2 id="preise">Preise</h2>
+<p>Die kostenlosen Modelle:</p>
+<ul>
+<li>Space Bunny Free ist für begrenzte Zeit kostenlos. Der Anbieter befolgt eine Zero-Retention-Richtlinie und verwendet deine Daten nicht zum Trainieren von Modellen.</li>
+<li>Big Pickle ist ein Stealth-Modell. Das Team nutzt diese Zeit, um Feedback zu sammeln und das Modell zu verbessern.</li>
+<li>Jev 1.13 Free ist für begrenzte Zeit auf OpenCode verfügbar.</li>
+<li>Unbekannt Free ist für begrenzte Zeit verfügbar — nicht in der Endpunkte-Tabelle.</li>
+</ul>
+</body></html>`;
+  const $ = cheerio.load(html);
+  const idsByName = new Map([
+    ["spacebunnyfree", "space-bunny-free"],
+    ["bigpickle", "big-pickle"],
+    ["jev1.13free", "jev-1.13-free"],
+  ]);
+  const privacy = parseZenFreeModelPrivacy($, idsByName);
+  assert.deepEqual(privacy.get("space-bunny-free"), { training: false, retentionDays: true, validUntil: null });
+  assert.deepEqual(privacy.get("big-pickle"), { training: true, validUntil: null });
+  // Fußnote ohne Datenschutz-Aussage → kein Eintrag (Default „unbekannt“).
+  assert.equal(privacy.has("jev-1.13-free"), false);
+  // Nicht auflösbarer Name → ignoriert, kein Wurf.
+  assert.equal(privacy.size, 2);
+});
+
+test("parseZenFreeModelPrivacy: fehlende Liste → leere Map (kein Fehler)", () => {
+  const $ = cheerio.load("<p>Die kostenlosen Modelle:</p><p>kein Listen-Element</p>");
+  const privacy = parseZenFreeModelPrivacy($, new Map());
+  assert.equal(privacy.size, 0);
+});
+
+test("parseZenFreeModelPrivacy: erkennt Trainings-Varianten (Verbesserung/Training)", () => {
+  const html = `<p>Die kostenlosen Modelle:</p><ul>
+<li>A Free ist verfügbar. Der Anbieter verwendet Daten zur Verbesserung des Modells.</li>
+<li>B Free ist verfügbar. Die Daten werden zum Trainieren verwendet.</li>
+</ul>`;
+  const idsByName = new Map([
+    ["afree", "a-free"],
+    ["bfree", "b-free"],
+  ]);
+  const privacy = parseZenFreeModelPrivacy(cheerio.load(html), idsByName);
+  assert.deepEqual(privacy.get("a-free"), { training: true, validUntil: null });
+  assert.deepEqual(privacy.get("b-free"), { training: true, validUntil: null });
+});
+
 test("upsertChangelogJson: ersetzt Eintrag mit gleicher id und entfernt leere Einträge", () => {
   const existing = {
     entries: [
@@ -1379,8 +1426,67 @@ test("enrichFreeModels: reichert Zen-Modelle über die opencode-ID an", () => {
   });
 });
 
+test("enrichFreeModels: Provider-Familie longcat → Hersteller Meituan", () => {
+  // models.dev liefert LongCat ohne Hersteller-Prefix (`id` ohne Slash/Colon),
+  // nur `family: "longcat"` ⇒ ohne Label-Eintrag wäre es "Longcat".
+  const zenModels = {
+    "longcat-2.5-preview-free": {
+      id: "longcat-2.5-preview-free",
+      name: "LongCat 2.5 Preview Free",
+      family: "longcat",
+      limit: { context: 1_000_000 },
+      modalities: { input: ["text", "image"], output: ["text"] },
+    },
+  };
+  const enriched = enrichFreeModels([{ id: "longcat-2.5-preview-free", availableFrom: "2026-09-26" }], zenModels, {});
+  assert.equal(enriched[0].provider, "Meituan");
+});
+
 test("enrichFreeModels: setzt privacy (Modelltraining) für Zen-Modelle", () => {
   const enriched = enrichFreeModels([{ id: "big-pickle", availableFrom: "2026-08-05" }], {}, {});
+  assert.deepEqual(enriched[0].privacy, { training: true, validUntil: null });
+});
+
+test("enrichFreeModels: geparste ZDR-Fußnote schlägt den Default", () => {
+  const privacyById = new Map([
+    ["space-bunny-free", { training: false, retentionDays: true, validUntil: null }],
+  ]);
+  const enriched = enrichFreeModels(
+    [{ id: "space-bunny-free", availableFrom: "2026-09-23" }],
+    {},
+    {},
+    {},
+    privacyById
+  );
+  assert.deepEqual(enriched[0].privacy, { training: false, retentionDays: true, validUntil: null });
+});
+
+test("enrichFreeModels: geparstes Training wird übernommen (quellenkorrekt)", () => {
+  const privacyById = new Map([["big-pickle", { training: true, validUntil: null }]]);
+  const enriched = enrichFreeModels([{ id: "big-pickle", availableFrom: "2026-08-05" }], {}, {}, {}, privacyById);
+  assert.deepEqual(enriched[0].privacy, { training: true, validUntil: null });
+});
+
+test("enrichFreeModels: FREE_MODEL_PRIVACY_OVERRIDES schlägt die geparste Map", () => {
+  const privacyById = new Map([["big-pickle", { training: false, retentionDays: true, validUntil: null }]]);
+  // big-pickle ist kein Override → Map gewinnt; x-preview-f-free ist Override → schlägt die Map.
+  const enriched = enrichFreeModels(
+    [
+      { id: "big-pickle", availableFrom: "2026-08-05" },
+      { id: "x-preview-f-free", availableFrom: "2026-08-20" },
+    ],
+    {},
+    {},
+    {},
+    privacyById
+  );
+  assert.deepEqual(enriched[0].privacy, { training: false, retentionDays: true, validUntil: null });
+  assert.deepEqual(enriched[1].privacy, { training: false, retentionDays: true, validUntil: null });
+});
+
+test("enrichFreeModels: ohne Map-Eintrag bleibt training:true (unbekannt)", () => {
+  const privacyById = new Map([["other-free", { training: false, retentionDays: true, validUntil: null }]]);
+  const enriched = enrichFreeModels([{ id: "big-pickle", availableFrom: "2026-08-05" }], {}, {}, {}, privacyById);
   assert.deepEqual(enriched[0].privacy, { training: true, validUntil: null });
 });
 

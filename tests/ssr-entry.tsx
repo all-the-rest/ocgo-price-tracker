@@ -1,8 +1,9 @@
 import { renderToString } from "solid-js/web";
 import PriceTable from "../src/components/PriceTable";
+import PrivacyTable from "../src/components/PrivacyTable";
 import Changelog from "../src/components/Changelog";
-import type { Basis, Model, ChangelogEntry, Plan } from "../src/types";
-import type { SortField } from "../src/sort";
+import type { Basis, Model, FreeModel, ChangelogEntry, Plan } from "../src/types";
+import type { SortField, PrivacySortState } from "../src/sort";
 import { i18n, type Lang } from "../src/i18n";
 
 export { fieldPrice, formatReqPerMonth, formatTokens, requestCost, requestsPerMonth } from "../src/weighted";
@@ -46,5 +47,28 @@ export function renderPriceTable(models: Model[], opts: RenderOptions): string {
 export function renderChangelog(entries: ChangelogEntry[], plan: Plan, lang: Lang = "en"): string {
   return renderToString(() => (
     <Changelog entries={entries} t={i18n[lang]} lang={lang} plan={plan} />
+  ));
+}
+
+/**
+ * Rendert die echte PrivacyTable-Komponente serverseitig (für Dedupe-Tests:
+ * Free-Modelle, die auch in der Go-Preistabelle stehen, dürfen nur einmal
+ * erscheinen).
+ */
+export function renderPrivacyTable(
+  models: Model[],
+  freeModels: FreeModel[],
+  lang: Lang = "de",
+  sort: PrivacySortState = { field: "tier", dir: 1 }
+): string {
+  return renderToString(() => (
+    <PrivacyTable
+      models={models}
+      freeModels={freeModels}
+      t={i18n[lang]}
+      lang={lang}
+      sort={sort}
+      setSort={() => {}}
+    />
   ));
 }

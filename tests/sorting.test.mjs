@@ -186,3 +186,33 @@ test("Training-Filter (showTraining=false) blendet nur 'Muse Spark 1.2 Contribut
     .map((m) => m.name);
   assert.deepEqual(names, expected, "Reihenfolge der übrigen Modelle bleibt korrekt");
 });
+
+test("PrivacyTable: Free-Modelle erscheinen nur einmal; Free-Wert ergänzt models-Zeile ohne Angabe", () => {
+  const zdr = { training: false, retentionDays: true, validUntil: null };
+  const training = { training: true, validUntil: null };
+  const models = [
+    { name: "Space Bunny Free", privacy: null },
+    { name: "LongCat 2.5 Preview Free", privacy: zdr },
+    { name: "Other Model", privacy: training },
+  ];
+  const freeModels = [
+    { id: "space-bunny-free", name: "Space Bunny Free", privacy: zdr },
+    // Free-Zeile sagt Training, models-Zeile sagt ZDR → models-Zeile gewinnt.
+    { id: "longcat-2.5-preview-free", name: "LongCat 2.5 Preview Free", privacy: training },
+    { id: "big-pickle", name: "Big Pickle", privacy: training },
+  ];
+  const $ = cheerio.load(ssr.renderPrivacyTable(models, freeModels, "de", { field: "model", dir: 1 }));
+  const names = [];
+  $("tbody tr td.font-medium").each((_, td) => names.push($(td).text().trim()));
+  assert.deepEqual(names, ["Big Pickle", "LongCat 2.5 Preview Free", "Other Model", "Space Bunny Free"]);
+
+  const rowBadge = (name) => {
+    const tr = $("tbody tr").filter((_, el) => $(el).find("td.font-medium").text().trim() === name);
+    return tr.find("td .badge").first().attr("class") ?? "";
+  };
+  // models-Zeile ohne Angabe → Free-Zeile ergänzt ZDR (badge-success).
+  assert.match(rowBadge("Space Bunny Free"), /badge-success/);
+  // both vorhanden → models-Zeile gewinnt (ZDR, nicht Training).
+  assert.match(rowBadge("LongCat 2.5 Preview Free"), /badge-success/);
+  assert.match(rowBadge("Big Pickle"), /badge-error/);
+});

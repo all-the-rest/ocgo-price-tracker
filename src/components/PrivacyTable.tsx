@@ -21,18 +21,30 @@ interface Row {
   privacy: Privacy | null;
 }
 
+// Anzeigenamen normalisieren (Hyphen/Leerzeichen egal), damit dieselbe Zeile
+// nicht doppelt erscheint, wenn ein Free-Modell auch in der Go-Preistabelle
+// steht (z. B. „Space Bunny Free“, „LongCat 2.5 Preview Free“).
+const normRowName = (s: string) => s.toLowerCase().replace(/[\s-]+/g, "");
+
 export default function PrivacyTable(props: PrivacyTableProps) {
   const rows = createMemo(() => {
-    const seen = new Set<string>();
     const out: Row[] = [];
-    for (const m of props.models) {
-      if (seen.has(m.name)) continue;
-      seen.add(m.name);
-      out.push({ name: m.name, privacy: m.privacy });
-    }
-    for (const f of props.freeModels) {
-      out.push({ name: formatFreeModelName(f), privacy: f.privacy });
-    }
+    const byName = new Map<string, number>();
+    const add = (name: string, privacy: Privacy | null) => {
+      const key = normRowName(name);
+      const idx = byName.get(key);
+      if (idx !== undefined) {
+        // Nur einmal ausgeben; eine vorhandene models-Angabe gewinnt, eine
+        // models-Zeile ohne Angabe wird von der Free-Zeile ergänzt.
+        const row = out[idx]!;
+        if (row.privacy == null && privacy != null) row.privacy = privacy;
+        return;
+      }
+      byName.set(key, out.length);
+      out.push({ name, privacy });
+    };
+    for (const m of props.models) add(m.name, m.privacy);
+    for (const f of props.freeModels) add(formatFreeModelName(f), f.privacy);
     return out;
   });
 

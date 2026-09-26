@@ -93,6 +93,11 @@ const PROVIDER_LABELS = {
   "hy3-free": "Tencent",
   "kimi-k2": "Moonshot AI",
   "kimi-k3": "Moonshot AI",
+  // models.dev kennt die LongCat-Modelle nur unter der Familie/Provider-ID
+  // "longcat"; der Hersteller ist Meituan (vgl. `longcat` in der
+  // Hersteller-Zuordnung von opencode-usage). Ohne diesen Eintrag landet
+  // "Longcat" (Titel-Schreibweise) statt "Meituan" in der Anzeige.
+  longcat: "Meituan",
   meituan: "Meituan",
   meta: "Meta",
   "mimo-v2.5-free": "Xiaomi",
@@ -343,22 +348,36 @@ const PRIVACY_FALLBACKS = {
 
 /**
  * Manuelle Datenschutz-Angaben für einzelne kostenlose Zen-Modelle (models.dev
- * führt keine Datenschutz-Felder): x-preview-f-free ist Ox Alpha Free (laut
- * models.dev der Zen-Eintrag „Ox Alpha Free (Unlimited)“) und hat wie das
- * Doku-Modell ZDR. Eintrag kann entfallen, sobald die Quelle selbst listet.
+ * führt keine Datenschutz-Felder) — haben Vorrang vor der geparsten Quelle:
+ * x-preview-f-free ist Ox Alpha Free (laut models.dev der Zen-Eintrag „Ox Alpha
+ * Free (Unlimited)“) und hat wie das Doku-Modell ZDR.
+ *
+ * Die reguläre Quelle ist die Fußnoten-Liste „Die kostenlosen Modelle:“ der
+ * Zen-Doku (`parseZenFreeModelPrivacy`); `training: true` ist nur der Fallback
+ * für Modelle ganz ohne Datenschutz-Aussage in dieser Liste.
  */
 const FREE_MODEL_PRIVACY_OVERRIDES = {
   "xpreviewffree": { training: false, retentionDays: true, validUntil: null },
 };
 
 /**
+ * Liefert das nächste Geschwister-Element vom Typ `tagName` nach `start`
+ * (z. B. die erste `<table>` nach einer Überschrift oder die `<ul>` nach einem
+ * Absatz). Robust gegen dazwischenliegende Elemente; kein Treffer → leeres
+ * Element.
+ */
+function elementAfter(start, tagName) {
+  let el = start.next();
+  while (el.length && !el.is(tagName)) el = el.next();
+  return el;
+}
+
+/**
  * Liefert die erste `<table>` nach der Überschrift mit der gegebenen `id`
  * (z. B. `#endpunkte` oder `#preise`), oder ein leeres Element.
  */
 function tableAfterHeading($, headingId) {
-  let el = $(`#${headingId}`).next();
-  while (el.length && !el.is("table")) el = el.next();
-  return el;
+  return elementAfter($(`#${headingId}`), "table");
 }
 
 /**
@@ -402,17 +421,77 @@ export function extractFreeModelsFromDocs(html) {
   return [...new Set(free)].sort();
 }
 
+/**
+ * Parst die Datenschutz-Fußnoten der kostenlosen Zen-Modelle aus der Zen-Doku.
+ * Maßgeblich ist die `<ul>` direkt nach dem Absatz „Die kostenlosen Modelle:“
+ * im Preise-Abschnitt — NICHT die Go-Datenschutz-Tabelle (die Go-Doku kann für
+ * ein Free-Modell abweichen). Pro `<li>` steht der Modellname am Satzanfang
+ * („<Name> ist …“), der Rest ist die Aussage:
+ *  - ZDR: „Zero-Retention“ + „nicht zum Trainieren“ →
+ *    `{ training: false, retentionDays: true, validUntil: null }`
+ *  - Modelltraining: „Feedback“/„zu verbessern“/„Verbesserung des Modells“/
+ *    „zum Trainieren“/„Training“ → `{ training: true, validUntil: null }`
+ *  - keine Datenschutz-Aussage → KEIN Eintrag (es gilt der Default „unbekannt“)
+ * Namen werden über `normalizeName` gegen `idsByName` (aus
+ * `parseZenEndpointIds`) aufgelöst; nur auflösbare Namen werden übernommen.
+ * Fehlt der Absatz oder die Liste, ist das Ergebnis leer (kein Fehler — die
+ * Zen-Seite darf umgebaut werden); eine nicht auflösbare Zeile bricht den Lauf
+ * nicht ab, wird aber als Warnung geloggt.
+ */
+export function parseZenFreeModelPrivacy($, idsByName) {
+  const privacyById = new Map();
+  let list = null;
+  $("p").each((_, p) => {
+    if (list) return;
+    if (/die kostenlosen modelle/i.test($(p).text())) list = elementAfter($(p), "ul");
+  });
+  if (!list || list.length === 0) return privacyById;
+
+  list.find("li").each((_, li) => {
+    const text = $(li)
+      .text()
+      .replace(/\s+/g, " ")
+      .trim();
+    const sep = text.indexOf(" ist ");
+    if (sep === -1) {
+      console.error(`[scrape] Warnung: Zen-Fußnote ohne „ist“-Trenner (übersprungen): "${text}"`);
+      return;
+    }
+    const name = text.slice(0, sep).trim();
+    const statement = text.slice(sep + 5).trim();
+    const id = idsByName.get(normalizeName(name));
+    if (!id) {
+      console.error(`[scrape] Warnung: Zen-Fußnote für unbekanntes Modell ignoriert: "${name}"`);
+      return;
+    }
+    if (/zero[-\s]?retention/i.test(statement) && /nicht zum trainieren|nicht zum training/i.test(statement)) {
+      privacyById.set(id, { training: false, retentionDays: true, validUntil: null });
+    } else if (
+      /feedback|zu verbessern|verbesserung des modells|zum trainieren|\btraining\b/i.test(statement)
+    ) {
+      privacyById.set(id, { training: true, validUntil: null });
+    }
+    // Ohne Datenschutz-Aussage: kein Eintrag (Default „unbekannt“).
+  });
+
+  return privacyById;
+}
+
 async function fetchZenFreeModels(previousFree) {
   try {
     const res = await fetch(ZEN_DOCS_URL, { headers: { "User-Agent": USER_AGENT } });
     if (!res.ok) throw new ScrapeError(`HTTP ${res.status} bei ${ZEN_DOCS_URL}`);
     const html = await res.text();
-    return extractFreeModelsFromDocs(html);
+    const idsByName = parseZenEndpointIds(html);
+    return {
+      ids: extractFreeModelsFromDocs(html),
+      privacyById: parseZenFreeModelPrivacy(cheerio.load(html), idsByName),
+    };
   } catch (err) {
     console.error(
       `[scrape] Warnung: Zen-Doku nicht erreichbar (${err instanceof Error ? err.message : String(err)}); behalte ${previousFree.length} bisherige Einträge.`
     );
-    return previousFree;
+    return { ids: previousFree, privacyById: new Map() };
   }
 }
 
@@ -1258,12 +1337,20 @@ export function enrichCapabilities(models, opencodeModels, metadataModels, goMod
  * (models.dev: opencode-go zuerst, Fallback opencode-zen, dann kanonische
  * Metadaten) und `privacy` an.
  *
- * Standard-privacy: „fürs Training genutzt“ (keine explizite Angabe in der Doku
- * — Zen-Seite nennt lediglich das Feedback zur Modellverbesserung;
- * Aufbewahrung unbekannt → `retentionDays` bleibt weg). Ausnahmen siehe
- * FREE_MODEL_PRIVACY_OVERRIDES.
+ * Standard-privacy: „unbekannt“ ⇒ Worst-Case `training: true` (die Zen-Doku
+ * nennt für diese Modelle keine Datenschutz-Aussage; `retentionDays` bleibt
+ * weg). Die reguläre Quelle ist die Fußnoten-Liste „Die kostenlosen Modelle:“
+ * der Zen-Doku (über `parseZenFreeModelPrivacy` / `privacyById`) — sowohl ZDR
+ * als auch Modelltraining werden von dort übernommen. Manuelle
+ * `FREE_MODEL_PRIVACY_OVERRIDES` haben Vorrang.
  */
-export function enrichFreeModels(freeModels, providerModels, metadataModels, goModels = {}) {
+export function enrichFreeModels(
+  freeModels,
+  providerModels,
+  metadataModels,
+  goModels = {},
+  privacyById = new Map()
+) {
   const { resolve, resolveOpencodeId } = buildModelsDevLookup(providerModels, metadataModels, goModels);
   for (const f of freeModels) {
     const md = resolve(f.id, f.id);
@@ -1278,7 +1365,12 @@ export function enrichFreeModels(freeModels, providerModels, metadataModels, goM
     // Schreibweise normalisieren ("MiMo-V2.6-Flash Free" → "MiMo V2.6 Flash
     // Free"); Namensänderungen erzeugen ohnehin keine Changelog-Events.
     if (publicName) f.name = canonicalFreeName(publicName);
-    f.privacy = FREE_MODEL_PRIVACY_OVERRIDES[normalizeName(f.id)] ?? { training: true, validUntil: null };
+    // Priorität: manueller Override > geparste Zen-Fußnote (quelle ist die
+    // „Die kostenlosen Modelle:“-Liste) > Default „unbekannt“ (Modelltraining).
+    f.privacy =
+      FREE_MODEL_PRIVACY_OVERRIDES[normalizeName(f.id)] ??
+      privacyById.get(f.id) ??
+      { training: true, validUntil: null };
   }
   return freeModels;
 }
@@ -1826,12 +1918,13 @@ async function main() {
     const prev = existsSync(prevPath) ? JSON.parse(readFileSync(prevPath, "utf8")) : null;
     const prevModels = prev && Array.isArray(prev.models) ? prev.models : null;
     const prevFree = prev && Array.isArray(prev.freeModels) ? prev.freeModels : [];
-    const currentIds = await fetchZenFreeModels(prevFree.map((f) => f.id));
+    const { ids: currentIds, privacyById } = await fetchZenFreeModels(prevFree.map((f) => f.id));
     const freeModels = enrichFreeModels(
       mergeFreeModels(prevFree, currentIds, date),
       zenModels,
       mdModels,
-      goModels
+      goModels,
+      privacyById
     );
 
     // Abgelaufene ZDR-Vereinbarungen → Worst-Case visualisieren.
