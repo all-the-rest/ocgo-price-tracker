@@ -32,6 +32,17 @@ Scraper-Regeln, UI-Regeln) — hier nur die getroffenen Entscheidungen samt Begr
 - [x] `ai-10-usd` liest die Daten über `scripts/normalize.mjs` (akzeptiert Legacy **und** Plan-Format)
   und wählt den **günstigsten** Plan — es ist eine $10-Seite, also Go, nicht Go Plus. Dualkompatibilität
   war Pflicht, weil die Live-JSON zwischen den beiden Deploys im alten Format ist.
+- [x] **Reihenfolge beim Schema-Bruch:** erst der lokale Commit im **Consumer**, dann der
+  `repository_dispatch`. Ein Dispatch gegen noch nicht committeten Consumer-Code sieht harmlos aus
+  (der Dispatch selbst ist grün) und bricht dann im Smoke-Test des Consumers rot: `finite(model.usage)`
+  bekommt eine Map statt eines Skalars, gibt `null` zurück, und **jede** Zeile verliert den Status
+  `matched` — Symptom „kein gematchtes Modell für den Prerender-Check", Ursache weit weg vom
+  eigentlichen Ort. Bei Schema-Brüchen generell: Consumer-Normalisierung zuerst lokalisieren,
+  `pnpm generate && pnpm smoke` **lokal** gegen die Live-Daten prüfen, dann committen, dann triggern.
+- [x] `history.json` ist bei Divergenz gegen `origin/main` als **Union** zu führen (chronologisch
+  sortiert), nicht „eine Seite gewinnt": der Remote kann zwischenzeitlich einen eigenen CI-Snapshot
+  bekommen haben (`data/latest.json` bleibt die lokal erzeugte, aktuelle Fassung). Ein naives
+  Überschreiben hätte die Chronologie verkürzt und `firstSeen` verfälscht.
 - [x] **`plan_added`**: genau **ein** Event, wenn ein Plan in `plans[]` neu auftaucht, mit `plan`,
   `name`, `priceMonthly`, `creditsMonthly`. Nutzungsänderungen für neu hinzugekommene Pläne werden im
   selben Lauf **unterdrückt** (vorher existierte nichts, was sich geändert haben könnte) — der Filter
