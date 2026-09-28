@@ -78,10 +78,12 @@ Scraper-Regeln, UI-Regeln) — hier nur die getroffenen Entscheidungen samt Begr
   Script" ist damit **eingeengt** auf inhaltliche Korrekturen; Renderer-/Formatmigrationen laufen über
   das Script. Bereits versendete E-Mail-/RSS-Benachrichtigungen bleiben naturgemäß unverändert.
 - [x] **Tab-Leiste vollbreit ist gewollt** — als Befund aus dem Screenshot-Review verworfen, nichts geändert.
-- [ ] **Nicht bewertet (bewusst offen):** In den Element-Aufnahmen überlagert der Sticky-Header mittig
-  Inhalt (weiße Bande im Changelog, Filterzeile in sec1). Aus einem Bild nicht sicher als Defekt zu
-  entscheiden — gehört in einen gezielten Test mit Deep-Link auf `#privacy`/`#changelog` (springt der
-  Anker unter den Header?), nicht in einen visuellen Report.
+- [x] **Sticky-Header-Überlagerung ist gewollt.** In den Element-Aufnahmen überlagert der Sticky-Header
+  mittig Inhalt (weiße Bande im Changelog, Filterzeile in sec1). Ich hatte das als offenen Punkt
+  geführt, weil man es aus einem Bild nicht sicher als Defekt entscheiden kann; der Nutzer hat es
+  geprüft: **passt so, kein Anker-Test nötig, nichts geändert.** Wichtig für künftige Reviews: eine
+  Überlagerung in einem `*-changelog.png`/`*-secN.png` ist damit **kein** Befund — der Screenshot
+  scrollt ins Element und der Header klebt darüber. Nur im Full-Page-PNG unterhalb des Folds zählt es.
 
 ### Verworfen (nicht implementieren)
 - ~~„Alle Events außer den Zen-Free-Models sind plan-spezifisch"~~ (inkl. Modell-Verfügbarkeit pro Plan
