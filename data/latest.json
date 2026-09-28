@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-26T19:39:07.901Z",
+  "fetchedAt": "2026-09-28T06:07:01.080Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -206,7 +206,7 @@
         "validUntil": null
       },
       "contextWindow": 204800,
-      "id": "opencode-go/glm-5.1",
+      "id": "opencode/glm-5.1",
       "provider": "Z.ai"
     },
     {
@@ -631,7 +631,7 @@
         "fallback": true
       },
       "contextWindow": 204800,
-      "id": "opencode-go/minimax-m2.5",
+      "id": "opencode/minimax-m2.5",
       "provider": "MiniMax"
     },
     {
