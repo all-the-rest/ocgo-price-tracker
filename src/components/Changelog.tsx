@@ -2,9 +2,9 @@ import { For, Show, createSignal, onMount } from "solid-js";
 import type { Lang, Translation } from "../i18n";
 import { HEADING_IDS } from "../headings";
 import Heading, { AnchorLink } from "./Heading";
-import type { Change, ChangelogEntry, Plan, PlanId, PriceField, PricingType, PricingUsage } from "../types";
+import type { Change, ChangelogEntry, Plan, PlanId, PriceField, PricingType, UsageMap } from "../types";
 import { fmt, formatFreeModelName } from "../util";
-import { DEFAULT_PLAN_ID, planLabel } from "../plans";
+import { planLabel } from "../plans";
 import { capCount, fmtCaps } from "../capabilities";
 import { privacyLabelWithValidUntil, privacyRank } from "../privacy";
 
@@ -28,20 +28,13 @@ interface ChangelogProps {
  * Schränkt ein Event auf den aktiven Plan ein, oder liefert `null`, wenn es
  * für diesen Plan nicht existiert. Plan-spezifisch sind `usage_changed` und
  * `plan_added` (letzteres erscheint nur unter dem hinzugekommenen Plan).
- *
- * Legacy-Events (skalare `from`/`to`, vor der Plan-Einführung) gehören zu dem
- * Plan, den es damals gab — `DEFAULT_PLAN_ID` („go"). Sie erscheinen daher nur
- * in der Go-Ansicht, nicht unter Go Plus.
  */
 function planScopedChange(change: Change, planId: PlanId): Change | null {
   // Ein neuer Plan wird nur in seiner eigenen Ansicht gefeiert.
   if (change.type === "plan_added") return change.plan === planId ? change : null;
   if (change.type !== "usage_changed") return change;
-  if ("plans" in change) {
-    const plans = change.plans.filter((p) => p.plan === planId);
-    return plans.length > 0 ? { ...change, plans } : null;
-  }
-  return planId === DEFAULT_PLAN_ID ? change : null;
+  const plans = change.plans.filter((p) => p.plan === planId);
+  return plans.length > 0 ? { ...change, plans } : null;
 }
 
 // Einträge pro Changelog-Seite (Pagination).
@@ -60,9 +53,6 @@ function entryTime(id: string): string | null {
     timeZoneName: "short",
   });
 }
-
-const isUsageMap = (u: PricingUsage): u is Record<string, number | null> =>
-  typeof u === "object" && u !== null;
 
 /** Nutzungswert kompakt: `$15`, `∞` bei unbegrenzt/unbekannt. */
 const fmtUsageVal = (u: number | null | undefined): string => (u == null ? "∞" : `$${u}`);
@@ -104,29 +94,24 @@ export default function Changelog(props: ChangelogProps) {
     scopedEntries().slice((clampedPage() - 1) * PAGE_SIZE, clampedPage() * PAGE_SIZE);
 
   // Plan-Ids in Anzeige-Reihenfolge: die `plans`-Liste zuerst, unbekannte danach.
-  const orderedUsage = (usage: Record<string, number | null>): [string, number | null][] => {
+  const orderedUsage = (usage: UsageMap): [string, number | null][] => {
     const order: string[] = props.plans.map((p) => p.id);
-    return Object.keys(usage)
-      .sort((a, b) => (order.indexOf(a) + 1 || Infinity) - (order.indexOf(b) + 1 || Infinity))
-      .map((id) => [id, usage[id]]);
+    return (Object.entries(usage) as [string, number | null][]).sort(
+      (a, b) => (order.indexOf(a[0]) + 1 || Infinity) - (order.indexOf(b[0]) + 1 || Infinity)
+    );
   };
 
-  /** Nutzung als JSX: Plan-Map → alle Pläne mit Label; Legacy-Skalar ohne Label. */
-  const usageNode = (usage: PricingUsage, bold: boolean) => {
-    if (isUsageMap(usage)) {
-      return (
+  /** Nutzung als JSX: Plan-Map mit Plan-Label je Eintrag. */
+  const usageNode = (usage: UsageMap, bold: boolean) => (
+    <>
+      {orderedUsage(usage).map(([id, v], i) => (
         <>
-          {orderedUsage(usage).map(([id, v], i) => (
-            <>
-              {i > 0 && " / "}
-              {planLabel(id, props.t)} {usageValue(v, bold)}
-            </>
-          ))}
+          {i > 0 && " / "}
+          {planLabel(id, props.t)} {usageValue(v, bold)}
         </>
-      );
-    }
-    return usageValue(usage, bold);
-  };
+      ))}
+    </>
+  );
 
   const fmtPricing = (p: PricingType, fields: PriceField[], boldUsage = false) => {
     const order: PriceField[] = ["input", "output", "cachedRead"];
@@ -151,13 +136,10 @@ export default function Changelog(props: ChangelogProps) {
   };
 
   /** Nutzung als Klartext (model_added/model_removed), Plan-Map mit Labels. */
-  const usageString = (usage: PricingUsage): string => {
-    if (isUsageMap(usage)) {
-      const rows = orderedUsage(usage);
-      if (rows.length === 0) return "∞";
-      return rows.map(([id, v]) => `${planLabel(id, props.t)} ${fmtUsageVal(v)}`).join(" / ");
-    }
-    return fmtUsageVal(usage);
+  const usageString = (usage: UsageMap): string => {
+    const rows = orderedUsage(usage);
+    if (rows.length === 0) return "∞";
+    return rows.map(([id, v]) => `${planLabel(id, props.t)} ${fmtUsageVal(v)}`).join(" / ");
   };
 
   // Richtung des Preis-Badges: rohe Preissumme (plan-unabhängig). Die Changelog-
@@ -183,23 +165,13 @@ export default function Changelog(props: ChangelogProps) {
         return <span class={`${baseCls} badge-ghost`}>≈</span>;
       }
       case "usage_changed": {
-        // Neue Form: ein Event pro Modell, alle geänderten Pläne im Array.
+        // Ein Event pro Modell, alle geänderten Pläne im Array.
         // Richtung über alle Pläne; ∞ (null) zählt als größter Wert.
-        if ("plans" in c) {
-          const score = (u: number | null) => (u === null ? Infinity : u);
-          const increased = c.plans.some((p) => score(p.to) > score(p.from));
-          const decreased = c.plans.some((p) => score(p.to) < score(p.from));
-          if (increased && !decreased) return <span class={`${baseCls} badge-success`}>↑</span>;
-          if (decreased && !increased) return <span class={`${baseCls} badge-error`}>↓</span>;
-          return <span class={`${baseCls} badge-ghost`}>≈</span>;
-        }
-        // Legacy-Form: skalarer Nutzungswert ohne Plan.
-        const from = c.from ?? null;
-        const to = c.to ?? null;
-        if (to === null) return <span class={`${baseCls} badge-success`}>↑</span>;
-        if (from === null) return <span class={`${baseCls} badge-error`}>↓</span>;
-        if (to > from) return <span class={`${baseCls} badge-success`}>↑</span>;
-        if (to < from) return <span class={`${baseCls} badge-error`}>↓</span>;
+        const score = (u: number | null) => (u === null ? Infinity : u);
+        const increased = c.plans.some((p) => score(p.to) > score(p.from));
+        const decreased = c.plans.some((p) => score(p.to) < score(p.from));
+        if (increased && !decreased) return <span class={`${baseCls} badge-success`}>↑</span>;
+        if (decreased && !increased) return <span class={`${baseCls} badge-error`}>↓</span>;
         return <span class={`${baseCls} badge-ghost`}>≈</span>;
       }
       case "capabilities_changed": {
@@ -240,7 +212,7 @@ export default function Changelog(props: ChangelogProps) {
         );
       case "price_changed": {
         // Nutzungswerte in beiden Zeilen fett, wenn sie sich unterscheiden
-        // (Map- und Legacy-Form vergleichbar über JSON).
+        // (Plan-Map-Vergleich über JSON).
         const boldUsage =
           JSON.stringify(c.from.usage ?? null) !== JSON.stringify(c.to.usage ?? null);
         return (
@@ -250,38 +222,23 @@ export default function Changelog(props: ChangelogProps) {
           </span>
         );
       }
-      case "usage_changed": {
-        // Neue Form: pro Plan Plan-Label + alte/neue Nutzung fett.
-        if ("plans" in c) {
-          return (
-            <span>
-              {props.t.chgUsagePlans.replace("{model}", c.model).replace("{plans}", "")}
-              <For each={c.plans}>
-                {(p, i) => (
-                  <span>
-                    {i() > 0 ? ", " : " "}
-                    {planLabel(p.plan, props.t)}{" "}
-                    <strong class="font-bold">{fmtUsageVal(p.from)}</strong> →{" "}
-                    <strong class="font-bold">{fmtUsageVal(p.to)}</strong>
-                  </span>
-                )}
-              </For>
-            </span>
-          );
-        }
-        // Legacy-Form (vor der Plan-Einführung): ohne Plan-Label.
-        const phrase = props.t.chgUsage
-          .split("{model}:")[1]
-          ?.split("{from}")[0]
-          ?.trim();
+      case "usage_changed":
+        // Pro Plan Plan-Label + alte/neue Nutzung fett.
         return (
           <span>
-            {c.model}: {phrase}{" "}
-            <strong class="font-bold">{fmtUsageVal(c.from)}</strong> →{" "}
-            <strong class="font-bold">{fmtUsageVal(c.to)}</strong>
+            {props.t.chgUsagePlans.replace("{model}", c.model).replace("{plans}", "")}
+            <For each={c.plans}>
+              {(p, i) => (
+                <span>
+                  {i() > 0 ? ", " : " "}
+                  {planLabel(p.plan, props.t)}{" "}
+                  <strong class="font-bold">{fmtUsageVal(p.from)}</strong> →{" "}
+                  <strong class="font-bold">{fmtUsageVal(p.to)}</strong>
+                </span>
+              )}
+            </For>
           </span>
         );
-      }
       case "capabilities_changed": {
         const [beforeFrom, afterFrom] = props.t.chgCaps.split("{from}");
         const [modelPart, middlePart] = beforeFrom.split("{model}");
@@ -365,7 +322,11 @@ export default function Changelog(props: ChangelogProps) {
               </h3>
               <Show when={entry.changes.length > 0} fallback={<p class="mt-1">{props.t.chgNone}</p>}>
                 <ul class="mt-1 space-y-1">
-                  <For each={[...entry.changes].reverse()}>
+                  {/* Anzeigereihenfolge = Erstellungsreihenfolge aus `buildChanges`
+                      (plan_added, model_added/-removed, price_changed/usage_changed,
+                      capabilities_changed, privacy_changed, free_*). Wer sie ändern
+                      will, ändert sie dort — nicht hier umsortieren. */}
+                  <For each={entry.changes}>
                     {(c) => (
                       <li class="flex items-center gap-2">
                         {changeBadge(c)}

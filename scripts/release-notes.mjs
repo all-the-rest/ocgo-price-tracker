@@ -19,21 +19,17 @@ export function fmtPrice(n) {
   return `$${s.replace(/0+$/, "").replace(/\.$/, "")}`;
 }
 
-const isUsageMap = (u) => typeof u === "object" && u !== null;
-
 function fmtUsage(u, bold = false) {
   const s = u === null || u === undefined ? "∞ (unlimited)" : `$${u}`;
   return bold ? `**${s}**` : s;
 }
 
 /**
- * Rendert eine Nutzungsangabe: alt (einzelner Wert, historische Changelog-
- * Einträge) bleibt unverändert, neu (Map Plan-Id → $) nennt die Plannamen
- * (`Go $60, Go Plus $240`; unbekannte Plan-Id fällt auf die Id zurück).
- * `boldUsage` fettet die Werte (bei Nutzungsänderung).
+ * Rendert eine Nutzungsangabe aus der Plan-Map (Plan-Id → $) und nennt die
+ * Plannamen (`Go $60, Go Plus $240`; unbekannte Plan-Id fällt auf die Id
+ * zurück). `boldUsage` fettet die Werte (bei Nutzungsänderung).
  */
 function fmtUsageValue(usage, boldUsage, planNames) {
-  if (!isUsageMap(usage)) return fmtUsage(usage, boldUsage);
   const entries = Object.entries(usage);
   if (entries.length === 0) return fmtUsage(null, boldUsage);
   return entries
@@ -51,10 +47,9 @@ export function pricingLine(p, fields = [], boldUsage = false, planNames = {}) {
   return `${parts.join(" / ")} @ ${fmtUsageValue(p.usage, boldUsage, planNames)}`;
 }
 
-/** Nutzung hat sich geändert (alt: Zahl/null, neu: Map) — für Fettung. */
+/** Nutzung (Plan-Map) hat sich geändert — für Fettung. */
 function usageChanged(a, b) {
-  if (isUsageMap(a) || isUsageMap(b)) return JSON.stringify(a ?? null) !== JSON.stringify(b ?? null);
-  return a !== b;
+  return JSON.stringify(a ?? null) !== JSON.stringify(b ?? null);
 }
 
 export function fmtCaps(c) {
@@ -99,20 +94,12 @@ export function renderChange(c, planNames = {}) {
     }
     case "usage_changed": {
       const fmtU = (u) => (u === null || u === undefined ? "∞ (unlimited)" : `$${u}`);
-      // Neue Form: ein Event pro Modell, alle geänderten Pläne im `plans`-Array
+      // Ein Event pro Modell, alle geänderten Pläne im `plans`-Array
       // (Plannamen aus data/latest.json; unbekannte Id fällt auf die Id zurück).
-      if (Array.isArray(c.plans)) {
-        const parts = c.plans.map(
-          (p) => `${planNames[p.plan] ?? p.plan} ${fmtU(p.from)} → ${fmtU(p.to)}`
-        );
-        return `- **${c.model}** — usage: ${parts.join(", ")}`;
-      }
-      // Legacy: ein einzelner Plan (optional) oder ein skalarer Wert.
-      if (c.plan) {
-        const label = planNames[c.plan] ?? c.plan;
-        return `- **${c.model}** — ${label} usage: **${fmtU(c.from)}** → **${fmtU(c.to)}**`;
-      }
-      return `- **${c.model}** — usage: **${fmtU(c.from)}** → **${fmtU(c.to)}**`;
+      const parts = c.plans.map(
+        (p) => `${planNames[p.plan] ?? p.plan} ${fmtU(p.from)} → ${fmtU(p.to)}`
+      );
+      return `- **${c.model}** — usage: ${parts.join(", ")}`;
     }
     case "capabilities_changed":
       return `- **${c.model}** — capabilities: **${fmtCaps(c.from)}** → **${fmtCaps(c.to)}**`;

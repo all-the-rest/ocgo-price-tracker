@@ -1244,7 +1244,7 @@ test("upsertChangelogJson: leere Änderungen ersetzen den Eintrag derselben id n
       {
         id: "2026-08-07T00-00-00Z",
         date: "2026-08-07",
-        changes: [{ type: "usage_changed", model: "DeepSeek V4 Flash", plan: "go", from: 60, to: 120 }],
+        changes: [{ type: "usage_changed", model: "DeepSeek V4 Flash", plans: [{ plan: "go", from: 60, to: 120 }] }],
       },
       { id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }] },
     ],
@@ -1261,7 +1261,7 @@ test("upsertChangelogJson: verschiedene Run-ids → eigene Einträge (kein Day-M
       {
         id: "2026-08-07T06-00-00Z",
         date: "2026-08-07",
-        changes: [{ type: "usage_changed", model: "Alpha", plan: "go", from: 60, to: 120 }],
+        changes: [{ type: "usage_changed", model: "Alpha", plans: [{ plan: "go", from: 60, to: 120 }] }],
       },
     ],
   };
@@ -1269,7 +1269,7 @@ test("upsertChangelogJson: verschiedene Run-ids → eigene Einträge (kein Day-M
     existing,
     "2026-08-07T14-00-00Z",
     "2026-08-07",
-    [{ type: "free_added", model: "big-pickle" }, { type: "usage_changed", model: "Alpha", plan: "go", from: 120, to: 60 }]
+    [{ type: "free_added", model: "big-pickle" }, { type: "usage_changed", model: "Alpha", plans: [{ plan: "go", from: 120, to: 60 }] }]
   );
   assert.equal(result.entries.length, 2);
   assert.equal(result.entries[0].id, "2026-08-07T14-00-00Z");
@@ -1279,7 +1279,7 @@ test("upsertChangelogJson: verschiedene Run-ids → eigene Einträge (kein Day-M
 test("mergeChanges: gleiche type+model → neuestes gewinnt, neue Events werden angehängt", () => {
   const a = { type: "price_changed", model: "Alpha", from: { input: 1 }, to: { input: 2 }, fields: ["input"] };
   const b = { type: "price_changed", model: "Alpha", from: { input: 2 }, to: { input: 1.5 }, fields: ["input"] };
-  const c = { type: "usage_changed", model: "Alpha", plan: "go", from: 60, to: 120 };
+  const c = { type: "usage_changed", model: "Alpha", plans: [{ plan: "go", from: 60, to: 120 }] };
   assert.deepEqual(mergeChanges([a], [b, c]), [b, c]);
   assert.deepEqual(mergeChanges([c], [a]), [c, a]);
 });
@@ -1360,28 +1360,23 @@ test("validateChangelog: gültiger Changelog mit allen Event-Typen (neue Form)",
   assert.doesNotThrow(() => validateChangelog(changelog));
 });
 
-test("validateChangelog: historische Events (Skalar-usage, usage_changed ohne plan) bleiben gültig", () => {
-  assert.doesNotThrow(() =>
-    validateChangelog({
-      entries: [
-        {
-          id: "2026-08-06T00-00-00Z",
-          date: "2026-08-06",
-          changes: [
-            {
-              type: "model_added",
-              model: "Gamma",
-              pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
-            },
-            { type: "usage_changed", model: "Beta", from: 15, to: 60 },
-          ],
-        },
-      ],
-    })
+test("validateChangelog: Legacy-Formen (Skalar-usage, usage_changed ohne plans) werden abgelehnt", () => {
+  const wrap = (change) => ({
+    entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [change] }],
+  });
+  assert.throws(() =>
+    validateChangelog(
+      wrap({
+        type: "model_added",
+        model: "Gamma",
+        pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+      })
+    )
   );
+  assert.throws(() => validateChangelog(wrap({ type: "usage_changed", model: "Beta", from: 15, to: 60 })));
 });
 
-test("validateChangelog: usage_changed akzeptiert plans-Array UND Legacy-Formen", () => {
+test("validateChangelog: usage_changed akzeptiert nur die plans-Form", () => {
   assert.doesNotThrow(() =>
     validateChangelog({
       entries: [
@@ -1398,13 +1393,17 @@ test("validateChangelog: usage_changed akzeptiert plans-Array UND Legacy-Formen"
                 { plan: "go-plus", from: 60, to: 120 },
               ],
             },
-            { type: "usage_changed", model: "C", from: 15, to: 60 },
-            { type: "usage_changed", model: "D", plan: "go", from: 15, to: 60 },
           ],
         },
       ],
     })
   );
+  const wrap = (change) => ({
+    entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [change] }],
+  });
+  // Skalar ohne Plan und die frühere plan-Form sind keine gültigen Events mehr.
+  assert.throws(() => validateChangelog(wrap({ type: "usage_changed", model: "C", from: 15, to: 60 })));
+  assert.throws(() => validateChangelog(wrap({ type: "usage_changed", model: "D", plan: "go", from: 15, to: 60 })));
 });
 
 test("validateChangelog: plan_added akzeptiert die vollständige Form, lehnt unvollständige ab", () => {
@@ -1431,7 +1430,7 @@ test("validateChangelog: plan_added akzeptiert die vollständige Form, lehnt unv
   );
 });
 
-test("validateChangelog: usage_changed mit leerem plans, Mischform oder fehlendem from/to bricht", () => {
+test("validateChangelog: usage_changed mit leerem plans, Legacy-Feldern oder ungültigem Wert bricht", () => {
   const wrap = (change) => ({
     entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [change] }],
   });
@@ -1484,7 +1483,7 @@ test("validateChangelog: fehlende fields, leere fields, ungültige usage brechen
         {
           id: "2026-08-06T00-00-00Z",
           date: "2026-08-06",
-          changes: [{ type: "usage_changed", model: "X", plan: "go", from: -1, to: 60 }],
+          changes: [{ type: "usage_changed", model: "X", plans: [{ plan: "go", from: -1, to: 60 }] }],
         },
       ],
     })

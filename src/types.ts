@@ -32,20 +32,14 @@ export interface PricingType {
   cachedRead: number | null;
   cachedWrite: number | null;
   /**
-   * Nutzung: neue Changelog-Einträge tragen die Plan-Map (Plan-Id → $, `null` =
-   * unbegrenzt), historische Einträge (vor der Plan-Einführung) den einzelnen
-   * Zahlenwert (`null` = ∞). Beide Formen sind gültig — der Scraper validiert
-   * dasselbe per zod-Union, damit die bestehende Changelog-/Release-Historie
-   * unverändert weiterläuft.
+   * Nutzung als Plan-Map (Plan-Id → $, `null` = unbegrenzt). Immer alle Pläne;
+   * der Scraper validiert genau diese Form.
    */
-  usage: PricingUsage;
+  usage: UsageMap;
 }
 
 /** Plan-Id → Nutzung in $ (`null` = unbegrenzt / kostenlose Zeile). */
-export type UsageMap = Record<string, number | null>;
-
-/** `usage` in Changelog-Pricing: Plan-Map (neu) oder einzelner Wert (Legacy). */
-export type PricingUsage = UsageMap | number | null;
+export type UsageMap = Record<PlanId, number | null>;
 
 export interface RequestPattern {
   input: number;
@@ -118,7 +112,7 @@ export interface PriceData {
 
 export type SupportedLocale = "en" | "de";
 
-/** Ein geänderter Plan innerhalb eines `usage_changed`-Events (neue Form). */
+/** Ein geänderter Plan innerhalb eines `usage_changed`-Events. */
 export interface UsagePlanChange {
   plan: PlanId;
   from: number | null;
@@ -130,14 +124,8 @@ export type Change =
   | { type: "model_added"; model: string; pricing: PricingType }
   | { type: "model_removed"; model: string; days: number; pricing: PricingType }
   | { type: "price_changed"; model: string; from: PricingType; to: PricingType; fields: PriceField[] }
-  // `usage_changed` kennt zwei Formen (Muster aus cc-price-tracker):
-  // - neu: ein Event pro Modell, im `plans`-Array nur die tatsächlich
-  //   geänderten Pläne;
-  // - Legacy (vor der Plan-Einführung): skalare `from`/`to`, optional `plan`.
-  //   Nötig, weil die historischen Einträge diese Form behalten und ihre
-  //   GitHub-Releases bereits veröffentlicht sind.
+  // Ein Event pro Modell, im `plans`-Array nur die tatsächlich geänderten Pläne.
   | { type: "usage_changed"; model: string; plans: UsagePlanChange[] }
-  | { type: "usage_changed"; model: string; plan?: PlanId; from?: number | null; to?: number | null }
   | { type: "capabilities_changed"; model: string; from: Capabilities | null; to: Capabilities | null }
   | { type: "privacy_changed"; model: string; from: Privacy | null; to: Privacy | null }
   | { type: "free_added"; model: string; name?: string }

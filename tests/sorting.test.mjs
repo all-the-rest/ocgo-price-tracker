@@ -120,7 +120,7 @@ test("Changelog: Run-id rendert die Uhrzeit (MEZ/MESZ), Anker = entry.id, mehrer
   assert.doesNotMatch($("#2026-08-26 h3").text(), /\d{1,2}:\d{2}/);
 });
 
-test("Changelog: usage_changed rendert neue plans-Form mit Plan-Labels UND Legacy-Form ohne Label", () => {
+test("Changelog: usage_changed rendert die plans-Form mit Plan-Labels (nur aktiver Plan)", () => {
   const html = ssr.renderChangelog(
     [
       {
@@ -135,8 +135,6 @@ test("Changelog: usage_changed rendert neue plans-Form mit Plan-Labels UND Legac
               { plan: "go-plus", from: 120, to: 240 },
             ],
           },
-          // Legacy-Form (vor der Plan-Einführung): skalar, ohne Plan.
-          { type: "usage_changed", model: "Old Model", from: 30, to: 60 },
           // price_changed mit Usage-Map (Plan-Labels) — Nutzung mit Änderung gefettet.
           {
             type: "price_changed",
@@ -158,17 +156,81 @@ test("Changelog: usage_changed rendert neue plans-Form mit Plan-Labels UND Legac
     "de"
   );
   const text = cheerio.load(html)("#changelog").text().replace(/\s+/g, " ");
-  // Neue Form: Plan-Label + alte/neue Nutzung. Der Aufruf nutzt den Default-Plan
-  // „go", deshalb ist hier nur der Go-Teil sichtbar (die Go-Plus-Ansicht prüft der
-  // eigene Test „Changelog ist pro Plan").
+  // Der Aufruf nutzt den Default-Plan „go", deshalb ist hier nur der Go-Teil
+  // sichtbar (die Go-Plus-Ansicht prüft der eigene Test „Changelog ist pro Plan").
   assert.match(text, /GLM-5\.3: Nutzung Go \$15 → \$30/);
   assert.doesNotMatch(text, /Go Plus \$120 → \$240/);
-  // Legacy-Form: ohne Plan-Label (byte-stabil zur bereits veröffentlichten Release).
-  assert.match(text, /Old Model: Nutzung \$30 → \$60/);
   // Usage-Map in der Preiszeile/`model_added`: alle Pläne mit Label, ∞ beibehalten.
   // Diese Zeilen bleiben plan-übergreifend — die Tokenpreise gelten in beiden Plänen.
   assert.match(text, /DeepSeek V4 Flash: .*@ Go \$120 → .*@ Go \$15/);
   assert.match(text, /Neu hinzugefügt .*@ Go \$15 \/ Go Plus \$120/);
+});
+
+test("Changelog: Anzeigereihenfolge = Erstellungsreihenfolge aus buildChanges (plan_added oben)", () => {
+  const entry = {
+    id: "2026-09-28T10-00-00Z",
+    date: "2026-09-28",
+    changes: [
+      { type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 },
+      {
+        type: "model_added",
+        model: "Neu",
+        pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15, "go-plus": 120 } },
+      },
+      {
+        type: "model_removed",
+        model: "Weg",
+        days: 3,
+        pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15, "go-plus": 120 } },
+      },
+      {
+        type: "price_changed",
+        model: "Preis",
+        from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15, "go-plus": 120 } },
+        to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15, "go-plus": 120 } },
+        fields: ["input"],
+      },
+      { type: "usage_changed", model: "Nutzung", plans: [{ plan: "go-plus", from: 120, to: 240 }] },
+      {
+        type: "capabilities_changed",
+        model: "Fähig",
+        from: null,
+        to: { input: ["text"], output: ["text"], reasoning: true, toolCall: true },
+      },
+      {
+        type: "privacy_changed",
+        model: "Datenschutz",
+        from: { training: true, validUntil: null },
+        to: { training: false, retentionDays: true, validUntil: null },
+      },
+      { type: "free_added", model: "frei", name: "Frei" },
+    ],
+  };
+  // Go-Plus-Ansicht: plan_added + der go-plus-Zweig der Nutzungsänderung sind sichtbar.
+  const $ = cheerio.load(ssr.renderChangelog([entry], PLANS, "de", "go-plus"));
+  const bullets = $("#changelog ul li")
+    .map((_, li) => $(li).text())
+    .get();
+  const idxOf = (needle) => {
+    const i = bullets.findIndex((s) => s.includes(needle));
+    assert.ok(i >= 0, `Bullet mit "${needle}" fehlt: ${JSON.stringify(bullets)}`);
+    return i;
+  };
+  const order = [
+    idxOf("neuer Tarif"),
+    idxOf("Neu hinzugefügt"),
+    idxOf("Weg"),
+    idxOf("Preis"),
+    idxOf("Nutzung: Nutzung"),
+    idxOf("Fähig"),
+    idxOf("Datenschutz"),
+    idxOf("Frei"),
+  ];
+  assert.deepEqual(
+    order,
+    [...order].sort((a, b) => a - b),
+    `Reihenfolge = Erstellungsreihenfolge: ${JSON.stringify([...order])}`
+  );
 });
 
 // `plan × basis × field × dir`: beide Pläne werden in jedem Test geprüft (die
@@ -285,8 +347,8 @@ test("Changelog ist pro Plan: Go-Plus-Ansicht zeigt keine Go-Nutzungsänderungen
       { type: "usage_changed", model: "Kimi K3", plans: [{ plan: "go", from: 15, to: 45 }] },
       // Nur Go Plus geändert → in der Go-Ansicht komplett unsichtbar.
       { type: "usage_changed", model: "Qwen3.8 Max", plans: [{ plan: "go-plus", from: 60, to: 180 }] },
-      // Legacy (nur Go gab es) → gehört zu Go.
-      { type: "usage_changed", model: "Alt", from: 30, to: 60 },
+      // Nur Go geändert → in der Go-Plus-Ansicht komplett unsichtbar.
+      { type: "usage_changed", model: "Alt", plans: [{ plan: "go", from: 30, to: 60 }] },
       // Plan-unabhängige Events → in beiden Ansichten.
       { type: "free_added", model: "big-pickle", name: "Big Pickle" },
     ],
@@ -302,7 +364,7 @@ test("Changelog ist pro Plan: Go-Plus-Ansicht zeigt keine Go-Nutzungsänderungen
   assert.doesNotMatch(go, /Go Plus \$120 → \$240/, "Go: Go-Plus-Wert NICHT sichtbar");
   assert.match(go, /Kimi K3: Nutzung Go \$15 → \$45/, "Go: nur-Go-Event sichtbar");
   assert.doesNotMatch(go, /Qwen3\.8 Max/, "Go: nur-Go-Plus-Event NICHT sichtbar");
-  assert.match(go, /Alt: Nutzung \$30 → \$60/, "Go: Legacy-Event gehört zu Go");
+  assert.match(go, /Alt: Nutzung Go \$30 → \$60/, "Go: nur-Go-Event (Alt) sichtbar");
   assert.match(go, /Big Pickle/, "Go: plan-unabhängiges Event sichtbar");
 
   const plus = text("go-plus");
@@ -310,7 +372,7 @@ test("Changelog ist pro Plan: Go-Plus-Ansicht zeigt keine Go-Nutzungsänderungen
   assert.doesNotMatch(plus, /Go \$15 → \$30/, "Go Plus: Go-Wert NICHT sichtbar");
   assert.doesNotMatch(plus, /Kimi K3/, "Go Plus: nur-Go-Event NICHT sichtbar");
   assert.match(plus, /Qwen3\.8 Max: Nutzung Go Plus \$60 → \$180/, "Go Plus: eigenes Event sichtbar");
-  assert.doesNotMatch(plus, /Alt: Nutzung/, "Go Plus: Legacy-Event (Go) NICHT sichtbar");
+  assert.doesNotMatch(plus, /Alt: Nutzung/, "Go Plus: nur-Go-Event (Alt) NICHT sichtbar");
   assert.match(plus, /Big Pickle/, "Go Plus: plan-unabhängiges Event sichtbar");
 });
 

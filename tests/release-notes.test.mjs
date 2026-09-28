@@ -20,17 +20,7 @@ const notesFor = (date, changes, id = `${date}T10-00-00Z`) =>
 
 const full = (date, changes) => notesFor(date, changes);
 
-// Historische Form (vor der Plan-Umstellung): Usage ist ein einzelner Wert.
-const pricing = (over = {}) => ({
-  input: 0.3,
-  output: 1.2,
-  cachedRead: 0.06,
-  cachedWrite: null,
-  usage: 30,
-  ...over,
-});
-
-// Neue Form: Usage ist eine Map Plan-Id → Nutzung.
+// Usage ist immer eine Map Plan-Id → Nutzung.
 const pricingMap = (over = {}) => ({
   input: 0.3,
   output: 1.2,
@@ -40,9 +30,8 @@ const pricingMap = (over = {}) => ({
   ...over,
 });
 
-const isUsageMap = (u) => typeof u === "object" && u !== null;
-const usageChanged = (a, b) =>
-  isUsageMap(a) || isUsageMap(b) ? JSON.stringify(a ?? null) !== JSON.stringify(b ?? null) : a !== b;
+// Nutzung (Plan-Map) hat sich geändert — für Fettung.
+const usageChanged = (a, b) => JSON.stringify(a ?? null) !== JSON.stringify(b ?? null);
 
 // ---------------------------------------------------------------------------
 // Vollständiger Release-Post: Kopf + Bullets müssen dem Changelog-Eintrag
@@ -72,17 +61,6 @@ test("release notes: model_added enthält Preise UND Usage je Plan", () => {
 // ---------------------------------------------------------------------------
 // Modell-Events
 // ---------------------------------------------------------------------------
-
-test("release notes: model_added (historisch, Skalar-usage) bleibt unverändert", () => {
-  assert.equal(
-    renderChange({
-      type: "model_added",
-      model: "GLM-5.3-Flash",
-      pricing: { input: 0.15, output: 0.5, cachedRead: 0.03, cachedWrite: null, usage: 30 },
-    }),
-    "- **GLM-5.3-Flash** — added ($0.15 / $0.5 / $0.03 @ $30)"
-  );
-});
 
 test("release notes: model_removed enthält Pricing (mit ∞-Usage) + Tage", () => {
   assert.equal(
@@ -124,17 +102,6 @@ test("release notes: price_changed mit Usage-Wechsel boldet die geänderten Nutz
   );
 });
 
-test("release notes: usage_changed nennt die Plan-Id (ohne auflösbaren Plan)", () => {
-  assert.equal(
-    renderChange({ type: "usage_changed", model: "Grok 4.7", plan: "go-plus", from: 15, to: null }),
-    "- **Grok 4.7** — go-plus usage: **$15** → **∞ (unlimited)**"
-  );
-  assert.equal(
-    renderChange({ type: "usage_changed", model: "GPT 5.6 Luna", plan: "go", from: null, to: 60 }),
-    "- **GPT 5.6 Luna** — go usage: **∞ (unlimited)** → **$60**"
-  );
-});
-
 test("release notes: usage_changed (plans-Form) nennt die Plannamen", () => {
   assert.equal(
     renderChange(
@@ -166,13 +133,6 @@ test("release notes: usage_changed (plans-Form) fällt ohne Plannamen auf die Pl
   assert.equal(
     renderChange({ type: "usage_changed", model: "Grok 4.7", plans: [{ plan: "go-plus", from: 15, to: 120 }] }),
     "- **Grok 4.7** — usage: go-plus $15 → $120"
-  );
-});
-
-test("release notes: historisches usage_changed (ohne plan) bleibt unverändert", () => {
-  assert.equal(
-    renderChange({ type: "usage_changed", model: "Grok 4.6", from: 15, to: null }),
-    "- **Grok 4.6** — usage: **$15** → **∞ (unlimited)**"
   );
 });
 
@@ -285,17 +245,11 @@ function assertCovered(notes, c) {
       return;
     case "usage_changed":
       has(c.model);
-      if (Array.isArray(c.plans)) {
-        for (const p of c.plans) {
-          has(p.plan);
-          has(fmtUsage(p.from));
-          has(fmtUsage(p.to));
-        }
-        return;
+      for (const p of c.plans) {
+        has(p.plan);
+        has(fmtUsage(p.from));
+        has(fmtUsage(p.to));
       }
-      if (c.plan) has(c.plan);
-      has(`**${fmtUsage(c.from)}**`);
-      has(`**${fmtUsage(c.to)}**`);
       return;
     case "capabilities_changed":
       has(c.model);
@@ -360,8 +314,6 @@ test("renderChange: jeder Schema-Change-Typ hat einen Handler (kein JSON-Dump-Fa
       fields: ["input"],
     },
     { type: "usage_changed", model: "Grok 4.7", plans: [{ plan: "go-plus", from: 15, to: null }] },
-    { type: "usage_changed", model: "Grok 4.7", plan: "go-plus", from: 15, to: null },
-    { type: "usage_changed", model: "Grok 4.6", from: 15, to: null },
     {
       type: "capabilities_changed",
       model: "DeepSeek V4 Pro",
@@ -382,20 +334,15 @@ test("renderChange: jeder Schema-Change-Typ hat einen Handler (kein JSON-Dump-Fa
   }
 });
 
-test("fmtPrice/pricingLine: Nutzungsformatierung bleibt stabil (alt + neu)", () => {
+test("fmtPrice/pricingLine: Nutzungsformatierung nennt die Pläne", () => {
   assert.equal(fmtPrice(0.15), "$0.15");
   assert.equal(fmtPrice(0.5), "$0.5");
   assert.equal(fmtPrice(null), "–");
-  // Historische Form (Skalar) bleibt unverändert.
+  // Plan-Map nennt die Pläne; ∞ (null) bleibt erhalten.
   assert.equal(
-    pricingLine({ input: 0.15, output: 0.5, cachedRead: 0.03, cachedWrite: null, usage: 30 }),
-    "$0.15 / $0.5 / $0.03 @ $30"
+    pricingLine({ input: 0, output: 0, cachedRead: 0, cachedWrite: 0, usage: { go: null } }),
+    "$0 / $0 / $0 / $0 @ go ∞ (unlimited)"
   );
-  assert.equal(
-    pricingLine({ input: 0, output: 0, cachedRead: 0, cachedWrite: 0, usage: null }),
-    "$0 / $0 / $0 / $0 @ ∞ (unlimited)"
-  );
-  // Neue Form (Map) nennt die Pläne.
   assert.equal(
     pricingLine({ input: 0.15, output: 0.5, cachedRead: 0.03, cachedWrite: null, usage: { go: 30, "go-plus": 120 } }, [], false, { go: "Go", "go-plus": "Go Plus" }),
     "$0.15 / $0.5 / $0.03 @ Go $30, Go Plus $120"

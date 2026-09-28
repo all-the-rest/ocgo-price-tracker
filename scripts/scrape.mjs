@@ -2061,10 +2061,8 @@ const PricingTypeSchema = z.object({
   output: z.number().nullable(),
   cachedRead: z.number().nullable(),
   cachedWrite: z.number().nullable(),
-  // Neu: Map Plan-Id → Nutzung. Historische Changelog-Einträge tragen noch den
-  // einzelnen Zahlenwert (Schema-Migration) — beides bleibt gültig, damit die
-  // bestehende Changelog-/Release-Historie nicht bricht.
-  usage: z.union([z.number().positive().nullable(), UsageMapSchema]),
+  // Map Plan-Id → Nutzung (immer alle Pläne).
+  usage: UsageMapSchema,
 });
 
 // Ein geänderter Plan innerhalb eines `usage_changed`-Events.
@@ -2097,18 +2095,17 @@ const ChangeSchema = z.discriminatedUnion("type", [
     to: PricingTypeSchema,
     fields: z.array(z.enum(["input", "output", "cachedRead", "cachedWrite"])).min(1),
   }),
-  z.object({
-    type: z.literal("usage_changed"),
-    model: z.string().min(1),
-    // Neue Form (ein Event pro Modell, Muster wie `allowance_changed` im
-    // cc-price-tracker): alle tatsächlich geänderten Pläne in einem Array.
-    plans: z.array(UsagePlanChangeSchema).min(1).optional(),
-    // Legacy-Form (vor der plans-Umstellung): ein Event, ein optionaler Plan,
-    // skalare from/to. Genau eine der beiden Formen ist gültig (superRefine).
-    plan: z.string().min(1).optional(),
-    from: z.number().positive().nullable().optional(),
-    to: z.number().positive().nullable().optional(),
-  }),
+  z
+    .object({
+      type: z.literal("usage_changed"),
+      model: z.string().min(1),
+      // Ein Event pro Modell: alle tatsächlich geänderten Pläne in einem Array
+      // (Muster wie `allowance_changed` im cc-price-tracker). `.strict()`:
+      // die frühere Legacy-Form (plan/from/to) wird abgelehnt statt still
+      // verschluckt.
+      plans: z.array(UsagePlanChangeSchema).min(1),
+    })
+    .strict(),
   z.object({
     type: z.literal("capabilities_changed"),
     model: z.string().min(1),
@@ -2143,45 +2140,15 @@ const ChangeSchema = z.discriminatedUnion("type", [
   }),
 ]);
 
-const ChangelogSchema = z
-  .object({
-    entries: z.array(
-      z.object({
-        id: z.string().min(1),
-        date: z.string(),
-        changes: z.array(ChangeSchema).min(1),
-      })
-    ),
-  })
-  .superRefine((changelog, ctx) => {
-    // `usage_changed` kennt zwei Formen: die neue `plans`-Array-Form (alle
-    // geänderten Pläne in einem Event) und die Legacy-Form (skalare from/to,
-    // optional `plan`). Genau eine Form muss vollständig vorliegen.
-    changelog.entries.forEach((entry, ei) => {
-      entry.changes.forEach((c, ci) => {
-        if (c.type !== "usage_changed") return;
-        const path = ["entries", ei, "changes", ci];
-        const hasPlans = Array.isArray(c.plans) && c.plans.length > 0;
-        if (hasPlans) {
-          if (c.plan !== undefined || c.from !== undefined || c.to !== undefined) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path,
-              message: "usage_changed: plans-Form darf kein plan/from/to tragen",
-            });
-          }
-          return;
-        }
-        if (c.from === undefined || c.to === undefined) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path,
-            message: "usage_changed: entweder plans (min. 1) oder from+to angeben",
-          });
-        }
-      });
-    });
-  });
+const ChangelogSchema = z.object({
+  entries: z.array(
+    z.object({
+      id: z.string().min(1),
+      date: z.string(),
+      changes: z.array(ChangeSchema).min(1),
+    })
+  ),
+});
 
 /**
  * Validiert den kompletten Changelog (zod). Leere Einträge (`changes: []`) und

@@ -58,6 +58,29 @@ Scraper-Regeln, UI-Regeln) — hier nur die getroffenen Entscheidungen samt Begr
 - [x] Arbeitsregel: **Entscheidungen immer als interaktive Frage** (Tool `question`) und anschließend in
   `AGENTS.md` **und** `AGENTS.todo.md` festhalten; verworfene Ansätze klar als verworfen markieren.
 
+### Changelog: Reihenfolge, Legacy-Migration, Release-Rewrite (aus dem Screenshot-Review 2026-09-28)
+- [x] **Keine Umkehrung mehr im Renderer.** Die UI rendert `entry.changes` in Erstellungsreihenfolge
+  (`plan_added` → `model_added` → `model_removed` → Preis/Nutzung → `capabilities` → `privacy` → `free_*`).
+  Die Umkehrung war mal drin, machte aber `plan_added` ans Ende jedes Eintrags und wich von
+  `release-notes.mjs` ab (dort gilt die Erstellungsreihenfolge). Folge: die visuelle Reihenfolge **aller**
+  Events dreht sich mit — gewollt, die alte Anordnung (Entfernungen oben) war nur die Kehrseite davon.
+  Wer sie ändern will, ändert `buildChanges`, nicht das UI.
+- [x] **Legacy-Formen einmalig migriert, Sonderfälle entfernt.** Die ~40 Einträge vor der Plan-Einführung
+  hatten skalare `from`/`to` und skalares `pricing.usage`; sie sind jetzt `plans: [{plan:"go",…}]` bzw.
+  `{go:…}`. Damit entfallen die zod-Union, die `DEFAULT_PLAN_ID`-Sonderbehandlung in `planScopedChange` und
+  die Skalar-Zweige in UI + `release-notes.mjs` — der Plan-Name wird immer genannt. Einziger Rest:
+  `pricingOf` normalisiert einen skalaren `usage` aus einem **alten** Snapshot (Lese-Schutz, kein
+  Rendering-Fall).
+- [x] **Releases neu geschrieben** über `ensure-release.mjs --all` (Notizen `@ $15` → `@ Go $15`),
+  danach `check-release-sync.mjs` grün. Die AGENTS.md-Regel „manuelle Release-Korrekturen nie über das
+  Script" ist damit **eingeengt** auf inhaltliche Korrekturen; Renderer-/Formatmigrationen laufen über
+  das Script. Bereits versendete E-Mail-/RSS-Benachrichtigungen bleiben naturgemäß unverändert.
+- [x] **Tab-Leiste vollbreit ist gewollt** — als Befund aus dem Screenshot-Review verworfen, nichts geändert.
+- [ ] **Nicht bewertet (bewusst offen):** In den Element-Aufnahmen überlagert der Sticky-Header mittig
+  Inhalt (weiße Bande im Changelog, Filterzeile in sec1). Aus einem Bild nicht sicher als Defekt zu
+  entscheiden — gehört in einen gezielten Test mit Deep-Link auf `#privacy`/`#changelog` (springt der
+  Anker unter den Header?), nicht in einen visuellen Report.
+
 ### Verworfen (nicht implementieren)
 - ~~„Alle Events außer den Zen-Free-Models sind plan-spezifisch"~~ (inkl. Modell-Verfügbarkeit pro Plan
   nach dem `cc-price-tracker`-`availability`-Muster). Zurückgezogen: hätte ein Plan-spezifisches
