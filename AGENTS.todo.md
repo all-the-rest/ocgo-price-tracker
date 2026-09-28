@@ -72,7 +72,9 @@ Scraper-Regeln, UI-Regeln) — hier nur die getroffenen Entscheidungen samt Begr
   `pricingOf` normalisiert einen skalaren `usage` aus einem **alten** Snapshot (Lese-Schutz, kein
   Rendering-Fall).
 - [x] **Releases neu geschrieben** über `ensure-release.mjs --all` (Notizen `@ $15` → `@ Go $15`),
-  danach `check-release-sync.mjs` grün. Die AGENTS.md-Regel „manuelle Release-Korrekturen nie über das
+  danach `check-release-sync.mjs` grün (41/41). **27 von 41** Releases editiert, 14 unverändert (nur
+  Einträge mit Nutzungs-Angaben sind betroffen) — Stand des Rewrites im Commit `fee432b`, nicht
+  später reproduzierbar. Die AGENTS.md-Regel „manuelle Release-Korrekturen nie über das
   Script" ist damit **eingeengt** auf inhaltliche Korrekturen; Renderer-/Formatmigrationen laufen über
   das Script. Bereits versendete E-Mail-/RSS-Benachrichtigungen bleiben naturgemäß unverändert.
 - [x] **Tab-Leiste vollbreit ist gewollt** — als Befund aus dem Screenshot-Review verworfen, nichts geändert.
