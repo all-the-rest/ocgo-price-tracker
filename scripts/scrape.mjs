@@ -18,12 +18,6 @@ const SOURCE_URL = "https://opencode.ai/docs/de/go/";
 const ZEN_DOCS_URL = "https://opencode.ai/docs/de/zen/";
 const MODELS_DEV_URL = "https://models.dev";
 const SOURCE_LANG = "de";
-// Fallback-Werte: Monatsguthaben/-preis werden dynamisch aus der Doku-Seite
-// gezogen (Intro „10 $/Monat“, Limit-Liste „Monatliches Limit — Nutzung im Wert
-// von $60“, sonst Faktor-Satz „das Sechsfache dieses Betrags“); nur wenn die
-// Extraktion fehlschlägt, greifen diese Konstanten (mit Warnung, kein Rot-Abbruch).
-const DEFAULT_MONTHLY_CREDIT = 60;
-const DEFAULT_MONTHLY_COST = 10;
 const FLOAT_TOLERANCE = 1e-9;
 const USER_AGENT =
   "ocgo-price-tracker/0.1.0 (+https://github.com/all-the-rest/ocgo-price-tracker)";
@@ -190,7 +184,9 @@ const CAPABILITY_OVERRIDES = {
 function parsePrice(text) {
   const t = (text ?? "").trim();
   if (t === "" || t === "-" || t === "—" || t === "–") return null;
-  if (t.toLowerCase() === "free") return 0;
+  // Englisch „Free“ / deutsch „Kostenlos“ → gratis ist ein bekannter Preis (0).
+  const lower = t.toLowerCase();
+  if (lower === "free" || lower === "kostenlos") return 0;
   const cleaned = t.replace(/[\$,\s]/g, "");
   const value = parseFloat(cleaned);
   if (Number.isNaN(value)) throw new ScrapeError(`Preis unparsebar: "${text}"`);
@@ -239,31 +235,63 @@ function parseUsageCell($cell) {
   return parseUsage(clone.text());
 }
 
-function findPriceTable($) {
+/**
+ * Header-Zellen einer Tabelle (klein geschrieben, getrimmt).
+ */
+function tableHeaders($, table) {
+  return $(table)
+    .find("thead th")
+    .map((_, th) => $(th).text().trim().toLowerCase())
+    .get();
+}
+
+// Spalten-Aliase (Deutsch UND Englisch): die Doku ist teilweise übersetzt, die
+// englische Seite https://opencode.ai/docs/go/ hat dieselbe Struktur.
+const HEADER_ALIASES = {
+  name: ["model", "modell"],
+  input: ["input", "eingabe"],
+  output: ["output", "ausgabe"],
+  cachedRead: ["cached read", "cache-lesevorgang", "cache lesevorgang"],
+  cachedWrite: ["cached write", "cache-schreibvorgang", "cache schreibvorgang"],
+  usage: ["nutzung", "usage", "monatliches limit", "monthly limit", "limit"],
+};
+
+const headerMatches = (header, aliases) => aliases.some((a) => header.includes(a));
+const isNameHeader = (header) => HEADER_ALIASES.name.includes(header);
+
+/**
+ * Erkennt eine Preistabelle über die Header-Zeile (Input/Eingabe UND
+ * Output/Ausgabe) — NICHT über nth-child-Selektoren. Rate-Limit-Tabellen
+ * („Anfragen pro …“) matchen so nicht.
+ */
+function isPriceTable($, table) {
+  const headers = tableHeaders($, table);
+  return (
+    headers.some((h) => headerMatches(h, HEADER_ALIASES.input)) &&
+    headers.some((h) => headerMatches(h, HEADER_ALIASES.output))
+  );
+}
+
+function findPriceTables($) {
   const matches = [];
   $("main table").each((_, table) => {
-    const headers = $(table)
-      .find("thead th")
-      .map((_, th) => $(th).text().trim().toLowerCase())
-      .get();
-    if (headers.some((h) => h.includes("input")) && headers.some((h) => h.includes("output"))) {
-      matches.push(table);
-    }
+    if (isPriceTable($, table)) matches.push(table);
   });
+  return matches;
+}
+
+function findPriceTable($) {
+  const matches = findPriceTables($);
   if (matches.length === 0) {
-    throw new ScrapeError("keine Preistabelle gefunden (Header-Zellen mit 'input' UND 'output' fehlen)");
-  }
-  if (matches.length > 1) {
-    console.error(`[scrape] Warnung: ${matches.length} Preistabellen gefunden, erste wird verwendet.`);
+    throw new ScrapeError(
+      "keine Preistabelle gefunden (Header-Zellen mit 'Input/Eingabe' UND 'Output/Ausgabe' fehlen)"
+    );
   }
   return matches[0];
 }
 
 function mapColumns($, table) {
-  const headers = $(table)
-    .find("thead th")
-    .map((_, th) => $(th).text().trim().toLowerCase())
-    .get();
+  const headers = tableHeaders($, table);
 
   const find = (matcher, label) => {
     const idx = headers.findIndex(matcher);
@@ -276,16 +304,146 @@ function mapColumns($, table) {
   };
 
   return {
-    name: find((h) => h === "model" || h === "modell", "Model/Modell"),
-    input: find((h) => h.includes("input"), "Input"),
-    output: find((h) => h.includes("output"), "Output"),
-    cachedRead: find((h) => h.includes("cached read"), "Cached Read"),
-    cachedWrite: find((h) => h.includes("cached write"), "Cached Write"),
-    usage: find(
-      (h) => h.includes("nutzung") || h.includes("usage") || h.includes("limit") || h.includes("monatlich"),
-      "Nutzung/Usage/Monatliches Limit"
-    ),
+    name: find(isNameHeader, "Model/Modell"),
+    input: find((h) => headerMatches(h, HEADER_ALIASES.input), "Input/Eingabe"),
+    output: find((h) => headerMatches(h, HEADER_ALIASES.output), "Output/Ausgabe"),
+    cachedRead: find((h) => headerMatches(h, HEADER_ALIASES.cachedRead), "Cached Read/Cache-Lesevorgang"),
+    cachedWrite: find((h) => headerMatches(h, HEADER_ALIASES.cachedWrite), "Cached Write/Cache-Schreibvorgang"),
+    usage: find((h) => headerMatches(h, HEADER_ALIASES.usage), "Nutzung/Usage/Limit/Monatliches Limit"),
   };
+}
+
+/** Normalisiert ein Tab-Label (Plan-Anzeigename) zur Plan-Id. */
+export function planIdFromLabel(label) {
+  return String(label ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-");
+}
+
+/**
+ * Erkennt die Plan-Tabelle (Abonnement/Plan + Preis/Price) und liefert die
+ * Pläne in Dokument-Reihenfolge. `creditsMonthly` wird später aus der
+ * höchsten endlichen Nutzung des jeweiligen Plans befüllt.
+ */
+export function parsePlanTable($) {
+  const tables = [];
+  $("main table").each((_, table) => {
+    const headers = tableHeaders($, table);
+    if (
+      headers.some((h) => h === "abonnement" || h === "plan") &&
+      headers.some((h) => h === "preis" || h === "price")
+    ) {
+      tables.push(table);
+    }
+  });
+  if (tables.length === 0) {
+    throw new ScrapeError(
+      "keine Plan-Tabelle gefunden (Header-Zellen mit 'Abonnement/Plan' UND 'Preis/Price' fehlen)"
+    );
+  }
+  if (tables.length > 1) {
+    throw new ScrapeError(`${tables.length} Plan-Tabellen gefunden, erwartet wird genau eine`);
+  }
+  const table = tables[0];
+  const headers = tableHeaders($, table);
+  const nameIdx = headers.findIndex((h) => h === "abonnement" || h === "plan");
+  const priceIdx = headers.findIndex((h) => h === "preis" || h === "price");
+
+  const plans = [];
+  $(table)
+    .find("tbody tr, > tr")
+    .each((_, row) => {
+      const cells = $(row)
+        .find("th, td")
+        .map((_, c) => $(c).text().trim())
+        .get();
+      const first = (cells[0] ?? "").trim().toLowerCase();
+      if (first === "abonnement" || first === "plan") return;
+      if (cells.length === 0 || !cells[nameIdx]) return;
+      const name = cells[nameIdx];
+      plans.push({
+        id: planIdFromLabel(name),
+        name,
+        priceMonthly: parsePlanPrice(cells[priceIdx]),
+      });
+    });
+  if (plans.length === 0) throw new ScrapeError("Plan-Tabelle ohne Zeilen");
+  return plans;
+}
+
+/** Parst einen Planpreis aus der Plan-Tabelle (`$10/Monat` → 10). */
+export function parsePlanPrice(text) {
+  const t = (text ?? "").trim();
+  const m = t.match(/(?:\$\s*(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*(?:\$|€|USD))/i);
+  if (!m) throw new ScrapeError(`Planpreis unparsebar: "${text}"`);
+  return Number((m[1] ?? m[2]).replace(",", "."));
+}
+
+/**
+ * Ordnet jedem Plan seine Preistabelle zu — über ARIA (Tab-Panel `aria-labelledby`
+ * → Tab `id` innerhalb desselben `starlight-tabs`), NICHT über Position.
+ * Panels ohne Preistabelle (z. B. Rate-Limit-Tabellen eines zweiten
+ * `starlight-tabs`) werden übersprungen. Jede Verletzung der Panel-/Tab-/Plan-
+ * Struktur bricht den Lauf rot ab (lieber CI rot als falsche Anzeige).
+ */
+export function extractPlanTableMap($, plans) {
+  const known = new Map(plans.map((p) => [p.id, p]));
+  const planTables = new Map();
+  const panels = $("[role=tabpanel]");
+
+  panels.each((_, panel) => {
+    const $panel = $(panel);
+    const tables = $panel.find("table").filter((_, t) => isPriceTable($, t));
+    if (tables.length === 0) return; // kein Preis-Panel (z. B. Rate-Limits)
+    if (tables.length > 1) {
+      throw new ScrapeError("mehr als eine Preistabelle in einem Tab-Panel");
+    }
+    const labelledBy = $panel.attr("aria-labelledby");
+    if (!labelledBy) {
+      throw new ScrapeError("Preis-Tab-Panel ohne aria-labelledby (Plan-Label fehlt)");
+    }
+    const scope = $panel.closest("starlight-tabs");
+    const searchRoot = scope.length ? scope : $panel.parent();
+    const tab = searchRoot
+      .find('[role="tab"]')
+      .filter((_, t) => $(t).attr("id") === labelledBy)
+      .first();
+    if (tab.length === 0) {
+      throw new ScrapeError(`Preis-Tab-Panel "${labelledBy}" hat keinen passenden Tab`);
+    }
+    const label = tab.text().trim();
+    const planId = planIdFromLabel(label);
+    if (!known.has(planId)) {
+      throw new ScrapeError(
+        `Tab-Label "${label}" lässt sich keinem Plan aus der Plan-Tabelle zuordnen (erwartet: ${[...known.keys()].join(", ")})`
+      );
+    }
+    if (planTables.has(planId)) {
+      throw new ScrapeError(`zwei Preistabellen für denselben Plan "${planId}"`);
+    }
+    planTables.set(planId, tables[0]);
+
+    // Kein Tab ohne Panel: jeder Tab desselben Blocks muss ein Panel haben.
+    const tabIds = searchRoot
+      .find('[role="tab"]')
+      .map((_, t) => $(t).attr("id"))
+      .get();
+    for (const id of tabIds) {
+      if (!id) throw new ScrapeError("Tab ohne id im Preis-Tab-Block");
+      const hasPanel = searchRoot
+        .find('[role="tabpanel"]')
+        .filter((_, p) => $(p).attr("aria-labelledby") === id).length > 0;
+      if (!hasPanel) throw new ScrapeError(`Tab "${id}" hat kein zugehöriges Panel`);
+    }
+  });
+
+  if (planTables.size !== plans.length) {
+    throw new ScrapeError(
+      `Anzahl Preistabellen (${planTables.size}) ≠ Anzahl Pläne (${plans.length})`
+    );
+  }
+  return planTables;
 }
 
 function splitTier(rawName) {
@@ -499,77 +657,15 @@ async function fetchZenFreeModels(previousFree) {
   }
 }
 
-const CREDIT_FACTOR_WORDS = {
-  ein: 1,
-  eins: 1,
-  zwei: 2,
-  drei: 3,
-  vier: 4,
-  fünf: 5,
-  sechs: 6,
-  sieben: 7,
-  acht: 8,
-  neun: 9,
-  zehn: 10,
-};
-
-/**
- * Parst den laufenden Monatspreis aus der Doku-Seite (Prosa, z. B. `10
- * $/Monat` im Intro oder `$10/Monat`). Beide `$`-Stellungen (deutsch/englisch)
- * werden erkannt. Kein Treffer → null (Fallback).
- */
-export function parseMonthlyCost($) {
-  const text = $("body").text().replace(/\s+/g, " ");
-  const m = text.match(/(?:\$(\d+(?:[.,]\d+)?)|(\d+(?:[.,]\d+)?)\s*\$)\s*\/\s*Monat/i);
-  if (!m) return null;
-  return Number((m[1] ?? m[2]).replace(",", "."));
-}
-
-/**
- * Parst das Monatsguthaben direkt aus der Doku-Seite (Limit-Fenster-Liste:
- * „Monatliches Limit — Nutzung im Wert von $60“ → 60). Direkter Wert statt
- * Preis×Faktor-Rechnung. Kein Treffer → null (Fallback).
- */
-export function parseMonthlyCreditDirect($) {
-  const text = $("body").text().replace(/\s+/g, " ");
-  const m = text.match(/Monatliches Limit\s*[—–-]\s*Nutzung im Wert von\s*\$(\d+(?:[.,]\d+)?)/i);
-  return m ? Number(m[1].replace(",", ".")) : null;
-}
-
-/**
- * Parst den dokumentierten Guthaben-Faktor ("das Sechsfache dieses Betrags" =
- * 6, "das 6-fache dieses Betrags" = 6, "das 6× dieses Betrags" = 6) aus der
- * Doku-Seite. Das Monatsguthaben ergibt sich als Monatspreis × Faktor
- * ($10 × 6 = $60). Kein solcher Satz → null; Satz vorhanden, aber Faktor
- * unbekannt → ScrapeError.
- */
-export function parseCreditFactor($) {
-  const text = $("body").text().replace(/\s+/g, " ").trim();
-  const m = text.match(
-    /\bdas\s+(?:([a-zäöüß]+)-?fache|(\d+(?:[.,]\d+)?)\s*(?:[x×]|-?fache))\s+dieses\s+Betrags\b/i
-  );
-  if (!m) return null;
-  if (m[2] !== undefined) return Number(m[2].replace(",", "."));
-  const factor = CREDIT_FACTOR_WORDS[m[1].toLowerCase()];
-  if (factor === undefined) {
-    throw new ScrapeError(`Guthaben-Faktor unparsebar: "${m[1]}"`);
-  }
-  return factor;
-}
-
-/**
- * Parst Monatspreis und Guthaben-Faktor aus einer Seite (Landingpage oder
- * Doku-Seite). Das Guthaben wird erst in main() aus Preis × Faktor berechnet,
- * damit beide Seiten kombiniert werden können (Landingpage liefert den Preis,
- * die Doku-Seite den Faktor).
- */
-export function parseMonthlyPricing($) {
-  return { monthlyCost: parseMonthlyCost($), creditFactor: parseCreditFactor($) };
-}
-
-function parsePatternNum(text) {
-  const cleaned = (text ?? "").replace(/[\s$]/g, "").replace(/\./g, "").replace(/,/g, ".");
-  const value = Number(cleaned);
+export function parsePatternNum(text) {
+  const cleaned = (text ?? "").replace(/[\s$]/g, "");
+  if (cleaned === "") throw new ScrapeError(`Anfragemuster-Wert unparsebar: "${text}"`);
+  // Tausendertrennzeichen: die Doku schreibt Token-Zahlen in 3er-Gruppen, jetzt
+  // mit Komma (`32,500` → 32500), früher mit Punkt (`1.100` → 1100). Ein echtes
+  // Dezimaltrennzeichen (nicht 3-stelliger Nachkommateil) bleibt erhalten.
+  const thousands = /^\d{1,3}(?:[.,]\d{3})+$/.test(cleaned);
+  const normalized = thousands ? cleaned.replace(/[.,]/g, "") : cleaned.replace(/,/g, ".");
+  const value = Number(normalized);
   if (!Number.isFinite(value)) throw new ScrapeError(`Anfragemuster-Wert unparsebar: "${text}"`);
   return value;
 }
@@ -623,7 +719,7 @@ export function parsePatterns($, models) {
       .replace(/\s+/g, " ")
       .trim();
     const m = text.match(
-      /^(.+?)\s*[—–-]\s*([\d.,]+)\s*Input[-,]{0,2}\s*([\d.,]+)\s*Cached[-,]{0,2}\s*([\d.,]+)\s*Output[-,]{0,2}\s*Tokens?\s*pro\s*Anfrage\s*$/i
+      /^(.+?)\s*[—–-]\s*([\d.,]+)\s*(?:Eingabe|Input)[-,]{0,2}\s*([\d.,]+)\s*(?:Cache|Cached)[-,]{0,2}\s*([\d.,]+)\s*(?:Ausgabe|Output)[-,]{0,2}\s*Tokens?\s*pro\s*Anfrage\s*$/i
     );
     if (!m) return;
 
@@ -667,55 +763,15 @@ function parseModel(cells, colMap, $usageCell = null) {
   // Schreibweisen normalisieren ("MiMo-V2.5" → "MiMo V2.5"): reine
   // Bindestrich-/Leerzeichen-Varianten dürfen nie als add/remove diffen.
   const name = canonicalModelName(rawName);
-  const input = parsePrice(at(colMap.input));
-  const output = parsePrice(at(colMap.output));
-  const cachedRead = parsePrice(at(colMap.cachedRead));
-  const cachedWrite = parsePrice(at(colMap.cachedWrite));
-
-  const model = {
+  return {
     name,
     tier,
-    input,
-    output,
-    cachedRead,
-    cachedWrite,
+    input: parsePrice(at(colMap.input)),
+    output: parsePrice(at(colMap.output)),
+    cachedRead: parsePrice(at(colMap.cachedRead)),
+    cachedWrite: parsePrice(at(colMap.cachedWrite)),
     usage: $usageCell ? parseUsageCell($usageCell) : parseUsage(at(colMap.usage)),
-    pattern: null,
-    capabilities: null,
   };
-  recomputeUsageDerived(model);
-  return model;
-}
-
-/**
- * Setzt `multiplier` und die `effective*`-Preise aus dem aktuellen `usage` neu.
- * Wird nach einer Bonus-Anpassung des Nutzungslimits und nach der Bestimmung des
- * (dynamisch gefetchten) Monatsguthabens erneut aufgerufen. Ohne expliziten
- * Wert wird das Fallback-Guthaben (`DEFAULT_MONTHLY_CREDIT`) verwendet.
- */
-export function recomputeUsageDerived(model, monthlyCredit = DEFAULT_MONTHLY_CREDIT) {
-  // usage = null (unbegrenzte Nutzung, kostenlose Modelle) → keine Multiplikator-
-  // Rechnung. Kostenlose Zeilen ("-" in der Doku) bekommen Token-Preise 0 statt
-  // null — gratis ist ein bekannter Preis, kein fehlender.
-  if (model.usage === null) {
-    model.multiplier = null;
-    model.input ??= 0;
-    model.output ??= 0;
-    model.cachedRead ??= 0;
-    model.cachedWrite ??= 0;
-    model.effectiveInput = model.input;
-    model.effectiveOutput = model.output;
-    model.effectiveCachedRead = model.cachedRead;
-    model.effectiveCachedWrite = model.cachedWrite;
-    return;
-  }
-  const multiplier = monthlyCredit / model.usage;
-  const effective = (price) => (price === null ? null : price * multiplier);
-  model.multiplier = multiplier;
-  model.effectiveInput = effective(model.input);
-  model.effectiveOutput = effective(model.output);
-  model.effectiveCachedRead = effective(model.cachedRead);
-  model.effectiveCachedWrite = effective(model.cachedWrite);
 }
 
 function parseModels($, table, colMap) {
@@ -782,7 +838,8 @@ function parseTraining(text) {
  * - "–"/"-" → undefined (unbekannt, Feld fehlt im JSON)
  */
 function parseRetentionDays(text) {
-  const t = (text ?? "").trim();
+  // Fußnoten-Marker (z. B. „0 Tage*“) vor dem Parsen entfernen.
+  const t = (text ?? "").trim().replace(/[*†‡¹²³]+$/u, "").trim();
   if (t === "" || t === "-" || t === "—" || t === "–") return undefined;
   if (/^kein(?:e)?\s+zdr$/i.test(t)) return false;
   const m = t.match(/^(\d+(?:[.,]\d+)?)\s*Tage?$/i);
@@ -1054,14 +1111,87 @@ function formatPeakRanges(ranges) {
 }
 
 /**
- * Extrahiert die Modelle aus dem HTML einer OpenCode-Go-Dokumentationsseite.
- * Wirft ScrapeError bei strukturellen Parsing-Fehlern.
+ * Parst Pläne + Modelle aus einer OpenCode-Go-Dokumentationsseite. Die
+ * Tokenpreise sind laut Doku in allen Plänen identisch: die Preise des ersten
+ * Plans sind die Datenquelle, alle weiteren Tabellen werden dagegen geprüft
+ * (Abweichung → ScrapeError). Pro Modell entsteht eine `usage`-Map Plan-Id →
+ * Nutzung in $ (`null` = unbegrenzt). `creditsMonthly` je Plan = höchste
+ * endliche Nutzung dieses Plans (das „volle Monatsguthaben“).
  */
-export function parseHtml(html) {
-  const $ = cheerio.load(html);
-  const table = findPriceTable($);
-  const colMap = mapColumns($, table);
-  const models = parseModels($, table, colMap);
+function parsePageData($) {
+  const plans = parsePlanTable($);
+  const planTables = extractPlanTableMap($, plans);
+
+  const rowsByPlan = new Map();
+  for (const plan of plans) {
+    const table = planTables.get(plan.id);
+    rowsByPlan.set(plan.id, parseModels($, table, mapColumns($, table)));
+  }
+
+  const firstPlan = plans[0];
+  const firstRows = rowsByPlan.get(firstPlan.id);
+  if (firstRows.length === 0) throw new ScrapeError("keine Modelle aus der Preistabelle extrahiert");
+
+  const keyOfModel = (m) => normalizeName(modelKey(m));
+  const firstKeys = firstRows.map(keyOfModel);
+  if (new Set(firstKeys).size !== firstKeys.length) {
+    throw new ScrapeError(`doppelte Modellzeilen im ersten Plan "${firstPlan.id}"`);
+  }
+
+  // Kreuzprüfung: identische Modellmengen (inkl. Reihenfolge) und Tokenpreise
+  // über alle Pläne hinweg.
+  for (const plan of plans.slice(1)) {
+    const rows = rowsByPlan.get(plan.id);
+    const keys = rows.map(keyOfModel);
+    const sameOrder = keys.length === firstKeys.length && keys.every((k, i) => k === firstKeys[i]);
+    if (!sameOrder) {
+      const missing = firstKeys.filter((k) => !keys.includes(k));
+      const extra = keys.filter((k) => !firstKeys.includes(k));
+      throw new ScrapeError(
+        `Plan "${plan.id}" hat abweichende Modellzeilen zum ersten Plan` +
+          (missing.length ? ` (fehlt: ${missing.join(", ")})` : "") +
+          (extra.length ? ` (zusätzlich: ${extra.join(", ")})` : "") +
+          (missing.length + extra.length === 0 ? " (Reihenfolge weicht ab)" : "")
+      );
+    }
+    for (let i = 0; i < firstRows.length; i++) {
+      for (const f of PRICE_FIELDS) {
+        if (!near(firstRows[i][f], rows[i][f])) {
+          throw new ScrapeError(
+            `Tokenpreise weichen zwischen den Plänen ab: "${firstRows[i].name}" ${f} ` +
+              `(${firstPlan.id}: ${firstRows[i][f]} vs. ${plan.id}: ${rows[i][f]})`
+          );
+        }
+      }
+    }
+  }
+
+  const models = firstRows.map((base, i) => {
+    const usage = {};
+    for (const plan of plans) usage[plan.id] = rowsByPlan.get(plan.id)[i].usage;
+    const unlimited = Object.values(usage).every((u) => u === null);
+    const m = {
+      name: base.name,
+      tier: base.tier,
+      input: base.input,
+      output: base.output,
+      cachedRead: base.cachedRead,
+      cachedWrite: base.cachedWrite,
+      usage,
+      pattern: null,
+      capabilities: null,
+    };
+    // Kostenlose Zeile (Nutzung in keinem Plan limitiert): gratis ist ein
+    // bekannter Preis → fehlende Preisangaben als 0 erfassen.
+    if (unlimited) {
+      m.input ??= 0;
+      m.output ??= 0;
+      m.cachedRead ??= 0;
+      m.cachedWrite ??= 0;
+    }
+    return m;
+  });
+
   const patternMap = parsePatterns($, models);
   for (const m of models) {
     const norm = normalizeName(m.name);
@@ -1105,8 +1235,35 @@ export function parseHtml(html) {
     }
   }
 
-  if (models.length === 0) throw new ScrapeError("keine Modelle aus der Preistabelle extrahiert");
-  return models;
+  // creditsMonthly = höchste endliche Nutzung des Plans (volles Monatsguthaben).
+  for (const plan of plans) {
+    const values = models.map((m) => m.usage[plan.id]).filter((v) => typeof v === "number");
+    if (values.length === 0) {
+      throw new ScrapeError(`Plan "${plan.id}" hat keine endliche Nutzung — creditsMonthly nicht bestimmbar`);
+    }
+    plan.creditsMonthly = Math.max(...values);
+    plan.sourceUrl = SOURCE_URL;
+  }
+
+  return { plans, models };
+}
+
+/**
+ * Extrahiert die Modelle aus dem HTML einer OpenCode-Go-Dokumentationsseite.
+ * Wirft ScrapeError bei strukturellen Parsing-Fehlern.
+ */
+export function parseHtml(html) {
+  const $ = cheerio.load(html);
+  return parsePageData($).models;
+}
+
+/**
+ * Extrahiert die Pläne (inkl. `creditsMonthly` = höchste endliche Nutzung des
+ * Plans) aus dem HTML einer OpenCode-Go-Dokumentationsseite.
+ */
+export function parsePlans(html) {
+  const $ = cheerio.load(html);
+  return parsePageData($).plans;
 }
 
 export const modelKey = (model) => (model.tier ? `${model.name} (${model.tier})` : model.name);
@@ -1129,34 +1286,30 @@ export const normModelKey = (m) => normalizeName(modelKey(m));
  */
 export function parseDocsUsageBonuses($) {
   const bonuses = new Map();
-  let table;
-  try {
-    table = findPriceTable($);
-  } catch {
-    return bonuses;
+  for (const table of findPriceTables($)) {
+    const colMap = mapColumns($, table);
+    $(table)
+      .find("tbody tr, > tr")
+      .each((_, row) => {
+        const $cells = $(row).find("th, td");
+        if ($cells.length === 0) return;
+        const first = ($cells.eq(colMap.name).text() ?? "").trim().toLowerCase();
+        if (first === "model" || first === "modell") return;
+        const $usage = $cells.eq(colMap.usage);
+        if ($usage.length === 0) return;
+        const smallText = $usage.find("small").text() ?? "";
+        const m = smallText.match(/(\d+)\s*[x×]/);
+        const factor = m ? Number(m[1]) : null;
+        const hasBonusStructure = $usage.find("del").length > 0 && $usage.find("strong").length > 0;
+        if (factor && factor > 1) {
+          const { name } = splitTier($cells.eq(colMap.name).text().trim());
+          if (name) bonuses.set(normalizeName(name), factor);
+        } else if (hasBonusStructure) {
+          const { name } = splitTier($cells.eq(colMap.name).text().trim());
+          if (name) bonuses.set(normalizeName(name), 1);
+        }
+      });
   }
-  const colMap = mapColumns($, table);
-  $(table)
-    .find("tbody tr, > tr")
-    .each((_, row) => {
-      const $cells = $(row).find("th, td");
-      if ($cells.length === 0) return;
-      const first = ($cells.eq(colMap.name).text() ?? "").trim().toLowerCase();
-      if (first === "model" || first === "modell") return;
-      const $usage = $cells.eq(colMap.usage);
-      if ($usage.length === 0) return;
-      const smallText = $usage.find("small").text() ?? "";
-      const m = smallText.match(/(\d+)\s*[x×]/);
-      const factor = m ? Number(m[1]) : null;
-      const hasBonusStructure = $usage.find("del").length > 0 && $usage.find("strong").length > 0;
-      if (factor && factor > 1) {
-        const { name } = splitTier($cells.eq(colMap.name).text().trim());
-        if (name) bonuses.set(normalizeName(name), factor);
-      } else if (hasBonusStructure) {
-        const { name } = splitTier($cells.eq(colMap.name).text().trim());
-        if (name) bonuses.set(normalizeName(name), 1);
-      }
-    });
   return bonuses;
 }
 
@@ -1474,9 +1627,24 @@ const near = (a, b) =>
 const PRICE_FIELDS = ["input", "output", "cachedRead", "cachedWrite"];
 
 /**
+ * Tiefen-Vergleich zweier `usage`-Maps (Plan-Id → Nutzung in $, `null` =
+ * unbegrenzt). Gleiche Schlüsselmenge und gleiche Werte → gleich.
+ */
+export const usageMapsEqual = (a, b) => {
+  const keysA = Object.keys(a ?? {});
+  const keysB = Object.keys(b ?? {});
+  if (keysA.length !== keysB.length) return false;
+  return keysA.every((k) => Object.prototype.hasOwnProperty.call(b ?? {}, k) && a[k] === b[k]);
+};
+
+/**
  * Zerlegt eine Pricing-Änderung in getrennte Events: `price_changed` (mit den
- * geänderten Preisfeldern in `fields`) und `usage_changed` (nur Nutzung).
- * Ändern sich Preis UND Nutzung, entstehen zwei Events.
+ * geänderten Preisfeldern in `fields`) und EIN `usage_changed` pro Modell (nur
+ * Nutzung) mit den tatsächlich geänderten Plänen im `plans`-Array
+ * (`[{ plan, from, to }]`, Muster analog `allowance_changed` im
+ * cc-price-tracker). Leeres `plans`-Array → kein Event. Preis- UND
+ * Nutzungsänderung ergeben so getrennte Events; eine reine Nutzungsänderung
+ * feuert NIE ein `price_changed`.
  */
 export function splitChange({ key, from, to }) {
   const fields = PRICE_FIELDS.filter((f) => !near(from[f], to[f]));
@@ -1484,18 +1652,32 @@ export function splitChange({ key, from, to }) {
   if (fields.length > 0) {
     events.push({ type: "price_changed", model: key, from, to, fields });
   }
-  if (from.usage !== to.usage) {
-    events.push({ type: "usage_changed", model: key, from: from.usage, to: to.usage });
+  const planIds = [...new Set([...Object.keys(from.usage ?? {}), ...Object.keys(to.usage ?? {})])];
+  const plans = [];
+  for (const plan of planIds) {
+    const before = from.usage?.[plan] ?? null;
+    const after = to.usage?.[plan] ?? null;
+    if (before !== after) {
+      plans.push({ plan, from: before, to: after });
+    }
+  }
+  if (plans.length > 0) {
+    events.push({ type: "usage_changed", model: key, plans });
   }
   return events;
 }
+
+const isUsageMap = (u) => typeof u === "object" && u !== null;
 
 export const pricingOf = (model) => ({
   input: model.input,
   output: model.output,
   cachedRead: model.cachedRead,
   cachedWrite: model.cachedWrite,
-  usage: model.usage,
+  // Legacy-Snapshots trugen einen einzelnen Nutzungswert (vor der Plan-Map):
+  // diesen als „go“-Nutzung behandeln, damit der Übergang keine Phantom-Events
+  // (go: null → Wert) für unveränderte Modelle erzeugt.
+  usage: isUsageMap(model.usage) ? { ...model.usage } : { go: model.usage ?? null },
 });
 
 /**
@@ -1535,15 +1717,47 @@ export function computeDiff(prevModels, nextModels) {
       near(from.output, to.output) &&
       near(from.cachedRead, to.cachedRead) &&
       near(from.cachedWrite, to.cachedWrite) &&
-      from.usage === to.usage;
-    if (!same) changed.push({ key: displayKey(key), from, to, offPeak: isOffPeakTier(after.tier) });
+      usageMapsEqual(from.usage, to.usage);
+    if (!same) changed.push({ key: displayKey(key), from, to });
   }
 
   return { added, removed, changed };
 }
 
-export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [], today = "", firstSeen = new Map()) {
-  if (prevModels === null) return [];
+export function buildChanges(
+  prevModels,
+  nextModels,
+  prevFree = [],
+  nextFree = [],
+  today = "",
+  firstSeen = new Map(),
+  // Pläne, die im vorherigen Snapshot noch fehlten (volle Plan-Objekte, damit
+  // das `plan_added`-Event Name/Preis/Guthaben tragen kann). Leer = kein neuer
+  // Plan in diesem Lauf.
+  newPlans = []
+) {
+  // Nutzungsänderungen neuer Pläne werden unterdrückt: vor dem Plan gab es
+  // nichts, was sich geändert haben könnte (ein `plan_added`-Event ist die
+  // einzige Aussage). Änderungen bestehender Pläne im selben Lauf bleiben.
+  const newPlanIds = new Set((Array.isArray(newPlans) ? newPlans : []).map((p) => p.id));
+  const changes = [];
+
+  // Neue Pläne stehen am Anfang: je Plan genau ein `plan_added` — die
+  // Schlagzeile des Laufs. Das gilt auch für den allerersten Lauf (dann sind
+  // alle Pläne neu); die Modell-Diffs darunter brauchen dagegen einen Vorgänger.
+  // Die (informationsleeren) Nutzungsänderungen des neuen Plans werden im
+  // `changed`-Loop weiter unten entfernt.
+  for (const plan of Array.isArray(newPlans) ? newPlans : []) {
+    changes.push({
+      type: "plan_added",
+      plan: plan.id,
+      name: plan.name,
+      priceMonthly: plan.priceMonthly,
+      creditsMonthly: plan.creditsMonthly,
+    });
+  }
+
+  if (prevModels === null) return changes;
 
   const { added, removed, changed } = computeDiff(prevModels, nextModels);
   // Lookup auf normalisiertem Key: der Event-Key ist die stabile
@@ -1557,7 +1771,6 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
     [...firstSeen].filter(([k]) => typeof k === "string").map(([k, v]) => [normalizeName(k), v])
   );
   const seenSince = (key) => firstSeen.get(key) ?? firstSeenNorm.get(normalizeName(key));
-  const changes = [];
 
   for (const key of added) {
     const model = nextById.get(normalizeName(key));
@@ -1574,19 +1787,20 @@ export function buildChanges(prevModels, nextModels, prevFree = [], nextFree = [
       pricing: prevModel ? pricingOf(prevModel) : null,
     });
   }
-  for (const { key, from, to, offPeak } of changed) {
-    // Off-Peak ist die normale Nutzung: eine gleichzeitige Preis- UND
-    // Nutzungsänderung am (Off-Peak = Normal-)Modell wird als ein einziges
-    // `price_changed` gemeldet, nicht als zusätzliches `usage_changed`.
-    if (offPeak && from.usage !== to.usage) {
-      const events = splitChange({ key, from, to });
-      // Preis- UND Nutzungsänderung: ein einziges `price_changed` (usage steckt
-      // im to-Pricing, in der UI fett). Reine Nutzungsänderung (Preise gleich):
-      // kein `price_changed` vorhanden → stattdessen das `usage_changed` melden,
-      // sonst verlöre die Off-Peak-Zeile ihr Event.
-      changes.push(events.find((e) => e.type === "price_changed") ?? events.find((e) => e.type === "usage_changed"));
-    } else {
-      changes.push(...splitChange({ key, from, to }));
+  for (const { key, from, to } of changed) {
+    // Preis- und Nutzungsänderungen laufen getrennt: `price_changed` (Felder)
+    // und EIN `usage_changed` mit dem `plans`-Array der geänderten Pläne.
+    for (const event of splitChange({ key, from, to })) {
+      if (event.type === "usage_changed" && newPlanIds.size > 0) {
+        // Nur die Änderungen bestehender Pläne behalten; die eines neuen Plans
+        // sind informationsleer (siehe oben). Bleibt nichts übrig, entfällt das
+        // Event ganz.
+        const plans = event.plans.filter((p) => !newPlanIds.has(p.plan));
+        if (plans.length === 0) continue;
+        changes.push(plans.length === event.plans.length ? event : { ...event, plans });
+        continue;
+      }
+      changes.push(event);
     }
   }
 
@@ -1739,6 +1953,9 @@ const PrivacySchema = z.object({
   fallback: z.boolean().optional(),
 });
 
+// Plan-Id → Nutzung in $ (`null` = unbegrenzt / kostenlose Zeile).
+const UsageMapSchema = z.record(z.string().min(1), z.number().positive().nullable());
+
 const ModelSchema = z
   .object({
     name: z.string().min(1),
@@ -1750,13 +1967,8 @@ const ModelSchema = z
     output: z.number().nullable(),
     cachedRead: z.number().nullable(),
     cachedWrite: z.number().nullable(),
-    // null = unbegrenzte Nutzung (kostenlose Modelle, "-" in der Doku)
-    usage: z.number().positive().nullable(),
-    multiplier: z.number().positive().nullable(),
-    effectiveInput: z.number().nullable(),
-    effectiveOutput: z.number().nullable(),
-    effectiveCachedRead: z.number().nullable(),
-    effectiveCachedWrite: z.number().nullable(),
+    // Nutzung je Plan (Plan-Id → $, null = unbegrenzt/kostenlos)
+    usage: UsageMapSchema,
     pattern: RequestPatternSchema.nullable(),
     capabilities: CapabilitiesSchema.nullable(),
     // Kontextfenster in Tokens (aus models.dev); null = unbekannt.
@@ -1767,65 +1979,99 @@ const ModelSchema = z
   })
   .superRefine((m, ctx) => {
     // Modelle MIT Preisen/Nutzung müssen ein Anfragemuster haben; kostenlose
-    // Zeilen ("-" → Preise 0, Nutzung null) dürfen ohne Muster durchgehen.
-    const hasPricing =
-      m.usage !== null || [m.input, m.output, m.cachedRead].some((v) => v !== null && v > 0);
+    // Zeilen (Nutzung in jedem Plan null, Preise 0) dürfen ohne Muster durchgehen.
+    const hasUsage = Object.values(m.usage).some((v) => v !== null);
+    const hasPricing = hasUsage || [m.input, m.output, m.cachedRead].some((v) => v !== null && v > 0);
     if (hasPricing && m.pattern === null) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pattern"], message: "pattern fehlt (Preise vorhanden)" });
     }
   });
 
-const FreeModelSchema = z.object({
-  id: z.string().min(1),
-  // volle Kopier-ID wie in der UI (`opencode/<id>` bzw. `opencode-go/…`)
-  fullId: z.string().min(1),
-  // optionaler Anzeigename (bei Alias-IDs wie x-preview-f-free = Ox Alpha Free)
-  name: z.string().min(1).optional(),
-  availableFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  capabilities: CapabilitiesSchema.nullable(),
-  contextWindow: z.number().nullable(),
-  provider: z.string().nullable().default(null),
-  privacy: PrivacySchema,
-});
+const FreeModelSchema = z
+  .object({
+    id: z.string().min(1),
+    // volle Kopier-ID wie in der UI (`opencode/<id>` bzw. `opencode-go/…`)
+    fullId: z.string().min(1),
+    // optionaler Anzeigename (bei Alias-IDs wie x-preview-f-free = Ox Alpha Free)
+    name: z.string().min(1).optional(),
+    availableFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    capabilities: CapabilitiesSchema.nullable(),
+    contextWindow: z.number().nullable(),
+    provider: z.string().nullable().default(null),
+    privacy: PrivacySchema,
+  })
+  // Invariante: Free-Modelle sind in ALLEN Plänen nutzbar und tragen KEINE
+  // Plan-Dimension. Ein versehentlich ergänztes `usage`/`plan`/`allowances`
+  // bricht den Lauf rot ab (strenges Objekt), statt still durchzurutschen.
+  .strict();
 
 const PlanSchema = z.object({
-  id: z.enum(["go"]),
+  // Plan-Id aus dem Tab-Label normalisiert ("Go" → "go", "Go Plus" → "go-plus")
+  id: z.string().min(1),
   name: z.string().min(1),
   priceMonthly: z.number().positive(),
   creditsMonthly: z.number().positive(),
   sourceUrl: z.string().url(),
 });
 
-const SnapshotSchema = z.object({
-  fetchedAt: z.string(),
-  sourceUrl: z.string().url(),
-  freeModelsSourceUrl: z.string().url(),
-  capabilitiesSourceUrl: z.string().url(),
-  sourceLang: z.string(),
-  monthlyCredit: z.number().positive(),
-  monthlyCost: z.number().positive(),
-  plans: z.array(PlanSchema).min(1),
-  peakHours: z.record(
-    z.string().min(1),
-    z.array(
-      z
-        .tuple([
-          z.number().int().min(0).max(23),
-          z.number().int().min(1).max(24),
-        ])
-        .refine(([start, end]) => start < end)
-    ).min(1)
-  ),
-  models: z.array(ModelSchema).min(1),
-  freeModels: z.array(FreeModelSchema),
-});
+const SnapshotSchema = z
+  .object({
+    fetchedAt: z.string(),
+    sourceUrl: z.string().url(),
+    freeModelsSourceUrl: z.string().url(),
+    capabilitiesSourceUrl: z.string().url(),
+    sourceLang: z.string(),
+    plans: z.array(PlanSchema).min(1),
+    peakHours: z.record(
+      z.string().min(1),
+      z.array(
+        z
+          .tuple([
+            z.number().int().min(0).max(23),
+            z.number().int().min(1).max(24),
+          ])
+          .refine(([start, end]) => start < end)
+      ).min(1)
+    ),
+    models: z.array(ModelSchema).min(1),
+    freeModels: z.array(FreeModelSchema),
+  })
+  .superRefine((snapshot, ctx) => {
+    // Invariante: Die `usage`-Map jedes Modells trägt die Nutzung für JEDEN
+    // Plan — Schlüsselmenge == Plan-Ids. So kann kein Modell planlos werden
+    // und kein Plan stillschweigend fehlen (die Datenquelle liefert für alle
+    // Pläne identische Modellzeilen; parsePageData garantiert das bereits).
+    const planIds = new Set(snapshot.plans.map((p) => p.id));
+    snapshot.models.forEach((m, i) => {
+      const keys = Object.keys(m.usage);
+      const exact =
+        keys.length === planIds.size && keys.every((k) => planIds.has(k));
+      if (!exact) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["models", i, "usage"],
+          message: `usage-Schlüssel (${keys.join(", ")}) ≠ Plan-Ids (${[...planIds].join(", ")})`,
+        });
+      }
+    });
+  });
 
 const PricingTypeSchema = z.object({
   input: z.number().nullable(),
   output: z.number().nullable(),
   cachedRead: z.number().nullable(),
   cachedWrite: z.number().nullable(),
-  usage: z.number().positive().nullable(),
+  // Neu: Map Plan-Id → Nutzung. Historische Changelog-Einträge tragen noch den
+  // einzelnen Zahlenwert (Schema-Migration) — beides bleibt gültig, damit die
+  // bestehende Changelog-/Release-Historie nicht bricht.
+  usage: z.union([z.number().positive().nullable(), UsageMapSchema]),
+});
+
+// Ein geänderter Plan innerhalb eines `usage_changed`-Events.
+const UsagePlanChangeSchema = z.object({
+  plan: z.string().min(1),
+  from: z.number().positive().nullable(),
+  to: z.number().positive().nullable(),
 });
 
 const ChangeSchema = z.discriminatedUnion("type", [
@@ -1854,8 +2100,14 @@ const ChangeSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("usage_changed"),
     model: z.string().min(1),
-    from: z.number().positive().nullable(),
-    to: z.number().positive().nullable(),
+    // Neue Form (ein Event pro Modell, Muster wie `allowance_changed` im
+    // cc-price-tracker): alle tatsächlich geänderten Pläne in einem Array.
+    plans: z.array(UsagePlanChangeSchema).min(1).optional(),
+    // Legacy-Form (vor der plans-Umstellung): ein Event, ein optionaler Plan,
+    // skalare from/to. Genau eine der beiden Formen ist gültig (superRefine).
+    plan: z.string().min(1).optional(),
+    from: z.number().positive().nullable().optional(),
+    to: z.number().positive().nullable().optional(),
   }),
   z.object({
     type: z.literal("capabilities_changed"),
@@ -1877,17 +2129,59 @@ const ChangeSchema = z.discriminatedUnion("type", [
     availableFrom: z.string(),
     until: z.string(),
   }),
+  // Ein Abonnement ist neu hinzugekommen (Plan-Id, Anzeigename, Monatspreis,
+  // enthaltene Nutzung). Genau EIN Event pro neuem Plan — die Schlagzeile des
+  // Laufs; die Nutzung des neuen Plans wird nicht zusätzlich als
+  // `usage_changed` gebucht (vor dem Plan gab es nichts, was sich geändert
+  // haben könnte).
+  z.object({
+    type: z.literal("plan_added"),
+    plan: z.string().min(1),
+    name: z.string().min(1),
+    priceMonthly: z.number().positive(),
+    creditsMonthly: z.number().positive(),
+  }),
 ]);
 
-const ChangelogSchema = z.object({
-  entries: z.array(
-    z.object({
-      id: z.string().min(1),
-      date: z.string(),
-      changes: z.array(ChangeSchema).min(1),
-    })
-  ),
-});
+const ChangelogSchema = z
+  .object({
+    entries: z.array(
+      z.object({
+        id: z.string().min(1),
+        date: z.string(),
+        changes: z.array(ChangeSchema).min(1),
+      })
+    ),
+  })
+  .superRefine((changelog, ctx) => {
+    // `usage_changed` kennt zwei Formen: die neue `plans`-Array-Form (alle
+    // geänderten Pläne in einem Event) und die Legacy-Form (skalare from/to,
+    // optional `plan`). Genau eine Form muss vollständig vorliegen.
+    changelog.entries.forEach((entry, ei) => {
+      entry.changes.forEach((c, ci) => {
+        if (c.type !== "usage_changed") return;
+        const path = ["entries", ei, "changes", ci];
+        const hasPlans = Array.isArray(c.plans) && c.plans.length > 0;
+        if (hasPlans) {
+          if (c.plan !== undefined || c.from !== undefined || c.to !== undefined) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path,
+              message: "usage_changed: plans-Form darf kein plan/from/to tragen",
+            });
+          }
+          return;
+        }
+        if (c.from === undefined || c.to === undefined) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path,
+            message: "usage_changed: entweder plans (min. 1) oder from+to angeben",
+          });
+        }
+      });
+    });
+  });
 
 /**
  * Validiert den kompletten Changelog (zod). Leere Einträge (`changes: []`) und
@@ -1917,41 +2211,11 @@ async function main() {
     if (!response.ok) throw new ScrapeError(`HTTP ${response.status} beim Abrufen von ${SOURCE_URL}`);
     const html = await response.text();
     const docs$ = cheerio.load(html);
-    const models = parseHtml(html);
+    // Pläne + Modelle: Tokenpreise aus dem ersten Plan, Nutzung je Plan als Map.
+    const { plans, models } = parsePageData(docs$);
     const peakHours = parsePeakHours(docs$, models);
     const docsBonuses = parseDocsUsageBonuses(docs$);
     const bonusLabels = [...docsBonuses.entries()].map(([n, f]) => `${n}×${f}`).join(", ");
-
-    // Monatsguthaben/-preis dynamisch aus der Doku-Seite: Monatspreis aus dem
-    // Intro („10 $/Monat“), Monatsguthaben direkt aus der Limit-Liste
-    // („Monatliches Limit — Nutzung im Wert von $60“), ersatzweise Monatspreis
-    // × Faktor („das Sechsfache dieses Betrags“ → 6). Fehlt alles →
-    // Fallback-Konstanten (Warnung, kein Rot-Abbruch, damit ein Layout-Wechsel
-    // die Pipeline nicht bricht). Die Landingpage wird nicht mehr gefetcht.
-    const docsPricing = parseMonthlyPricing(docs$);
-    const monthlyCost = docsPricing.monthlyCost;
-    const monthlyCreditDirect = parseMonthlyCreditDirect(docs$);
-    const creditFactor = docsPricing.creditFactor;
-    let monthlyCredit;
-    let monthlyCostFinal;
-    let pricingFallback = false;
-    if (monthlyCreditDirect !== null && monthlyCost !== null) {
-      monthlyCredit = monthlyCreditDirect;
-      monthlyCostFinal = monthlyCost;
-    } else if (monthlyCost !== null && creditFactor !== null) {
-      monthlyCredit = monthlyCost * creditFactor;
-      monthlyCostFinal = monthlyCost;
-    } else {
-      pricingFallback = true;
-      console.error(
-        `[scrape] Warnung: Monatsguthaben/-preis nicht extrahierbar (Monatspreis=${monthlyCost}, direkt=${monthlyCreditDirect}, Faktor=${creditFactor}); nutze Konstanten ${DEFAULT_MONTHLY_CREDIT}/${DEFAULT_MONTHLY_COST}.`
-      );
-      monthlyCredit = DEFAULT_MONTHLY_CREDIT;
-      monthlyCostFinal = DEFAULT_MONTHLY_COST;
-    }
-    // Effektivpreise auf Basis des (möglicherweise geänderten) Monatsguthabens
-    // neu berechnen — nutzt die bereits bonus-bereinigten usage-Werte.
-    for (const m of models) recomputeUsageDerived(m, monthlyCredit);
 
     const { providers: mdProviders, models: mdModels, source: mdSource } = await loadModelsDev();
     // Reihenfolge: opencode (Zen) → kanonische Metadaten → opencode-go (nur
@@ -2017,23 +2281,20 @@ async function main() {
       freeModelsSourceUrl: ZEN_DOCS_URL,
       capabilitiesSourceUrl: MODELS_DEV_URL,
       sourceLang: SOURCE_LANG,
-      monthlyCredit,
-      monthlyCost: monthlyCostFinal,
-      plans: [
-        {
-          id: "go",
-          name: "Go",
-          priceMonthly: monthlyCostFinal,
-          creditsMonthly: monthlyCredit,
-          sourceUrl: SOURCE_URL,
-        },
-      ],
+      plans,
       peakHours,
       models,
       freeModels,
     };
 
-    const changes = buildChanges(prevModels, models, prevFree, freeModels, date, firstSeen);
+    // Pläne, die im vorherigen Snapshot fehlten: allererster Lauf (prev null)
+    // → alle Pläne neu; Alt-Snapshots ohne `plans` ebenfalls. Daraus entsteht
+    // je Plan genau ein `plan_added`-Event (Schlagzeile), und die
+    // Nutzungsänderungen des neuen Plans werden unterdrückt.
+    const prevPlanIds = new Set((Array.isArray(prev?.plans) ? prev.plans : []).map((p) => p.id));
+    const newPlans = plans.filter((p) => !prevPlanIds.has(p.id));
+
+    const changes = buildChanges(prevModels, models, prevFree, freeModels, date, firstSeen, newPlans);
 
     // Stille, strukturelle privacy-Änderungen (Feld erstmals befüllt oder
     // Familien-Fallback): Daten-Dateien schreiben, aber KEINE Changelog-Events.
@@ -2058,11 +2319,10 @@ async function main() {
         }
       );
 
-    // Monatsguthaben/-preis haben sich geändert (dynamisch gefetchte Werte):
-    // Daten-Dateien schreiben, aber KEINE Changelog-Events — die Werte sind die
+    // Die komplette `plans`-Liste (inkl. Reihenfolge) hat sich geändert:
+    // Daten-Dateien schreiben, aber KEINE Changelog-Events — die Pläne sind die
     // globale Preisbasis (kein Modell-Event), die UI liest sie aus latest.json.
-    const monthlyPricingChanged =
-      prev !== null && (prev.monthlyCredit !== monthlyCredit || prev.monthlyCost !== monthlyCostFinal);
+    const plansChanged = prev !== null && JSON.stringify(prev.plans ?? null) !== JSON.stringify(plans);
 
     // Modell-IDs befüllt/geändert (`opencode(-go)/<id>` für die UI):
     // Daten-Dateien schreiben, aber KEINE Changelog-Events — reine Anreicherung.
@@ -2127,7 +2387,7 @@ async function main() {
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
 
-    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || monthlyPricingChanged || modelIdsPopulated || contextWindowPopulated || providerPopulated || fullIdsPopulated) {
+    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || plansChanged || modelIdsPopulated || contextWindowPopulated || providerPopulated || fullIdsPopulated) {
       history.snapshots.push(latest);
       writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
       writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
@@ -2136,7 +2396,8 @@ async function main() {
     const enriched = models.filter((m) => m.capabilities !== null).length;
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
     const privacyCovered = models.filter((m) => m.privacy !== null).length;
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Monatsguthaben $${monthlyCredit} / Monatspreis $${monthlyCostFinal} (${pricingFallback ? "Fallback 60/10" : "dynamisch"})${monthlyPricingChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}${contextWindowPopulated ? " (Kontextfenster still befüllt, keine Events)" : ""}${providerPopulated ? " (Hersteller still befüllt, keine Events)" : ""}${fullIdsPopulated ? " (Full-IDs still befüllt, keine Events)" : ""}.`);
+    const planLabel = plans.map((p) => `${p.name} $${p.priceMonthly}/${p.creditsMonthly}`).join(", ");
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Pläne: ${planLabel}${plansChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}${contextWindowPopulated ? " (Kontextfenster still befüllt, keine Events)" : ""}${providerPopulated ? " (Hersteller still befüllt, keine Events)" : ""}${fullIdsPopulated ? " (Full-IDs still befüllt, keine Events)" : ""}.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

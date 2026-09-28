@@ -15,8 +15,8 @@ function esc(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function requestCostList(m) {
-  if (!m.pattern) return m.usage === null ? 0 : null;
+function requestCostList(m, usage) {
+  if (!m.pattern) return usage === null ? 0 : null;
   const input = m.input;
   const cached = m.cachedRead;
   const writeRaw = m.cachedWrite;
@@ -28,11 +28,18 @@ function requestCostList(m) {
 }
 
 const data = JSON.parse(readFileSync("data/latest.json", "utf8"));
+const plans = Array.isArray(data.plans) ? data.plans : [];
+if (plans.length === 0) throw new Error("build-share: kein Plan in data/latest.json");
+// Günstigster Plan (kleinster Monatspreis); bei Gleichstand gewinnt die
+// Reihenfolge in `plans` (deterministisch).
+const plan = plans.reduce((best, p) => (best === null || p.priceMonthly < best.priceMonthly ? p : best), null);
+const usageOf = (m) => m.usage?.[plan.id] ?? null;
 const rows = data.models
   .map((m) => {
-    if (m.usage === null) return { name: m.name, tier: m.tier, value: Infinity };
-    const cost = requestCostList(m);
-    return { name: m.name, tier: m.tier, value: cost ? m.usage / cost : null };
+    const usage = usageOf(m);
+    if (usage === null) return { name: m.name, tier: m.tier, value: Infinity };
+    const cost = requestCostList(m, usage);
+    return { name: m.name, tier: m.tier, value: cost ? usage / cost : null };
   })
   .sort((a, b) => (a.value === null ? 1 : b.value === null ? -1 : b.value - a.value))
   .slice(0, 5);

@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { renderReleaseNotesForEntry } from "./release-notes.mjs";
+import { renderReleaseNotesForEntry, loadPlans } from "./release-notes.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -46,6 +46,7 @@ function main() {
     (argv.find((a) => a.startsWith("--date="))?.slice("--date=".length) ?? null);
 
   const changelog = JSON.parse(readFileSync(join(ROOT, "CHANGELOG.json"), "utf8"));
+  const plans = loadPlans();
   const entries = changelog?.entries ?? [];
   if (entries.length === 0) {
     console.log("no changelog entries, nothing to do");
@@ -69,7 +70,7 @@ function main() {
   // Einträge sind neueste-zuerst (unshift); der erste ist der "latest"-Release.
   const newestId = entries[0].id;
   for (const entry of targets) {
-    const notes = renderReleaseNotesForEntry(entry);
+    const notes = renderReleaseNotesForEntry(entry, plans);
     if (notes === null) {
       console.log(`entry ${entry.id}: no changes, skipping release`);
       continue;

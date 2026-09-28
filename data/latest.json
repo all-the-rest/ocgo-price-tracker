@@ -1,17 +1,22 @@
 {
-  "fetchedAt": "2026-09-26T19:39:07.901Z",
+  "fetchedAt": "2026-09-28T13:28:43.256Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
   "sourceLang": "de",
-  "monthlyCredit": 60,
-  "monthlyCost": 10,
   "plans": [
     {
       "id": "go",
       "name": "Go",
       "priceMonthly": 10,
       "creditsMonthly": 60,
+      "sourceUrl": "https://opencode.ai/docs/de/go/"
+    },
+    {
+      "id": "go-plus",
+      "name": "Go Plus",
+      "priceMonthly": 40,
+      "creditsMonthly": 240,
       "sourceUrl": "https://opencode.ai/docs/de/go/"
     }
   ],
@@ -65,7 +70,10 @@
       "output": 0.5,
       "cachedRead": 0.03,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 180
+      },
       "pattern": {
         "input": 1000,
         "cachedRead": 55000,
@@ -84,11 +92,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.15,
-      "effectiveOutput": 0.5,
-      "effectiveCachedRead": 0.03,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -105,7 +108,10 @@
       "output": 4.4,
       "cachedRead": 0.26,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 700,
         "cachedRead": 52000,
@@ -121,11 +127,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 5.6,
-      "effectiveOutput": 17.6,
-      "effectiveCachedRead": 1.04,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -142,7 +143,10 @@
       "output": 4.4,
       "cachedRead": 0.26,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 180
+      },
       "pattern": {
         "input": 700,
         "cachedRead": 52000,
@@ -158,11 +162,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 1.4,
-      "effectiveOutput": 4.4,
-      "effectiveCachedRead": 0.26,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -173,50 +172,16 @@
       "provider": "Z.ai"
     },
     {
-      "name": "GLM-5.1",
-      "tier": null,
-      "input": 1.4,
-      "output": 4.4,
-      "cachedRead": 0.26,
-      "cachedWrite": null,
-      "usage": 60,
-      "pattern": {
-        "input": 700,
-        "cachedRead": 52000,
-        "output": 150
-      },
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": 1,
-      "effectiveInput": 1.4,
-      "effectiveOutput": 4.4,
-      "effectiveCachedRead": 0.26,
-      "effectiveCachedWrite": null,
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 204800,
-      "id": "opencode-go/glm-5.1",
-      "provider": "Z.ai"
-    },
-    {
       "name": "Kimi K3",
       "tier": null,
       "input": 3,
       "output": 15,
       "cachedRead": 0.3,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 1050,
         "cachedRead": 76500,
@@ -234,11 +199,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 12,
-      "effectiveOutput": 60,
-      "effectiveCachedRead": 1.2,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -255,7 +215,10 @@
       "output": 4,
       "cachedRead": 0.19,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 180
+      },
       "pattern": {
         "input": 870,
         "cachedRead": 55000,
@@ -273,11 +236,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.95,
-      "effectiveOutput": 4,
-      "effectiveCachedRead": 0.19,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -294,7 +252,10 @@
       "output": 4,
       "cachedRead": 0.16,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 240
+      },
       "pattern": {
         "input": 870,
         "cachedRead": 55000,
@@ -312,11 +273,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.95,
-      "effectiveOutput": 4,
-      "effectiveCachedRead": 0.16,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -333,7 +289,10 @@
       "output": 1.2,
       "cachedRead": 0.006,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 240
+      },
       "pattern": {
         "input": 920,
         "cachedRead": 88900,
@@ -349,11 +308,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.3,
-      "effectiveOutput": 1.2,
-      "effectiveCachedRead": 0.006,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -364,13 +318,48 @@
       "provider": "Meituan"
     },
     {
+      "name": "LongCat 2.5 Preview Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": {
+        "go": null,
+        "go-plus": null
+      },
+      "pattern": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "id": "opencode-go/longcat-2.5-preview-free",
+      "provider": "Meituan"
+    },
+    {
       "name": "MiMo V2.6 Flash",
       "tier": null,
       "input": 0.14,
       "output": 0.28,
       "cachedRead": 0.0028,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 830,
         "cachedRead": 71500,
@@ -389,11 +378,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.14,
-      "effectiveOutput": 0.28,
-      "effectiveCachedRead": 0.0028,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -410,7 +394,10 @@
       "output": 0.87,
       "cachedRead": 0.003625,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 790,
         "cachedRead": 86000,
@@ -429,11 +416,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 1.74,
-      "effectiveOutput": 3.48,
-      "effectiveCachedRead": 0.0145,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -450,7 +432,10 @@
       "output": 0.28,
       "cachedRead": 0.0028,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 830,
         "cachedRead": 71500,
@@ -469,11 +454,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.14,
-      "effectiveOutput": 0.28,
-      "effectiveCachedRead": 0.0028,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -490,7 +470,10 @@
       "output": 0.87,
       "cachedRead": 0.003625,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 790,
         "cachedRead": 86000,
@@ -506,11 +489,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 1.74,
-      "effectiveOutput": 3.48,
-      "effectiveCachedRead": 0.0145,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -527,7 +505,10 @@
       "output": 1.2,
       "cachedRead": 0.06,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 180
+      },
       "pattern": {
         "input": 510,
         "cachedRead": 56000,
@@ -545,11 +526,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.3,
-      "effectiveOutput": 1.2,
-      "effectiveCachedRead": 0.06,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -566,7 +542,10 @@
       "output": 1.2,
       "cachedRead": 0.06,
       "cachedWrite": 0.375,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 240
+      },
       "pattern": {
         "input": 300,
         "cachedRead": 55000,
@@ -582,11 +561,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.3,
-      "effectiveOutput": 1.2,
-      "effectiveCachedRead": 0.06,
-      "effectiveCachedWrite": 0.375,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -597,51 +571,16 @@
       "provider": "MiniMax"
     },
     {
-      "name": "MiniMax M2.5",
-      "tier": null,
-      "input": 0.3,
-      "output": 1.2,
-      "cachedRead": 0.06,
-      "cachedWrite": 0.375,
-      "usage": 60,
-      "pattern": {
-        "input": 300,
-        "cachedRead": 55000,
-        "output": 125
-      },
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": 1,
-      "effectiveInput": 0.3,
-      "effectiveOutput": 1.2,
-      "effectiveCachedRead": 0.06,
-      "effectiveCachedWrite": 0.375,
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null,
-        "fallback": true
-      },
-      "contextWindow": 204800,
-      "id": "opencode-go/minimax-m2.5",
-      "provider": "MiniMax"
-    },
-    {
       "name": "Muse Spark 1.3 Contributor",
       "tier": null,
       "input": 0.1,
       "output": 0.2,
       "cachedRead": 0.002,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 620,
         "cachedRead": 71400,
@@ -661,11 +600,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.1,
-      "effectiveOutput": 0.2,
-      "effectiveCachedRead": 0.002,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": true,
         "retentionDays": false,
@@ -682,7 +616,10 @@
       "output": 0.2,
       "cachedRead": 0.002,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 620,
         "cachedRead": 71400,
@@ -702,11 +639,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.1,
-      "effectiveOutput": 0.2,
-      "effectiveCachedRead": 0.002,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": true,
         "retentionDays": false,
@@ -723,7 +655,10 @@
       "output": 6,
       "cachedRead": 0.25,
       "cachedWrite": 2.5,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 420,
         "cachedRead": 66000,
@@ -740,11 +675,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 8,
-      "effectiveOutput": 24,
-      "effectiveCachedRead": 1,
-      "effectiveCachedWrite": 10,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -761,7 +691,10 @@
       "output": 0.47,
       "cachedRead": 0.016,
       "cachedWrite": 0.2,
-      "usage": 30,
+      "usage": {
+        "go": 30,
+        "go-plus": 90
+      },
       "pattern": {
         "input": 600,
         "cachedRead": 58000,
@@ -779,11 +712,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 2,
-      "effectiveInput": 0.3,
-      "effectiveOutput": 0.94,
-      "effectiveCachedRead": 0.032,
-      "effectiveCachedWrite": 0.4,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -794,50 +722,16 @@
       "provider": "Alibaba"
     },
     {
-      "name": "Qwen3.7 Max",
-      "tier": null,
-      "input": 2.5,
-      "output": 7.5,
-      "cachedRead": 0.5,
-      "cachedWrite": 3.125,
-      "usage": 30,
-      "pattern": {
-        "input": 420,
-        "cachedRead": 66000,
-        "output": 200
-      },
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": 2,
-      "effectiveInput": 5,
-      "effectiveOutput": 15,
-      "effectiveCachedRead": 1,
-      "effectiveCachedWrite": 6.25,
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/qwen3.7-max",
-      "provider": "Alibaba"
-    },
-    {
       "name": "Qwen3.7 Plus",
       "tier": "≤ 256K tokens",
       "input": 0.4,
       "output": 1.6,
       "cachedRead": 0.04,
       "cachedWrite": 0.5,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 180
+      },
       "pattern": {
         "input": 500,
         "cachedRead": 57000,
@@ -855,11 +749,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.4,
-      "effectiveOutput": 1.6,
-      "effectiveCachedRead": 0.04,
-      "effectiveCachedWrite": 0.5,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -876,7 +765,10 @@
       "output": 4.8,
       "cachedRead": 0.12,
       "cachedWrite": 1.5,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 180
+      },
       "pattern": {
         "input": 500,
         "cachedRead": 57000,
@@ -894,11 +786,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 1.2,
-      "effectiveOutput": 4.8,
-      "effectiveCachedRead": 0.12,
-      "effectiveCachedWrite": 1.5,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -909,91 +796,16 @@
       "provider": "Alibaba"
     },
     {
-      "name": "Qwen3.6 Plus",
-      "tier": "≤ 256K tokens",
-      "input": 0.5,
-      "output": 3,
-      "cachedRead": 0.05,
-      "cachedWrite": 0.625,
-      "usage": 60,
-      "pattern": {
-        "input": 500,
-        "cachedRead": 57000,
-        "output": 190
-      },
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": 1,
-      "effectiveInput": 0.5,
-      "effectiveOutput": 3,
-      "effectiveCachedRead": 0.05,
-      "effectiveCachedWrite": 0.625,
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 262144,
-      "id": "opencode-go/qwen3.6-plus",
-      "provider": "Alibaba"
-    },
-    {
-      "name": "Qwen3.6 Plus",
-      "tier": "> 256K tokens",
-      "input": 2,
-      "output": 6,
-      "cachedRead": 0.2,
-      "cachedWrite": 2.5,
-      "usage": 60,
-      "pattern": {
-        "input": 500,
-        "cachedRead": 57000,
-        "output": 190
-      },
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": 1,
-      "effectiveInput": 2,
-      "effectiveOutput": 6,
-      "effectiveCachedRead": 0.2,
-      "effectiveCachedWrite": 2.5,
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 262144,
-      "id": "opencode-go/qwen3.6-plus",
-      "provider": "Alibaba"
-    },
-    {
       "name": "DeepSeek V4.1 Flash",
       "tier": "Off-Peak",
       "input": 0.15,
       "output": 0.6,
       "cachedRead": 0.003,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 410,
         "cachedRead": 71300,
@@ -1010,15 +822,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.15,
-      "effectiveOutput": 0.6,
-      "effectiveCachedRead": 0.003,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": "2026-10-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4.1-flash",
@@ -1031,7 +838,10 @@
       "output": 1.2,
       "cachedRead": 0.006,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 410,
         "cachedRead": 71300,
@@ -1048,15 +858,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.3,
-      "effectiveOutput": 1.2,
-      "effectiveCachedRead": 0.006,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": "2026-10-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4.1-flash",
@@ -1069,7 +874,10 @@
       "output": 1.98,
       "cachedRead": 0.022,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 750,
         "cachedRead": 82000,
@@ -1085,15 +893,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 2.64,
-      "effectiveOutput": 7.92,
-      "effectiveCachedRead": 0.088,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": "2026-10-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-pro",
@@ -1106,7 +909,10 @@
       "output": 3.96,
       "cachedRead": 0.044,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 750,
         "cachedRead": 82000,
@@ -1122,15 +928,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 5.28,
-      "effectiveOutput": 15.84,
-      "effectiveCachedRead": 0.176,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": "2026-10-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-pro",
@@ -1143,7 +944,10 @@
       "output": 0.6,
       "cachedRead": 0.003,
       "cachedWrite": null,
-      "usage": 30,
+      "usage": {
+        "go": 30,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 410,
         "cachedRead": 71300,
@@ -1159,15 +963,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 2,
-      "effectiveInput": 0.3,
-      "effectiveOutput": 1.2,
-      "effectiveCachedRead": 0.006,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": "2026-10-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-flash",
@@ -1180,7 +979,10 @@
       "output": 1.2,
       "cachedRead": 0.006,
       "cachedWrite": null,
-      "usage": 30,
+      "usage": {
+        "go": 30,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 410,
         "cachedRead": 71300,
@@ -1196,15 +998,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 2,
-      "effectiveInput": 0.6,
-      "effectiveOutput": 2.4,
-      "effectiveCachedRead": 0.012,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": "2026-10-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-flash",
@@ -1217,7 +1014,10 @@
       "output": 0.6,
       "cachedRead": 0.003,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 410,
         "cachedRead": 71300,
@@ -1234,15 +1034,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 0.6,
-      "effectiveOutput": 2.4,
-      "effectiveCachedRead": 0.012,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": "2026-10-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-flash-vision-exp",
@@ -1255,7 +1050,10 @@
       "output": 1.2,
       "cachedRead": 0.006,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 410,
         "cachedRead": 71300,
@@ -1272,15 +1070,10 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 1.2,
-      "effectiveOutput": 4.8,
-      "effectiveCachedRead": 0.024,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-09-30"
+        "validUntil": "2026-10-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-flash-vision-exp",
@@ -1293,7 +1086,10 @@
       "output": 2.501,
       "cachedRead": 0.042,
       "cachedWrite": null,
-      "usage": 30,
+      "usage": {
+        "go": 30,
+        "go-plus": 120
+      },
       "pattern": {
         "input": 830,
         "cachedRead": 71500,
@@ -1309,11 +1105,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 2,
-      "effectiveInput": 1.668,
-      "effectiveOutput": 5.002,
-      "effectiveCachedRead": 0.084,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -1330,7 +1121,10 @@
       "output": 0.58,
       "cachedRead": 0.035,
       "cachedWrite": null,
-      "usage": 60,
+      "usage": {
+        "go": 60,
+        "go-plus": 240
+      },
       "pattern": {
         "input": 830,
         "cachedRead": 71500,
@@ -1346,11 +1140,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 1,
-      "effectiveInput": 0.14,
-      "effectiveOutput": 0.58,
-      "effectiveCachedRead": 0.035,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -1367,7 +1156,10 @@
       "output": 0,
       "cachedRead": 0,
       "cachedWrite": 0,
-      "usage": null,
+      "usage": {
+        "go": null,
+        "go-plus": null
+      },
       "pattern": null,
       "capabilities": {
         "input": [
@@ -1381,11 +1173,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": null,
-      "effectiveInput": 0,
-      "effectiveOutput": 0,
-      "effectiveCachedRead": 0,
-      "effectiveCachedWrite": 0,
       "privacy": {
         "training": false,
         "retentionDays": true,
@@ -1396,47 +1183,16 @@
       "provider": "OpenCode Stealth"
     },
     {
-      "name": "LongCat 2.5 Preview Free",
-      "tier": null,
-      "input": 0,
-      "output": 0,
-      "cachedRead": 0,
-      "cachedWrite": 0,
-      "usage": null,
-      "pattern": null,
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "multiplier": null,
-      "effectiveInput": 0,
-      "effectiveOutput": 0,
-      "effectiveCachedRead": 0,
-      "effectiveCachedWrite": 0,
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/longcat-2.5-preview-free",
-      "provider": "Meituan"
-    },
-    {
       "name": "Grok 4.7",
       "tier": "≤ 200K tokens",
       "input": 2,
       "output": 6,
       "cachedRead": 0.5,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 390,
         "cachedRead": 32500,
@@ -1454,11 +1210,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 8,
-      "effectiveOutput": 24,
-      "effectiveCachedRead": 2,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": 30,
@@ -1475,7 +1226,10 @@
       "output": 12,
       "cachedRead": 1,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 390,
         "cachedRead": 32500,
@@ -1493,11 +1247,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 16,
-      "effectiveOutput": 48,
-      "effectiveCachedRead": 4,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": 30,
@@ -1514,7 +1263,10 @@
       "output": 6,
       "cachedRead": 0.5,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 390,
         "cachedRead": 32500,
@@ -1531,11 +1283,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 8,
-      "effectiveOutput": 24,
-      "effectiveCachedRead": 2,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": 30,
@@ -1552,7 +1299,10 @@
       "output": 12,
       "cachedRead": 1,
       "cachedWrite": null,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 390,
         "cachedRead": 32500,
@@ -1569,11 +1319,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 16,
-      "effectiveOutput": 48,
-      "effectiveCachedRead": 4,
-      "effectiveCachedWrite": null,
       "privacy": {
         "training": false,
         "retentionDays": 30,
@@ -1590,7 +1335,10 @@
       "output": 0.5,
       "cachedRead": 0.01,
       "cachedWrite": 0.125,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 1000,
         "cachedRead": 50000,
@@ -1608,11 +1356,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 0.4,
-      "effectiveOutput": 2,
-      "effectiveCachedRead": 0.04,
-      "effectiveCachedWrite": 0.5,
       "privacy": {
         "training": false,
         "retentionDays": 30,
@@ -1629,7 +1372,10 @@
       "output": 0.75,
       "cachedRead": 0.02,
       "cachedWrite": 0.25,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 1000,
         "cachedRead": 50000,
@@ -1647,11 +1393,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 0.8,
-      "effectiveOutput": 3,
-      "effectiveCachedRead": 0.08,
-      "effectiveCachedWrite": 1,
       "privacy": {
         "training": false,
         "retentionDays": 30,
@@ -1668,7 +1409,10 @@
       "output": 1.2,
       "cachedRead": 0.02,
       "cachedWrite": 0.25,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 1000,
         "cachedRead": 50000,
@@ -1686,11 +1430,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 0.8,
-      "effectiveOutput": 4.8,
-      "effectiveCachedRead": 0.08,
-      "effectiveCachedWrite": 1,
       "privacy": {
         "training": false,
         "retentionDays": 30,
@@ -1707,7 +1446,10 @@
       "output": 1.8,
       "cachedRead": 0.04,
       "cachedWrite": 0.5,
-      "usage": 15,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
       "pattern": {
         "input": 1000,
         "cachedRead": 50000,
@@ -1725,11 +1467,6 @@
         "reasoning": true,
         "toolCall": true
       },
-      "multiplier": 4,
-      "effectiveInput": 1.6,
-      "effectiveOutput": 7.2,
-      "effectiveCachedRead": 0.16,
-      "effectiveCachedWrite": 2,
       "privacy": {
         "training": false,
         "retentionDays": 30,

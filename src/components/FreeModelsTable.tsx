@@ -2,7 +2,8 @@ import { createMemo, For, Show } from "solid-js";
 import type { Translation } from "../i18n";
 import { HEADING_IDS } from "../headings";
 import Heading from "./Heading";
-import type { FreeModel } from "../types";
+import type { FreeModel, Plan } from "../types";
+import { planLabel } from "../plans";
 import { fmtContextWindow, fmtDateOnly, formatFreeModelName } from "../util";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import ModelId from "./ModelId";
@@ -12,6 +13,8 @@ interface FreeModelsTableProps {
   freeModels: FreeModel[];
   t: Translation;
   lang: "de" | "en";
+  /** Alle Pläne — die Zen-Free-Modelle sind in jedem Abo nutzbar (Plan-Hinweis). */
+  plans: Plan[];
   sort: FreeSortState;
   setSort: (u: (prev: FreeSortState) => FreeSortState) => void;
   caps: CapId[];
@@ -58,6 +61,12 @@ export default function FreeModelsTable(props: FreeModelsTableProps) {
       <section id={HEADING_IDS.freeModels} class="mt-10">
         <Heading anchor={HEADING_IDS.freeModels}>{props.t.headingFree}</Heading>
         <p class="mt-1 text-sm text-base-content/70">{props.t.freeModelsNote}</p>
+        <p class="mt-1 text-sm text-base-content/70">
+          {props.t.freeModelsPlansNote.replace(
+            "{plans}",
+            props.plans.map((p) => planLabel(p.id, props.t)).join(", "),
+          )}
+        </p>
         <CapabilityFilter value={() => props.caps} setter={props.setCaps} t={props.t} />
         <div class="mt-4 w-full overflow-x-auto">
           <table class="table table-sm table-zebra">

@@ -63,6 +63,30 @@ export const uiReviewConfig: UiReviewConfig = {
       note: "Deutsche Dark-Mode-Variante — prüft i18n + dunkles Theme zusammen.",
       expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
     },
+    {
+      name: "home-go-plus",
+      path: "/?plan=go-plus",
+      states: ["filled"],
+      elements: ["#privacy", "#changelog"],
+      note: "Go-Plus-Plan (aktiver Tab) — eigene Nutzung/Badges/Faktor-Hinweis, Free-/Datenschutz-Tabelle unverändert.",
+      expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
+    },
+    {
+      name: "home-de-go-plus",
+      path: "/?lang=de&plan=go-plus",
+      states: ["filled"],
+      elements: ["#privacy", "#changelog"],
+      note: "Deutsche Go-Plus-Variante — Prüft Plan-Tabs und plan-abhängige Rechnung zusammen mit i18n.",
+      expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
+    },
+    {
+      name: "home-go-plus-dark",
+      path: "/?plan=go-plus&theme=dark",
+      states: ["filled"],
+      elements: ["#privacy", "#changelog"],
+      note: "Go-Plus im Dark-Mode — prüft Plan-Umschaltung und dunkles Theme zusammen.",
+      expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
+    },
   ],
 };
 

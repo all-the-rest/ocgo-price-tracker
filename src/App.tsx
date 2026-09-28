@@ -4,7 +4,7 @@ import { i18n, type Lang } from "./i18n";
 import { BUILD_TIME_ISO } from "./buildInfo";
 import { VALID_SORT, type FreeSortState, type PrivacySortState, type SortState } from "./sort";
 import { CAP_IDS, type CapId } from "./capabilities";
-import { DEFAULT_PLAN_ID, TAB_PLAN_IDS, isTabPlan, resolvePlan } from "./plans";
+import { DEFAULT_PLAN_ID, TAB_PLAN_IDS, allPlans, isTabPlan, resolvePlan } from "./plans";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import PlanTabs from "./components/PlanTabs";
@@ -182,8 +182,9 @@ export default function App(props: AppProps = {}) {
     _setDark(resolveInitialDark(p.theme, storedTheme));
   });
 
-  // Aktuell genau ein Tab-Plan → keine sichtbaren Tabs; die Hülle ist bereit
-  // für weitere Pläne (dann: Tabs einblenden, Modelle pro Plan filtern).
+  // Sichtbare Pläne für die Tabs (`go`, `go-plus`); der Plan steuert die
+  // plan-abhängige Rechnung in Tabelle/Share-Card. URL (`?plan=`) ist die
+  // Quelle der Wahrheit — kein localStorage.
   const tabPlans = () => (data.plans ?? []).filter((p) => (TAB_PLAN_IDS as readonly string[]).includes(p.id));
   const plan = () => resolvePlan(data, planId());
 
@@ -278,6 +279,7 @@ export default function App(props: AppProps = {}) {
           site="ocgo-pricing.all-the.rest"
           peakHours={data.peakHours}
           caps={caps()}
+          plan={plan()}
         />
         <PriceTable
           models={data.models}
@@ -298,6 +300,7 @@ export default function App(props: AppProps = {}) {
           freeModels={data.freeModels}
           t={t()}
           lang={lang()}
+          plans={allPlans(data)}
           sort={freeSort()}
           setSort={setFreeSort}
           caps={freeCaps()}
@@ -311,7 +314,13 @@ export default function App(props: AppProps = {}) {
           sort={privacySort()}
           setSort={setPrivacySort}
         />
-        <Changelog entries={changelogData.entries} t={t()} lang={lang()} plan={plan()} />
+        <Changelog
+          entries={changelogData.entries}
+          t={t()}
+          lang={lang()}
+          plans={allPlans(data)}
+          planId={planId()}
+        />
         <Legal t={t()} />
       </main>
       <Footer t={t()} data={data} lang={lang()} />

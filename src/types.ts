@@ -2,7 +2,7 @@ export type PriceField = "input" | "output" | "cachedRead" | "cachedWrite";
 
 export type Basis = "list" | "full" | "paid";
 
-export type PlanId = "go";
+export type PlanId = "go" | "go-plus";
 
 export type Modality = "text" | "audio" | "image" | "video" | "pdf";
 
@@ -31,9 +31,21 @@ export interface PricingType {
   output: number | null;
   cachedRead: number | null;
   cachedWrite: number | null;
-  /** null = unbegrenzte Nutzung (kostenlose Modelle) */
-  usage: number | null;
+  /**
+   * Nutzung: neue Changelog-Einträge tragen die Plan-Map (Plan-Id → $, `null` =
+   * unbegrenzt), historische Einträge (vor der Plan-Einführung) den einzelnen
+   * Zahlenwert (`null` = ∞). Beide Formen sind gültig — der Scraper validiert
+   * dasselbe per zod-Union, damit die bestehende Changelog-/Release-Historie
+   * unverändert weiterläuft.
+   */
+  usage: PricingUsage;
 }
+
+/** Plan-Id → Nutzung in $ (`null` = unbegrenzt / kostenlose Zeile). */
+export type UsageMap = Record<string, number | null>;
+
+/** `usage` in Changelog-Pricing: Plan-Map (neu) oder einzelner Wert (Legacy). */
+export type PricingUsage = UsageMap | number | null;
 
 export interface RequestPattern {
   input: number;
@@ -65,12 +77,8 @@ export interface Model {
   output: number | null;
   cachedRead: number | null;
   cachedWrite: number | null;
-  usage: number | null;
-  multiplier: number | null;
-  effectiveInput: number | null;
-  effectiveOutput: number | null;
-  effectiveCachedRead: number | null;
-  effectiveCachedWrite: number | null;
+  /** Nutzung je Plan (Plan-Id → $, `null` = unbegrenzt/kostenlose Zeile). */
+  usage: Record<PlanId, number | null>;
   pattern: RequestPattern | null;
   capabilities: Capabilities | null;
   /** Kontextfenster in Tokens (aus models.dev); null = unbekannt. */
@@ -83,14 +91,15 @@ export interface Model {
 export type PeakHours = Record<string, [number, number][]>;
 
 /**
- * Ein Abonnement-Plan (analog cc-price-tracker `Plan`, dort als Array mit
- * mehreren Einträgen). Aktuell gibt es nur einen Plan (`go`); die Array-Hülle
- * existiert, damit ein zweiter Plan ohne Datenmigration hinzukommt.
+ * Ein Abonnement-Plan (analog cc-price-tracker `Plan`). OpenCode Go hat zwei
+ * Abonnemente (`go`, `go-plus`); Tokenpreise sind identisch, die inkludierte
+ * Nutzung pro Modell unterscheidet sich.
  */
 export interface Plan {
   id: PlanId;
   name: string;
   priceMonthly: number;
+  /** Höchste endliche Nutzung des Plans — Basis für „volles Monatsguthaben“. */
   creditsMonthly: number;
   sourceUrl: string;
 }
@@ -101,10 +110,6 @@ export interface PriceData {
   freeModelsSourceUrl: string;
   capabilitiesSourceUrl: string;
   sourceLang: string;
-  /** @deprecated Kompat für ai-10-usd (`comparison-core.mjs` liest diese Felder) — Quelle ist `plans[0]`. */
-  monthlyCredit: number;
-  /** @deprecated Kompat für ai-10-usd — Quelle ist `plans[0]`. */
-  monthlyCost: number;
   plans: Plan[];
   peakHours: PeakHours;
   models: Model[];
@@ -113,16 +118,32 @@ export interface PriceData {
 
 export type SupportedLocale = "en" | "de";
 
+/** Ein geänderter Plan innerhalb eines `usage_changed`-Events (neue Form). */
+export interface UsagePlanChange {
+  plan: PlanId;
+  from: number | null;
+  to: number | null;
+}
+
 export type Change =
   | { type: "text"; lang: Record<SupportedLocale, string> }
   | { type: "model_added"; model: string; pricing: PricingType }
   | { type: "model_removed"; model: string; days: number; pricing: PricingType }
   | { type: "price_changed"; model: string; from: PricingType; to: PricingType; fields: PriceField[] }
-  | { type: "usage_changed"; model: string; from: number | null; to: number | null }
+  // `usage_changed` kennt zwei Formen (Muster aus cc-price-tracker):
+  // - neu: ein Event pro Modell, im `plans`-Array nur die tatsächlich
+  //   geänderten Pläne;
+  // - Legacy (vor der Plan-Einführung): skalare `from`/`to`, optional `plan`.
+  //   Nötig, weil die historischen Einträge diese Form behalten und ihre
+  //   GitHub-Releases bereits veröffentlicht sind.
+  | { type: "usage_changed"; model: string; plans: UsagePlanChange[] }
+  | { type: "usage_changed"; model: string; plan?: PlanId; from?: number | null; to?: number | null }
   | { type: "capabilities_changed"; model: string; from: Capabilities | null; to: Capabilities | null }
   | { type: "privacy_changed"; model: string; from: Privacy | null; to: Privacy | null }
   | { type: "free_added"; model: string; name?: string }
-  | { type: "free_removed"; model: string; name?: string; availableFrom: string; until: string };
+  | { type: "free_removed"; model: string; name?: string; availableFrom: string; until: string }
+  // Ein Abonnement ist neu hinzugekommen: genau ein Event pro Plan.
+  | { type: "plan_added"; plan: PlanId; name: string; priceMonthly: number; creditsMonthly: number };
 
 export interface ChangelogEntry {
   id: string;

@@ -6,6 +6,12 @@ import { fileURLToPath } from "node:url";
 import * as cheerio from "cheerio";
 import {
   parseHtml,
+  parsePlans,
+  parsePlanTable,
+  parsePlanPrice,
+  planIdFromLabel,
+  extractPlanTableMap,
+  parsePatternNum,
   computeDiff,
   buildChanges,
   upsertChangelogJson,
@@ -23,16 +29,12 @@ import {
   computeCapabilityDiff,
   enrichFreeModels,
   parseDocsUsageBonuses,
-  parseMonthlyCost,
-  parseMonthlyCreditDirect,
-  parseCreditFactor,
-  parseMonthlyPricing,
   parsePeakHours,
   parsePeakRanges,
   parsePrivacyNotes,
   validUntilFor,
   ScrapeError,
-  recomputeUsageDerived,
+  usageMapsEqual,
   computePrivacyDiff,
   normalizeChangelogIds,
   parseGermanDate,
@@ -45,39 +47,377 @@ const fixture = readFileSync(
   "utf8"
 );
 
-test("parseHtml: extrahiert 23 Modelle aus dem HTML-Dump", () => {
+// ---------------------------------------------------------------------------
+// Synthetische Seiten im echten Doku-Aufbau: Plan-Tabelle + `starlight-tabs`
+// mit einem `[role=tabpanel]` je Plan (Panel-Label == Plan-Name).
+// ---------------------------------------------------------------------------
+
+const DE_HEADERS = [
+  "Modell",
+  "Eingabe",
+  "Ausgabe",
+  "Cache-Lesevorgang",
+  "Cache-Schreibvorgang",
+  "Monatliches Limit",
+];
+const EN_HEADERS = ["Model", "Input", "Output", "Cached Read", "Cached Write", "Usage"];
+
+function tableHtml(headers, rows) {
+  return `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows
+    .map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`)
+    .join("")}</tbody></table>`;
+}
+
+function planTable(plans) {
+  return tableHtml(
+    ["Abonnement", "Preis", "Enthaltene Nutzung"],
+    plans.map((p) => [p.name, `$${p.price}/Monat`, "x"])
+  );
+}
+
+/**
+ * Baut eine Seite wie die Doku: Plan-Tabelle + Tab-Panels (Labels → Plan-Ids).
+ * Panels ohne Preistabelle (Rate-Limits) werden bewusst nicht erzeugt.
+ */
+function buildPage({ plans = [{ name: "Go", price: 10 }], panels = [], extra = "" } = {}) {
+  const tabs = panels
+    .map(
+      (p, i) =>
+        `<div id="tab-panel-${i + 1}" aria-labelledby="tab-${i + 1}" role="tabpanel">${p.table}</div>`
+    )
+    .join("");
+  const tabList = panels
+    .map(
+      (p, i) =>
+        `<li role="presentation"><a role="tab" href="#tab-panel-${i + 1}" id="tab-${i + 1}">${p.label}</a></li>`
+    )
+    .join("");
+  const tabsHtml = panels.length
+    ? `<starlight-tabs data-sync-key="go-plan"><div class="tablist-wrapper"><ul role="tablist">${tabList}</ul></div>${tabs}</starlight-tabs>`
+    : "";
+  return `<html><body><main>${planTable(plans)}${tabsHtml}${extra}</main></body></html>`;
+}
+
+const pricePanel = (label, rows, headers = DE_HEADERS) => ({ label, table: tableHtml(headers, rows) });
+const privacyTable = (rows) => tableHtml(["Modell", "Modelltraining", "Datenaufbewahrung"], rows);
+
+// ---------------------------------------------------------------------------
+// parseHtml: echte Fixture (Plan-Tabelle + zwei Preistabellen)
+// ---------------------------------------------------------------------------
+
+test("parseHtml: extrahiert 39 Modelle aus dem HTML-Dump", () => {
   const models = parseHtml(fixture);
-  assert.equal(models.length, 23);
+  assert.equal(models.length, 39);
   for (const m of models) {
     assert.equal(typeof m.name, "string");
-    assert.equal(typeof m.usage, "number");
-    assert.equal(typeof m.multiplier, "number");
-    assert.ok(Array.isArray([m.input, m.output, m.cachedRead, m.cachedWrite]));
+    assert.equal(typeof m.usage, "object");
+    assert.ok("go" in m.usage && "go-plus" in m.usage, `${m.name} hat usage.go/go-plus`);
   }
 });
 
-test("parseHtml: Grok 4.5 mit $15-Nutzung und ×4-Multiplikator", () => {
-  const grok = parseHtml(fixture).find((m) => m.name === "Grok 4.5");
+test("parseHtml: Grok 4.7 mit $15/$60-Nutzung", () => {
+  const grok = parseHtml(fixture).find((m) => m.name === "Grok 4.7" && m.tier === "≤ 200K tokens");
   assert.equal(grok.input, 2);
   assert.equal(grok.output, 6);
-  assert.equal(grok.cachedRead, 0.3);
+  assert.equal(grok.cachedRead, 0.5);
   assert.equal(grok.cachedWrite, null);
-  assert.equal(grok.usage, 15);
-  assert.equal(grok.multiplier, 4);
-  assert.equal(grok.effectiveInput, 8);
-  assert.equal(grok.effectiveOutput, 24);
-  assert.equal(grok.effectiveCachedRead, 1.2);
-  assert.equal(grok.effectiveCachedWrite, null);
+  assert.deepEqual(grok.usage, { go: 15, "go-plus": 60 });
 });
 
-test("parseHtml: DeepSeek V4 Flash mit $60-Nutzung und ×1", () => {
-  const flash = parseHtml(fixture).find((m) => m.name === "DeepSeek V4 Flash");
-  assert.equal(flash.input, 0.14);
-  assert.equal(flash.output, 0.28);
-  assert.equal(flash.usage, 60);
-  assert.equal(flash.multiplier, 1);
-  assert.equal(flash.effectiveInput, 0.14);
+test("parseHtml: DeepSeek V4 Flash (Off-Peak) mit $30/$120-Nutzung", () => {
+  const flash = parseHtml(fixture).find((m) => m.name === "DeepSeek V4 Flash" && m.tier === "Off-Peak");
+  assert.equal(flash.input, 0.15);
+  assert.equal(flash.output, 0.6);
+  assert.deepEqual(flash.usage, { go: 30, "go-plus": 120 });
 });
+
+test("parseHtml: MiMo V2.5 Pro mit kleinen Preisen", () => {
+  const pro = parseHtml(fixture).find((m) => m.name === "MiMo V2.5 Pro");
+  assert.equal(pro.input, 0.435);
+  assert.equal(pro.cachedRead, 0.003625);
+  assert.deepEqual(pro.usage, { go: 15, "go-plus": 60 });
+});
+
+test("parseHtml: kostenlose Zeilen (Nutzung '-'/unbegrenzt) → Preise 0, usage null in beiden Plänen", () => {
+  const free = parseHtml(fixture).filter((m) => m.usage.go === null);
+  assert.deepEqual(free.map((m) => m.name).sort(), ["LongCat 2.5 Preview Free", "Space Bunny Free"]);
+  for (const m of free) {
+    assert.deepEqual(m.usage, { go: null, "go-plus": null });
+    assert.deepEqual([m.input, m.output, m.cachedRead, m.cachedWrite], [0, 0, 0, 0]);
+    assert.equal(m.pattern, null);
+  }
+});
+
+test("parseHtml: Tier-Splitting bei GPT 5.6 Luna", () => {
+  const models = parseHtml(fixture);
+  const tiers = models
+    .filter((m) => m.name === "GPT 5.6 Luna")
+    .map((m) => m.tier)
+    .sort();
+  assert.deepEqual(tiers, ["> 272K tokens", "≤ 272K tokens"]);
+  assert.equal(modelKey(models.find((m) => m.name === "GPT 5.6 Luna" && m.tier === "≤ 272K tokens")), "GPT 5.6 Luna (≤ 272K tokens)");
+});
+
+test("parseHtml: pro-Modell-Anfragemuster (Komma-Tausender)", () => {
+  const models = parseHtml(fixture);
+  const by = (name) => models.find((m) => m.name === name);
+  assert.deepEqual(by("Grok 4.7").pattern, { input: 390, cachedRead: 32500, output: 120 });
+  assert.deepEqual(by("GLM-5.3").pattern, { input: 700, cachedRead: 52000, output: 150 });
+  assert.deepEqual(by("GLM-5.3-Flash").pattern, { input: 1000, cachedRead: 55000, output: 200 });
+  assert.deepEqual(by("Kimi K2.6").pattern, { input: 870, cachedRead: 55000, output: 200 });
+  assert.deepEqual(by("MiniMax M2.7").pattern, { input: 300, cachedRead: 55000, output: 125 });
+  for (const l of models.filter((m) => m.name === "GPT 5.6 Luna")) {
+    assert.deepEqual(l.pattern, { input: 1000, cachedRead: 50000, output: 220 });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Pläne (Plan-Tabelle + Tab-Zuordnung)
+// ---------------------------------------------------------------------------
+
+test("parsePlans: Go (10/60) und Go Plus (40/240) aus der Fixture", () => {
+  const plans = parsePlans(fixture);
+  assert.deepEqual(plans, [
+    {
+      id: "go",
+      name: "Go",
+      priceMonthly: 10,
+      creditsMonthly: 60,
+      sourceUrl: "https://opencode.ai/docs/de/go/",
+    },
+    {
+      id: "go-plus",
+      name: "Go Plus",
+      priceMonthly: 40,
+      creditsMonthly: 240,
+      sourceUrl: "https://opencode.ai/docs/de/go/",
+    },
+  ]);
+});
+
+test("creditsMonthly = höchste endliche Nutzung je Plan", () => {
+  const plans = parsePlans(fixture);
+  assert.equal(plans.find((p) => p.id === "go").creditsMonthly, 60);
+  assert.equal(plans.find((p) => p.id === "go-plus").creditsMonthly, 240);
+});
+
+test("parsePlanPrice/planIdFromLabel: Formate und Normalisierung", () => {
+  assert.equal(parsePlanPrice("$10/Monat"), 10);
+  assert.equal(parsePlanPrice("$40/Monat"), 40);
+  assert.equal(parsePlanPrice("10 $/Monat"), 10);
+  assert.equal(planIdFromLabel("Go"), "go");
+  assert.equal(planIdFromLabel("Go Plus"), "go-plus");
+  assert.equal(planIdFromLabel("  Pro   Plus "), "pro-plus");
+  assert.throws(() => parsePlanPrice("kostenlos"), ScrapeError);
+});
+
+test("parsePlanTable: englische Header (Plan/Price) funktionieren ebenfalls", () => {
+  const html = `<html><body><main>${tableHtml(
+    ["Plan", "Price", "Included usage"],
+    [
+      ["Go", "$10/month", "x"],
+      ["Go Plus", "$40/month", "x"],
+    ]
+  )}</main></body></html>`;
+  const plans = parsePlanTable(cheerio.load(html));
+  assert.deepEqual(plans.map((p) => [p.id, p.priceMonthly]), [
+    ["go", 10],
+    ["go-plus", 40],
+  ]);
+});
+
+test("extractPlanTableMap: ordnet über ARIA zu (nicht über Position)", () => {
+  const $ = cheerio.load(
+    buildPage({
+      plans: [
+        { name: "Go", price: 10 },
+        { name: "Go Plus", price: 40 },
+      ],
+      panels: [
+        pricePanel("Go", [["A", "$1", "$1", "-", "-", "$60"]]),
+        pricePanel("Go Plus", [["A", "$1", "$1", "-", "-", "$120"]]),
+      ],
+    })
+  );
+  const plans = parsePlanTable($);
+  const map = extractPlanTableMap($, plans);
+  assert.deepEqual([...map.keys()], ["go", "go-plus"]);
+});
+
+test("parseHtml: deutsche Header werden erkannt", () => {
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Deutsches Modell", "$1.40", "$4.40", "$0.26", "-", "$15"]])],
+    extra: privacyTable([["Deutsches Modell", "Nicht verwendet", "0 Tage"]]),
+  });
+  const m = parseHtml(html)[0];
+  assert.equal(m.name, "Deutsches Modell");
+  assert.equal(m.input, 1.4);
+  assert.deepEqual(m.usage, { go: 15 });
+});
+
+// ---------------------------------------------------------------------------
+// Fehlerfälle der Plan-/Tab-Struktur
+// ---------------------------------------------------------------------------
+
+test("parseHtml: fehlende Plan-Tabelle → ScrapeError", () => {
+  assert.throws(() => parseHtml("<html><body><h1>nix</h1></body></html>"), ScrapeError);
+});
+
+test("parseHtml: #Preistabellen ≠ #Pläne → ScrapeError", () => {
+  const html = buildPage({
+    plans: [
+      { name: "Go", price: 10 },
+      { name: "Go Plus", price: 40 },
+    ],
+    panels: [pricePanel("Go", [["A", "$1", "$1", "-", "-", "$60"]])],
+  });
+  assert.throws(() => parseHtml(html), /Anzahl Preistabellen/);
+});
+
+test("parseHtml: Panel-Label ohne passenden Plan → ScrapeError", () => {
+  const html = buildPage({
+    plans: [{ name: "Go", price: 10 }],
+    panels: [pricePanel("Go Plus", [["A", "$1", "$1", "-", "-", "$60"]])],
+  });
+  assert.throws(() => parseHtml(html), /keinem Plan/);
+});
+
+test("parseHtml: Preis-Tab-Panel ohne aria-labelledby → ScrapeError", () => {
+  const table = tableHtml(DE_HEADERS, [["A", "$1", "$1", "-", "-", "$60"]]);
+  const html = `<html><body><main>${planTable([{ name: "Go", price: 10 }])}<starlight-tabs><div class="tablist-wrapper"><ul role="tablist"><li><a role="tab" href="#tab-panel-1" id="tab-1">Go</a></li></ul></div><div id="tab-panel-1" role="tabpanel">${table}</div></starlight-tabs></main></body></html>`;
+  assert.throws(() => parseHtml(html), /aria-labelledby/);
+});
+
+test("parseHtml: Tab ohne zugehöriges Panel → ScrapeError", () => {
+  const table = tableHtml(DE_HEADERS, [["A", "$1", "$1", "-", "-", "$60"]]);
+  const html = `<html><body><main>${planTable([
+    { name: "Go", price: 10 },
+    { name: "Go Plus", price: 40 },
+  ])}<starlight-tabs><div class="tablist-wrapper"><ul role="tablist"><li><a role="tab" href="#tab-panel-1" id="tab-1">Go</a></li><li><a role="tab" href="#tab-panel-2" id="tab-2">Go Plus</a></li></ul></div><div id="tab-panel-1" aria-labelledby="tab-1" role="tabpanel">${table}</div></starlight-tabs></main></body></html>`;
+  assert.throws(() => parseHtml(html), /kein zugehöriges Panel/);
+});
+
+test("parseHtml: abweichende Tokenpreise zwischen den Plänen → ScrapeError", () => {
+  const html = buildPage({
+    plans: [
+      { name: "Go", price: 10 },
+      { name: "Go Plus", price: 40 },
+    ],
+    panels: [
+      pricePanel("Go", [["A", "$1", "$1", "-", "-", "$60"]]),
+      pricePanel("Go Plus", [["A", "$2", "$1", "-", "-", "$120"]]),
+    ],
+  });
+  assert.throws(() => parseHtml(html), /Tokenpreise weichen/);
+});
+
+test("parseHtml: abweichende Modellmenge zwischen den Plänen → ScrapeError", () => {
+  const html = buildPage({
+    plans: [
+      { name: "Go", price: 10 },
+      { name: "Go Plus", price: 40 },
+    ],
+    panels: [
+      pricePanel("Go", [["A", "$1", "$1", "-", "-", "$60"]]),
+      pricePanel("Go Plus", [["B", "$1", "$1", "-", "-", "$120"]]),
+    ],
+  });
+  assert.throws(() => parseHtml(html), /abweichende Modellzeilen/);
+});
+
+test("parseHtml: wirft bei unparsebarem Preis", () => {
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Test Model", "$abc", "$1", "-", "-", "$60"]])],
+  });
+  assert.throws(() => parseHtml(html));
+});
+
+for (const limit of ["<strong>Unbegrenzt</strong>", "Unlimited", "-", "<strong>$60</strong>"]) {
+  test(`parseHtml: Free-Preise mit Nutzung ${limit}`, () => {
+    const html = buildPage({
+      panels: [
+        pricePanel("Go", [
+          ["Union Alpha", "Free", " free ", "FREE", "-", `${limit}<br><small>für begrenzte Zeit</small>`],
+          ["Priced Model", "$1", "$1", "-", "-", "$60"],
+        ]),
+      ],
+      extra: privacyTable([["Other", "Nicht verwendet", "0 Tage"]]),
+    });
+    const model = parseHtml(html).find((m) => m.name === "Union Alpha");
+    const limited = limit.includes("$60");
+    assert.deepEqual(model.usage, { go: limited ? 60 : null });
+    assert.equal(model.pattern, null);
+    for (const field of ["input", "output", "cachedRead"]) {
+      assert.equal(model[field], 0, field);
+    }
+    assert.equal(model.cachedWrite, limited ? null : 0);
+  });
+}
+
+test("parseHtml: unbekanntes Nutzungslimit bleibt ein Fehler", () => {
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Broken", "$1", "$1", "-", "-", "<strong>Unknown</strong>"]])],
+  });
+  assert.throws(() => parseHtml(html), /Nutzung unparsebar/);
+});
+
+// ---------------------------------------------------------------------------
+// Anfragemuster-Zahlen
+// ---------------------------------------------------------------------------
+
+test("parsePatternNum: Komma-Tausender (32,500) UND Punkt-Tausender (1.100)", () => {
+  assert.equal(parsePatternNum("32,500"), 32500);
+  assert.equal(parsePatternNum("1.100"), 1100);
+  assert.equal(parsePatternNum("71,300"), 71300);
+  assert.equal(parsePatternNum("76,500"), 76500);
+  assert.equal(parsePatternNum("1.5"), 1.5);
+  assert.throws(() => parsePatternNum("abc"), ScrapeError);
+  assert.throws(() => parsePatternNum(""), ScrapeError);
+});
+
+test("patternPartMatches: härtet gegen Kollisionen", () => {
+  assert.equal(patternPartMatches("5.1", "glm5.1", "glm"), true);
+  assert.equal(patternPartMatches("5.1", "glm5.10", "glm"), false);
+  assert.equal(patternPartMatches("k2.6", "kimik2.6", "kimik"), true);
+  assert.equal(patternPartMatches("kimik2.7", "kimik2.7code", "kimik"), true);
+});
+
+test("parseDocsUsageBonuses: extrahiert den 4×-Faktor aus der Doku-Zelle", () => {
+  const $ = cheerio.load(`<html><body><main>${tableHtml(EN_HEADERS, [
+    ["DeepSeek V4.1 Flash", "$0.15", "$0.60", "$0.003", "-", "<del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small>"],
+    ["Grok 4.7", "$1", "$2", "$0.1", "-", "$15"],
+  ])}</main></body></html>`);
+  const bonuses = parseDocsUsageBonuses($);
+  assert.equal(bonuses.get("deepseekv4.1flash"), 4);
+  assert.equal(bonuses.size, 1);
+});
+
+test("parseHtml: Nutzungs-Zelle mit Doku-Bonus (del/strong/small) → aktueller Wert", () => {
+  const html = buildPage({
+    panels: [
+      pricePanel("Go", [
+        [
+          "DeepSeek V4.1 Flash (Off-Peak)",
+          "$0.15",
+          "$0.60",
+          "$0.003",
+          "-",
+          "<del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small>",
+        ],
+      ]),
+    ],
+    extra:
+      privacyTable([["DeepSeek V4.1 Flash", "Nicht verwendet", "0 Tage"]]) +
+      "<ul><li>DeepSeek V4.1 Flash — 410 Eingabe-, 71,300 Cache-, 310 Ausgabe-Tokens pro Anfrage</li></ul>",
+  });
+  const model = parseHtml(html)[0];
+  assert.deepEqual(model.usage, { go: 60 });
+  assert.deepEqual(model.pattern, { input: 410, cachedRead: 71300, output: 310 });
+});
+
+// ---------------------------------------------------------------------------
+// Anfragemuster-Auflösung / Peaks
+// ---------------------------------------------------------------------------
 
 test("parsePeakHours: ordnet den gemeinsamen Flash/Pro-Hinweis beiden Modellen zu", () => {
   const $ = cheerio.load(
@@ -162,84 +502,12 @@ test("parsePeakRanges: ungültiges Fenster → ScrapeError", () => {
   assert.throws(() => parsePeakRanges("Peak hours ohne Zahl UTC"), ScrapeError);
 });
 
-test("parseHtml: MiMo V2.5 Pro mit kleinen Preisen und ×4", () => {
-  const pro = parseHtml(fixture).find((m) => m.name === "MiMo V2.5 Pro");
-  assert.equal(pro.input, 0.435);
-  assert.equal(pro.cachedRead, 0.003625);
-  assert.equal(pro.usage, 15);
-  assert.equal(pro.multiplier, 4);
-  assert.equal(pro.effectiveInput, 1.74);
-  assert.equal(pro.effectiveCachedRead, 0.0145);
-});
+// ---------------------------------------------------------------------------
+// Datenschutz
+// ---------------------------------------------------------------------------
 
-test("parseHtml: Tier-Splitting bei GPT 5.6 Luna", () => {
-  const models = parseHtml(fixture);
-  const tiers = models
-    .filter((m) => m.name === "GPT 5.6 Luna")
-    .map((m) => m.tier)
-    .sort();
-  assert.deepEqual(tiers, ["> 272K tokens", "≤ 272K tokens"]);
-  assert.equal(modelKey(models.find((m) => m.tier === "≤ 272K tokens")), "GPT 5.6 Luna (≤ 272K tokens)");
-});
-
-test("parseHtml: pro-Modell-Anfragemuster aus der Doku", () => {
-  const models = parseHtml(fixture);
-  const by = (name) => models.find((m) => m.name === name);
-  assert.deepEqual(by("Grok 4.5").pattern, { input: 1100, cachedRead: 71500, output: 220 });
-  assert.deepEqual(by("DeepSeek V4 Flash").pattern, { input: 790, cachedRead: 68000, output: 280 });
-  assert.deepEqual(by("GLM-5.1").pattern, { input: 700, cachedRead: 52000, output: 150 });
-  assert.deepEqual(by("Kimi K2.6").pattern, { input: 870, cachedRead: 55000, output: 200 });
-  assert.deepEqual(by("MiMo V2.5 Pro").pattern, { input: 790, cachedRead: 86000, output: 305 });
-  assert.deepEqual(by("MiniMax M2.5").pattern, { input: 300, cachedRead: 55000, output: 125 });
-  for (const l of models.filter((m) => m.name === "GPT 5.6 Luna")) {
-    assert.deepEqual(l.pattern, { input: 1000, cachedRead: 50000, output: 220 });
-  }
-});
-
-test("parseHtml: wirft bei fehlender Preistabelle", () => {
-  assert.throws(() => parseHtml("<html><body><h1>nix</h1></body></html>"));
-});
-
-test("parseHtml: wirft bei unparsebarem Preis", () => {
-  const broken = `
-    <html><body><main>
-      <table>
-        <thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Nutzung</th></tr></thead>
-        <tbody><tr><td>Test Model</td><td>$abc</td><td>$1</td><td>-</td><td>-</td><td>$60</td></tr></tbody>
-      </table>
-    </main></body></html>`;
-  assert.throws(() => parseHtml(broken));
-});
-
-for (const usage of ["<strong>Unbegrenzt</strong>", "Unlimited", "-", "<strong>$60</strong>"]) {
-  test(`parseHtml: Free-Preise mit Nutzung ${usage}`, () => {
-    const $ = cheerio.load(fixture);
-    $("main table").filter((_, table) => $(table).find("thead").text().includes("Input"))
-      .first().find("tbody").append(`
-        <tr><td>Union Alpha</td><td>Free</td><td> free </td><td>FREE</td><td>-</td>
-        <td>${usage}<br><small>für begrenzte Zeit</small></td></tr>`);
-    const model = parseHtml($.html()).find((m) => m.name === "Union Alpha");
-    const limited = usage.includes("$60");
-    assert.equal(model.usage, limited ? 60 : null);
-    assert.equal(model.multiplier, limited ? 1 : null);
-    assert.equal(model.pattern, null);
-    for (const field of ["input", "output", "cachedRead", "effectiveInput", "effectiveOutput", "effectiveCachedRead"]) {
-      assert.equal(model[field], 0, field);
-    }
-    assert.equal(model.cachedWrite, limited ? null : 0);
-    assert.equal(model.effectiveCachedWrite, limited ? null : 0);
-  });
-}
-
-test("parseHtml: unbekanntes Nutzungslimit bleibt ein Fehler", () => {
-  const $ = cheerio.load(fixture);
-  $("main table").filter((_, table) => $(table).find("thead").text().includes("Input"))
-    .first().find("tbody tr").first().find("td").last().html("<strong>Unknown</strong>");
-  assert.throws(() => parseHtml($.html()), /Nutzung unparsebar/);
-});
-
-test("parseHtml: Datenschutz — Grok 4.5 mit 30 Tagen Aufbewahrung", () => {
-  const grok = parseHtml(fixture).find((m) => m.name === "Grok 4.5");
+test("parseHtml: Datenschutz — Grok 4.7 mit 30 Tagen Aufbewahrung", () => {
+  const grok = parseHtml(fixture).find((m) => m.name === "Grok 4.7");
   assert.deepEqual(grok.privacy, { training: false, retentionDays: 30, validUntil: null });
 });
 
@@ -248,9 +516,14 @@ test("parseHtml: Datenschutz — ZDR-Modelle mit true (0 Tage)", () => {
   assert.deepEqual(glm.privacy, { training: false, retentionDays: true, validUntil: null });
 });
 
-test("parseHtml: Datenschutz — DeepSeek V4 Flash mit gültig-bis-Datum", () => {
+test("parseHtml: Datenschutz — DeepSeek V4 Flash mit gültig-bis-Datum (31. Oktober 2026)", () => {
   const flash = parseHtml(fixture).find((m) => m.name === "DeepSeek V4 Flash");
-  assert.deepEqual(flash.privacy, { training: false, retentionDays: true, validUntil: "2026-08-31" });
+  assert.deepEqual(flash.privacy, { training: false, retentionDays: true, validUntil: "2026-10-31" });
+});
+
+test("parseHtml: kostenlose Preistabellen-Zeile ohne Nutzung bekommt Datenschutz", () => {
+  const free = parseHtml(fixture).find((m) => m.name === "Space Bunny Free");
+  assert.deepEqual(free.privacy, { training: false, retentionDays: true, validUntil: null });
 });
 
 test("parsePrivacyNotes: Familien-Label (DeepSeek) → validUntil (ISO)", () => {
@@ -278,46 +551,41 @@ test("validUntilFor: Exakt-/spezifischer Treffer gewinnt gegen Familien-Fallback
 });
 
 test("validUntilFor: ohne Treffer null, kein falscher Präfix-Match", () => {
-  assert.equal(validUntilFor("grok45", new Map([["deepseek", "2026-09-30"]])), null);
+  assert.equal(validUntilFor("grok47", new Map([["deepseek", "2026-09-30"]])), null);
   assert.equal(validUntilFor("deepseekv4flash", new Map()), null);
 });
 
 test("parseHtml: Datenschutz-Notiz ohne passendes Modell → ScrapeError", () => {
-  const html = `
-    <html><body><main>
-      <table>
-        <thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Nutzung</th></tr></thead>
-        <tbody><tr><td>Alpha</td><td>$1</td><td>$1</td><td>-</td><td>-</td><td>$60</td></tr></tbody>
-      </table>
-      <table>
-        <thead><tr><th>Modell</th><th>Modelltraining</th><th>Datenaufbewahrung</th></tr></thead>
-        <tbody><tr><td>Alpha</td><td>Nicht verwendet</td><td>0 Tage</td></tr></tbody>
-      </table>
-      <ul><li><strong>DeepSeek:</strong> Die ZDR-Vereinbarung gilt bis einschließlich 30. September 2026.</li></ul>
-    </main></body></html>`;
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Alpha", "$1", "$1", "-", "-", "$60"]])],
+    extra:
+      privacyTable([["Alpha", "Nicht verwendet", "0 Tage"]]) +
+      "<ul><li><strong>DeepSeek:</strong> Die ZDR-Vereinbarung gilt bis einschließlich 30. September 2026.</li></ul>",
+  });
   assert.throws(() => parseHtml(html), ScrapeError);
 });
 
 test("parseHtml: Datenschutz — Muse Spark 1.2 ohne ZDR ('Kein ZDR' → false)", () => {
-  const muse = parseHtml(fixture).find((m) => m.name === "Muse Spark 1.2");
+  const muse = parseHtml(fixture).find((m) => m.name === "Muse Spark 1.2 Contributor");
   assert.deepEqual(muse.privacy, { training: true, retentionDays: false, validUntil: null });
 });
 
 test("parseHtml: Datenschutz — unbekannte Aufbewahrung ('–') lässt retentionDays weg", () => {
-  const html = `
-    <html><body><main>
-      <table>
-        <thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Nutzung</th></tr></thead>
-        <tbody><tr><td>Alpha</td><td>$1</td><td>$1</td><td>-</td><td>-</td><td>$60</td></tr></tbody>
-      </table>
-      <table>
-        <thead><tr><th>Modell</th><th>Modelltraining</th><th>Datenaufbewahrung</th></tr></thead>
-        <tbody><tr><td>Alpha</td><td>Nicht verwendet</td><td>–</td></tr></tbody>
-      </table>
-    </main></body></html>`;
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Alpha", "$1", "$1", "-", "-", "$60"]])],
+    extra: privacyTable([["Alpha", "Nicht verwendet", "–"]]),
+  });
   const privacy = parseHtml(html)[0].privacy;
   assert.equal(privacy.training, false);
   assert.equal(privacy.retentionDays, undefined);
+});
+
+test("parseHtml: Datenschutz — Fußnoten-Stern ('0 Tage*') zählt als ZDR", () => {
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Alpha", "$1", "$1", "-", "-", "$60"]])],
+    extra: privacyTable([["Alpha", "Nicht verwendet", "0 Tage*"]]),
+  });
+  assert.deepEqual(parseHtml(html)[0].privacy, { training: false, retentionDays: true, validUntil: null });
 });
 
 test("parseHtml: Datenschutz — Luna (beide Tiers) aus einer Tabellenzeile", () => {
@@ -329,7 +597,16 @@ test("parseHtml: Datenschutz — Luna (beide Tiers) aus einer Tabellenzeile", ()
 });
 
 test("parseHtml: Datenschutz — MiniMax M2.5 übernimmt Familien-Fallback von M2.7", () => {
-  const mimo = parseHtml(fixture).find((m) => m.name === "MiniMax M2.5");
+  const html = buildPage({
+    panels: [
+      pricePanel("Go", [
+        ["MiniMax M2.5", "$0.30", "$1.20", "$0.06", "-", "$60"],
+        ["MiniMax M2.7", "$0.30", "$1.20", "$0.06", "-", "$60"],
+      ]),
+    ],
+    extra: privacyTable([["MiniMax M2.7", "Nicht verwendet", "0 Tage"]]),
+  });
+  const mimo = parseHtml(html).find((m) => m.name === "MiniMax M2.5");
   assert.deepEqual(mimo.privacy, {
     training: false,
     retentionDays: true,
@@ -339,128 +616,70 @@ test("parseHtml: Datenschutz — MiniMax M2.5 übernimmt Familien-Fallback von M
 });
 
 test("parseHtml: Datenschutz — Modell ohne Zeile und ohne Fallback bleibt null", () => {
-  const html = `
-    <html><body><main>
-      <table>
-        <thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Nutzung</th></tr></thead>
-        <tbody><tr><td>Alpha</td><td>$1</td><td>$1</td><td>-</td><td>-</td><td>$60</td></tr></tbody>
-      </table>
-      <table>
-        <thead><tr><th>Modell</th><th>Modelltraining</th><th>Datenaufbewahrung</th></tr></thead>
-        <tbody><tr><td>Beta</td><td>Nicht verwendet</td><td>0 Tage</td></tr></tbody>
-      </table>
-    </main></body></html>`;
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Alpha", "$1", "$1", "-", "-", "$60"]])],
+    extra: privacyTable([["Beta", "Nicht verwendet", "0 Tage"]]),
+  });
   assert.equal(parseHtml(html)[0].privacy, null);
 });
 
 test("parseHtml: wirft bei fehlender Datenschutz-Tabelle", () => {
-  const html = `
-    <html><body><main>
-      <table>
-        <thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Nutzung</th></tr></thead>
-        <tbody><tr><td>Test Model</td><td>$1</td><td>$1</td><td>-</td><td>-</td><td>$60</td></tr></tbody>
-      </table>
-    </main></body></html>`;
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Test Model", "$1", "$1", "-", "-", "$60"]])],
+  });
   assert.throws(() => parseHtml(html));
 });
 
-test("parseHtml: Nutzungs-Zelle mit Doku-Bonus (del/strong/small) → aktueller Wert", () => {
-  const html = `<html><body><main>
-    <table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monatliches Limit</th></tr></thead>
-    <tbody><tr><td>DeepSeek V4.1 Flash (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td>
-    <td><del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small></td></tr></tbody></table>
-    <table><thead><tr><th>Modell</th><th>Modelltraining</th><th>Datenaufbewahrung</th></tr></thead>
-    <tbody><tr><td>DeepSeek V4.1 Flash</td><td>Nicht verwendet</td><td>0 Tage</td></tr></tbody></table>
-    <p>DeepSeek V4.1 Flash — 410 Input-, 71300 Cached-, 310 Output-Tokens pro Anfrage</p>
-  </main></body></html>`;
-  const models = parseHtml(html);
-  assert.equal(models[0].usage, 60);
-  assert.equal(models[0].multiplier, 1);
+// ---------------------------------------------------------------------------
+// Namens-Normalisierung
+// ---------------------------------------------------------------------------
+
+test("canonicalModelName: normalisiert MiMo-Bindestrich-Schreibweisen", () => {
+  assert.equal(canonicalModelName("MiMo-V2.5"), "MiMo V2.5");
+  assert.equal(canonicalModelName("MiMo-V2.5-Pro"), "MiMo V2.5 Pro");
+  assert.equal(canonicalModelName("MiMo-V2.6-Flash"), "MiMo V2.6 Flash");
+  assert.equal(canonicalModelName("MiMo-V2.6-Pro"), "MiMo V2.6 Pro");
+  assert.equal(canonicalModelName("MiMo V2.5"), "MiMo V2.5");
+  assert.equal(canonicalModelName("GLM-5.2"), "GLM-5.2");
+  assert.equal(canonicalModelName("Grok 4.7"), "Grok 4.7");
 });
 
-test("parseDocsUsageBonuses: extrahiert 4×-Faktor aus der Doku-Zelle", () => {
-  const $ = cheerio.load(`<html><body><main>
-    <table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monatliches Limit</th></tr></thead>
-    <tbody><tr><td>DeepSeek V4.1 Flash</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td>
-    <td><del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small></td></tr>
-    <tr><td>Grok 4.5</td><td>$1</td><td>$2</td><td>$0.1</td><td>-</td><td>$15</td></tr></tbody></table>
-  </main></body></html>`);
-  const bonuses = parseDocsUsageBonuses($);
-  assert.equal(bonuses.get("deepseekv4.1flash"), 4);
-  assert.equal(bonuses.size, 1);
+test("canonicalFreeName: normalisiert Free-Anzeigenamen, behält Suffix", () => {
+  assert.equal(canonicalFreeName("MiMo-V2.6-Flash Free"), "MiMo V2.6 Flash Free");
+  assert.equal(canonicalFreeName("Ox Alpha Free"), "Ox Alpha Free");
 });
 
-test("parseHtml: Nutzungs-Zelle als Fließtext mit Bonus-Notiz → letzter $-Wert", () => {
-  const html = `<html><body><main>
-    <table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monatliches Limit</th></tr></thead>
-    <tbody><tr><td>DeepSeek V4.1 Flash (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td>
-    <td>$15 $60 4x · Endet am 20. Sept.</td></tr></tbody></table>
-    <table><thead><tr><th>Modell</th><th>Modelltraining</th><th>Datenaufbewahrung</th></tr></thead>
-    <tbody><tr><td>DeepSeek V4.1 Flash</td><td>Nicht verwendet</td><td>0 Tage</td></tr></tbody></table>
-    <p>DeepSeek V4.1 Flash — 410 Input-, 71300 Cached-, 310 Output-Tokens pro Anfrage</p>
-  </main></body></html>`;
-  const models = parseHtml(html);
-  assert.equal(models[0].usage, 60);
+test("parseHtml: Bindestrich-Schreibweise wird auf kanonische Namen normalisiert", () => {
+  const spaced = fixture.replaceAll("<td>MiMo-V2.5</td>", "<td>MiMo V2.5</td>");
+  assert.ok(spaced !== fixture);
+  const models = parseHtml(spaced);
+  const mimo = models.find((m) => m.name === "MiMo V2.5");
+  assert.ok(mimo);
+  // Muster und Datenschutz bleiben zugeordnet.
+  assert.deepEqual(mimo.pattern, { input: 830, cachedRead: 71500, output: 295 });
+  assert.ok(mimo.privacy);
 });
 
-test("parseMonthlyPricing: Doku-Fixture liefert $10/Monat und Faktor 6", () => {
-  const pricing = parseMonthlyPricing(cheerio.load(fixture));
-  assert.deepEqual(pricing, { monthlyCost: 10, creditFactor: 6 });
-});
-
-test("parseMonthlyCost: deutsches Format (10 $/Monat) wird geparst", () => {
-  const $ = cheerio.load("<p>OpenCode Go ist ein kostengünstiges Abonnement für <strong>10 $/Monat</strong>.</p>");
-  assert.equal(parseMonthlyCost($), 10);
-});
-
-test("parseMonthlyCost: englisches Format ($10/Monat) wird geparst", () => {
-  const $ = cheerio.load("<p>OpenCode Go costs $10/Monat for reliable access.</p>");
-  assert.equal(parseMonthlyCost($), 10);
-});
-
-test("parseMonthlyCreditDirect: Limit-Liste liefert $60 Monatsguthaben", () => {
-  const $ = cheerio.load(`<ul>
-    <li><strong>5-Stunden-Limit</strong> — Nutzung im Wert von $12</li>
-    <li><strong>Wöchentliches Limit</strong> — Nutzung im Wert von $30</li>
-    <li><strong>Monatliches Limit</strong> — Nutzung im Wert von $60</li>
-  </ul>`);
-  assert.equal(parseMonthlyCreditDirect($), 60);
-});
-
-test("parseMonthlyCreditDirect: ohne Limit-Liste → null (Fallback-Pfad)", () => {
-  const $ = cheerio.load("<html><body><p>Keine Limits hier.</p></body></html>");
-  assert.equal(parseMonthlyCreditDirect($), null);
-});
-
-test("parseMonthlyPricing: fehlende Werte → null statt Fehler (Fallback-Pfad)", () => {
-  const $ = cheerio.load("<html><body><p>Keine Preise hier.</p></body></html>");
-  assert.deepEqual(parseMonthlyPricing($), { monthlyCost: null, creditFactor: null });
-});
-
-test("parseMonthlyCost: ohne Preisangabe → null (Fallback-Pfad)", () => {
-  const $ = cheerio.load("<html><body><p>Keine Preise hier.</p></body></html>");
-  assert.equal(parseMonthlyCost($), null);
-});
-
-test("parseCreditFactor: numerischer Faktor (das 6-fache) wird geparst", () => {
-  const $ = cheerio.load("<p>unser Ziel ist, dir dafür das 6-fache dieses Betrags zu bieten.</p>");
-  assert.equal(parseCreditFactor($), 6);
-});
-
-test("parseCreditFactor: unbekannter Faktor bei vorhandenem Satz wirft", () => {
-  const $ = cheerio.load("<p>das Elffache dieses Betrags</p>");
-  assert.throws(() => parseCreditFactor($), /unparsebar/);
-});
+// ---------------------------------------------------------------------------
+// Diff / Changelog (usage als Map, usage_changed mit plan)
+// ---------------------------------------------------------------------------
 
 const base = [
-  { name: "Alpha", tier: null, usage: 60, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null },
-  { name: "Beta", tier: null, usage: 15, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null },
+  { name: "Alpha", tier: null, usage: { go: 60 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null },
+  { name: "Beta", tier: null, usage: { go: 15 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null },
 ];
+
+test("usageMapsEqual: gleiche Schlüssel/Werte gleich, fehlende oder abweichende ungleich", () => {
+  assert.equal(usageMapsEqual({ go: 15, "go-plus": 60 }, { go: 15, "go-plus": 60 }), true);
+  assert.equal(usageMapsEqual({ go: 15 }, { go: 15, "go-plus": 60 }), false);
+  assert.equal(usageMapsEqual({ go: 15 }, { go: 30 }), false);
+  assert.equal(usageMapsEqual({ go: null }, { "go-plus": null }), false);
+});
 
 test("computeDiff: erkennt hinzugefügte und entfernte Modelle", () => {
   const next = [
     ...base,
-    { name: "Gamma", tier: null, usage: 60, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Gamma", tier: null, usage: { go: 60 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null },
   ];
   const diff = computeDiff(base, next);
   assert.deepEqual(diff.added, ["Gamma"]);
@@ -470,14 +689,13 @@ test("computeDiff: erkennt hinzugefügte und entfernte Modelle", () => {
 });
 
 test("computeDiff: erkennt Nutzungsverbesserung als komplette Pricing-Änderung", () => {
-  const next = [{ ...base[0] }, { ...base[1], usage: 60 }];
+  const next = [{ ...base[0] }, { ...base[1], usage: { go: 60 } }];
   const diff = computeDiff(base, next);
   assert.deepEqual(diff.changed, [
     {
       key: "Beta",
-      offPeak: false,
-      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
-      to: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15 } },
+      to: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } },
     },
   ]);
 });
@@ -493,32 +711,72 @@ test("computeDiff: erkennt Preisänderung mit Float-Toleranz", () => {
   assert.equal(diff.changed[0].to.input, 1.5);
 });
 
-test("canonicalModelName: normalisiert MiMo-Bindestrich-Schreibweisen", () => {
-  assert.equal(canonicalModelName("MiMo-V2.5"), "MiMo V2.5");
-  assert.equal(canonicalModelName("MiMo-V2.5-Pro"), "MiMo V2.5 Pro");
-  assert.equal(canonicalModelName("MiMo-V2.6-Flash"), "MiMo V2.6 Flash");
-  assert.equal(canonicalModelName("MiMo-V2.6-Pro"), "MiMo V2.6 Pro");
-  assert.equal(canonicalModelName("MiMo V2.5"), "MiMo V2.5");
-  assert.equal(canonicalModelName("GLM-5.2"), "GLM-5.2");
-  assert.equal(canonicalModelName("Grok 4.5"), "Grok 4.5");
+test("computeDiff: neue Plan-Nutzung (go-plus) ist eine Änderung", () => {
+  const next = [{ ...base[0], usage: { go: 60, "go-plus": 120 } }, { ...base[1] }];
+  const diff = computeDiff(base, next);
+  assert.equal(diff.changed.length, 1);
+  assert.deepEqual(diff.changed[0].to.usage, { go: 60, "go-plus": 120 });
 });
 
-test("canonicalFreeName: normalisiert Free-Anzeigenamen, behält Suffix", () => {
-  assert.equal(canonicalFreeName("MiMo-V2.6-Flash Free"), "MiMo V2.6 Flash Free");
-  assert.equal(canonicalFreeName("Ox Alpha Free"), "Ox Alpha Free");
+test("buildChanges: Legacy-Snapshot mit Skalar-usage erzeugt keine Phantom-go-Events", () => {
+  // Vor der Plan-Umstellung war `usage` eine Zahl; der Übergang darf für
+  // unveränderte go-Nutzung kein `usage_changed go: null → 60` erzeugen.
+  const prev = [{ name: "Alpha", tier: null, usage: 60, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const next = [{ ...base[0], usage: { go: 60, "go-plus": 120 } }];
+  assert.deepEqual(buildChanges(prev, next, [], [], "2026-09-28", new Map()), [
+    { type: "usage_changed", model: "Alpha", plans: [{ plan: "go-plus", from: null, to: 120 }] },
+  ]);
+});
+
+const PLAN_PLUS = {
+  id: "go-plus",
+  name: "Go Plus",
+  priceMonthly: 40,
+  creditsMonthly: 240,
+  sourceUrl: "https://opencode.ai/docs/de/go/",
+};
+
+test("buildChanges: neuer Plan → genau ein plan_added zuerst, neue-Plan-Nutzung unterdrückt", () => {
+  const prev = [{ name: "Alpha", tier: null, usage: { go: 60 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const next = [{ name: "Alpha", tier: null, usage: { go: 60, "go-plus": 120 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const changes = buildChanges(prev, next, [], [], "2026-09-28", new Map(), [PLAN_PLUS]);
+  assert.deepEqual(changes, [
+    { type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 },
+  ]);
+  assert.equal(changes.filter((c) => c.type === "usage_changed").length, 0, "kein usage_changed mit neuer Plan-Id");
+});
+
+test("buildChanges: kein neuer Plan → kein plan_added", () => {
+  const prev = [{ name: "Alpha", tier: null, usage: { go: 60, "go-plus": 120 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const next = [{ name: "Alpha", tier: null, usage: { go: 60, "go-plus": 120 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  assert.deepEqual(buildChanges(prev, next, [], [], "2026-09-28", new Map(), []), []);
+});
+
+test("buildChanges: neuer Plan + echte Nutzungsänderung an go → plan_added UND usage_changed (go)", () => {
+  const prev = [{ name: "Alpha", tier: null, usage: { go: 60 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const next = [{ name: "Alpha", tier: null, usage: { go: 120, "go-plus": 240 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  assert.deepEqual(buildChanges(prev, next, [], [], "2026-09-28", new Map(), [PLAN_PLUS]), [
+    { type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 },
+    { type: "usage_changed", model: "Alpha", plans: [{ plan: "go", from: 60, to: 120 }] },
+  ]);
+});
+
+test("buildChanges: allererster Lauf (prev null) → plan_added für jeden übergebenen Plan", () => {
+  assert.deepEqual(buildChanges(null, base, [], [], "2026-09-28", new Map(), [PLAN_PLUS]), [
+    { type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 },
+  ]);
+  // Ohne neuen Plan bleibt der Basis-Lauf leer (kein Basis-Snapshot).
+  assert.deepEqual(buildChanges(null, base, [], [], "2026-09-28", new Map(), []), []);
 });
 
 test("computeDiff: reine Schreibvariante (Bindestrich vs. Leerzeichen) ist kein add/remove", () => {
-  // Regression 2026-09-21: Die Doku wechselte "MiMo V2.5" → "MiMo-V2.5" bei
-  // identischen Preisen — das wurde fälschlich als model_added + model_removed
-  // gebucht. Eine reine Umbenennung darf nie ein add/remove werden.
   const prev = [
-    { name: "MiMo V2.5", tier: null, usage: 60, input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
-    { name: "MiMo V2.5 Pro", tier: null, usage: 15, input: 0.435, output: 0.87, cachedRead: 0.003625, cachedWrite: null },
+    { name: "MiMo V2.5", tier: null, usage: { go: 60 }, input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
+    { name: "MiMo V2.5 Pro", tier: null, usage: { go: 15 }, input: 0.435, output: 0.87, cachedRead: 0.003625, cachedWrite: null },
   ];
   const next = [
-    { name: "MiMo-V2.5", tier: null, usage: 60, input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
-    { name: "MiMo-V2.5-Pro", tier: null, usage: 15, input: 0.435, output: 0.87, cachedRead: 0.003625, cachedWrite: null },
+    { name: "MiMo-V2.5", tier: null, usage: { go: 60 }, input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
+    { name: "MiMo-V2.5-Pro", tier: null, usage: { go: 15 }, input: 0.435, output: 0.87, cachedRead: 0.003625, cachedWrite: null },
   ];
   const diff = computeDiff(prev, next);
   assert.deepEqual(diff.added, []);
@@ -528,26 +786,23 @@ test("computeDiff: reine Schreibvariante (Bindestrich vs. Leerzeichen) ist kein 
 });
 
 test("buildChanges: Legacy-firstSeen mit undefined-Key bricht nicht", () => {
-  // Alte History-Snapshots führen freie IDs als reine Strings → f.id ist
-  // undefined und landet als Key in firstSeen (seit dem firstSeen-Root-Fix
-  // nicht mehr, defensiv trotzdem abgedeckt).
   const fs = new Map([[undefined, "2026-08-05"]]);
   assert.deepEqual(buildChanges(base, base, [], [], "2026-09-22", fs), []);
 });
 
 test("buildChanges: Schreibvariante mit Preisänderung → price_changed in stabiler Schreibweise", () => {
   const prev = [
-    { name: "MiMo V2.5", tier: null, usage: 60, input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
+    { name: "MiMo V2.5", tier: null, usage: { go: 60 }, input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
   ];
   const next = [
-    { name: "MiMo-V2.5", tier: null, usage: 60, input: 0.2, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
+    { name: "MiMo-V2.5", tier: null, usage: { go: 60 }, input: 0.2, output: 0.28, cachedRead: 0.0028, cachedWrite: null },
   ];
   assert.deepEqual(buildChanges(prev, next, [], [], "2026-09-22", new Map()), [
     {
       type: "price_changed",
       model: "MiMo V2.5",
-      from: { input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: 60 },
-      to: { input: 0.2, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: 60 },
+      from: { input: 0.14, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: { go: 60 } },
+      to: { input: 0.2, output: 0.28, cachedRead: 0.0028, cachedWrite: null, usage: { go: 60 } },
       fields: ["input"],
     },
   ]);
@@ -576,108 +831,119 @@ test("computeCapabilityDiff/computePrivacyDiff: matchen trotz Schreibvariante", 
   assert.deepEqual(computeCapabilityDiff(prev, changedCaps).map((d) => d.key), ["MiMo V2.5"]);
 });
 
-test("parseHtml: Bindestrich-Schreibweise wird auf kanonische Namen normalisiert", () => {
-  const hyphen = fixture.replace("<td>MiMo V2.5</td>", "<td>MiMo-V2.5</td>").replace("<td>MiMo V2.5 Pro</td>", "<td>MiMo-V2.5-Pro</td>");
-  assert.ok(hyphen !== fixture);
-  const models = parseHtml(hyphen);
-  const mimo = models.find((m) => m.name === "MiMo V2.5");
-  const pro = models.find((m) => m.name === "MiMo V2.5 Pro");
-  assert.ok(mimo);
-  assert.ok(pro);
-  // Muster (in der Doku mit Bindestrich gelistet) und Datenschutz bleiben zugeordnet.
-  assert.deepEqual(mimo.pattern, { input: 830, cachedRead: 71500, output: 295 });
-  assert.deepEqual(pro.pattern, { input: 790, cachedRead: 86000, output: 305 });
-  assert.ok(mimo.privacy);
-});
-
 test("buildChanges: Baseline ohne Vorgänger erzeugt keinen Eintrag", () => {
   assert.deepEqual(buildChanges(null, base, [], []), []);
 });
 
 test("buildChanges: Off-Peak-Stufe gilt als Normal-Nutzung (kein add/remove, Preisänderung)", () => {
-  const prev = [{ name: "Delta", tier: null, usage: 15, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const prev = [{ name: "Delta", tier: null, usage: { go: 15 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
   const next = [
-    { name: "Delta", tier: "Off-Peak", usage: 15, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
-    { name: "Delta", tier: "Peak", usage: 15, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
+    { name: "Delta", tier: "Off-Peak", usage: { go: 15 }, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Delta", tier: "Peak", usage: { go: 15 }, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
   ];
   const changes = buildChanges(prev, next, [], []);
   assert.deepEqual(changes, [
     {
       type: "model_added",
       model: "Delta (Peak)",
-      pricing: { input: 3, output: 4, cachedRead: 0.2, cachedWrite: null, usage: 15 },
+      pricing: { input: 3, output: 4, cachedRead: 0.2, cachedWrite: null, usage: { go: 15 } },
     },
     {
       type: "price_changed",
       model: "Delta",
-      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
-      to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15 } },
+      to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15 } },
       fields: ["input"],
     },
   ]);
 });
 
-test("buildChanges: Off-Peak mit Preis- UND Nutzungsänderung wird zu EINEM price_changed (kein usage_changed)", () => {
-  const prev = [{ name: "Delta", tier: null, usage: 120, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+test("buildChanges: Off-Peak mit Preis- UND Nutzungsänderung → price_changed UND usage_changed", () => {
+  const prev = [{ name: "Delta", tier: null, usage: { go: 120 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
   const next = [
-    { name: "Delta", tier: "Off-Peak", usage: 15, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
-    { name: "Delta", tier: "Peak", usage: 15, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
+    { name: "Delta", tier: "Off-Peak", usage: { go: 15 }, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Delta", tier: "Peak", usage: { go: 15 }, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
   ];
   const changes = buildChanges(prev, next, [], []);
   assert.deepEqual(changes, [
     {
       type: "model_added",
       model: "Delta (Peak)",
-      pricing: { input: 3, output: 4, cachedRead: 0.2, cachedWrite: null, usage: 15 },
+      pricing: { input: 3, output: 4, cachedRead: 0.2, cachedWrite: null, usage: { go: 15 } },
     },
     {
       type: "price_changed",
       model: "Delta",
-      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 120 },
-      to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
+      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 120 } },
+      to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15 } },
       fields: ["input"],
     },
+    { type: "usage_changed", model: "Delta", plans: [{ plan: "go", from: 120, to: 15 }] },
   ]);
 });
 
-test("buildChanges: Off-Peak mit NUR Nutzungsänderung erzeugt usage_changed (kein Event-Verlust)", () => {
-  // Gleiches Token-Budget pro Anfrage, nur die Nutzung ändert sich 15 → 30:
-  // Peak UND Off-Peak müssen beide ein `usage_changed` bekommen (Regression: 2026-08-17).
+test("buildChanges: Off-Peak mit NUR Nutzungsänderung erzeugt usage_changed je Stufe", () => {
   const prev = [
-    { name: "Delta", tier: "Off-Peak", usage: 15, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
-    { name: "Delta", tier: "Peak", usage: 15, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
+    { name: "Delta", tier: "Off-Peak", usage: { go: 15 }, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Delta", tier: "Peak", usage: { go: 15 }, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
   ];
   const next = [
-    { name: "Delta", tier: "Off-Peak", usage: 30, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
-    { name: "Delta", tier: "Peak", usage: 30, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
+    { name: "Delta", tier: "Off-Peak", usage: { go: 30 }, input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Delta", tier: "Peak", usage: { go: 30 }, input: 3, output: 4, cachedRead: 0.2, cachedWrite: null },
   ];
-  const changes = buildChanges(prev, next, [], []);
-  assert.deepEqual(changes, [
-    { type: "usage_changed", model: "Delta", from: 15, to: 30 },
-    { type: "usage_changed", model: "Delta (Peak)", from: 15, to: 30 },
+  assert.deepEqual(buildChanges(prev, next, [], []), [
+    { type: "usage_changed", model: "Delta", plans: [{ plan: "go", from: 15, to: 30 }] },
+    { type: "usage_changed", model: "Delta (Peak)", plans: [{ plan: "go", from: 15, to: 30 }] },
   ]);
 });
 
 test("buildChanges: Modell hinzugefügt (mit Pricing) und Nutzung verschlechtert", () => {
   const next = [
-    { ...base[0], usage: 15 },
+    { ...base[0], usage: { go: 15 } },
     { ...base[1] },
-    { name: "Gamma", tier: null, usage: 60, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null },
+    { name: "Gamma", tier: null, usage: { go: 60 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null },
   ];
   const changes = buildChanges(base, next, [], []);
   assert.deepEqual(changes, [
     {
       type: "model_added",
       model: "Gamma",
-      pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+      pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } },
     },
+    { type: "usage_changed", model: "Alpha", plans: [{ plan: "go", from: 60, to: 15 }] },
+  ]);
+});
+
+test("buildChanges: Nutzungsänderung in mehreren Plänen → EIN Event mit plans-Array", () => {
+  const prev = [{ name: "Alpha", tier: null, usage: { go: 15, "go-plus": 60 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const next = [{ name: "Alpha", tier: null, usage: { go: 30, "go-plus": 120 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  assert.deepEqual(buildChanges(prev, next, [], []), [
     {
       type: "usage_changed",
       model: "Alpha",
-      from: 60,
-      to: 15,
+      plans: [
+        { plan: "go", from: 15, to: 30 },
+        { plan: "go-plus", from: 60, to: 120 },
+      ],
     },
   ]);
+});
+
+test("buildChanges: nur geänderte Pläne landen im plans-Array", () => {
+  const prev = [{ name: "Alpha", tier: null, usage: { go: 15, "go-plus": 60 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  const next = [{ name: "Alpha", tier: null, usage: { go: 15, "go-plus": 120 }, input: 1, output: 2, cachedRead: 0.1, cachedWrite: null }];
+  assert.deepEqual(buildChanges(prev, next, [], []), [
+    { type: "usage_changed", model: "Alpha", plans: [{ plan: "go-plus", from: 60, to: 120 }] },
+  ]);
+});
+
+test("buildChanges: reine Nutzungsänderung feuert KEIN price_changed", () => {
+  const next = [{ ...base[0], usage: { go: 120 } }, { ...base[1] }];
+  const changes = buildChanges(base, next, [], []);
+  assert.deepEqual(changes, [
+    { type: "usage_changed", model: "Alpha", plans: [{ plan: "go", from: 60, to: 120 }] },
+  ]);
+  assert.equal(changes.some((c) => c.type === "price_changed"), false);
 });
 
 test("buildChanges: Preisänderung enthält alte und neue Pricing-Zeile mit fields", () => {
@@ -687,35 +953,65 @@ test("buildChanges: Preisänderung enthält alte und neue Pricing-Zeile mit fiel
     {
       type: "price_changed",
       model: "Alpha",
-      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
-      to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+      from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } },
+      to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } },
       fields: ["input"],
     },
   ]);
 });
 
-test("splitChange: nur Nutzung → usage_changed, nur Preis → price_changed", () => {
-  const p = (o) => ({ input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60, ...o });
-  assert.deepEqual(splitChange({ key: "Alpha", from: p({}), to: p({ usage: 120 }) }), [
-    { type: "usage_changed", model: "Alpha", from: 60, to: 120 },
+test("splitChange: nur Nutzung → usage_changed (plans-Array), nur Preis → price_changed", () => {
+  const p = (o) => ({ input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 }, ...o });
+  assert.deepEqual(splitChange({ key: "Alpha", from: p({}), to: p({ usage: { go: 120 } }) }), [
+    { type: "usage_changed", model: "Alpha", plans: [{ plan: "go", from: 60, to: 120 }] },
   ]);
   assert.deepEqual(splitChange({ key: "Alpha", from: p({}), to: p({ cachedRead: 0.5 }) }), [
     { type: "price_changed", model: "Alpha", from: p({}), to: p({ cachedRead: 0.5 }), fields: ["cachedRead"] },
   ]);
 });
 
-test("splitChange: Preis UND Nutzung ändern sich → zwei Events", () => {
-  const from = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 };
-  const to = { input: 1, output: 2, cachedRead: 0.5, cachedWrite: null, usage: 120 };
+test("splitChange: mehrere geänderte Pläne → ein Event mit allen im plans-Array", () => {
+  const from = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15, "go-plus": 60 } };
+  const to = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 30, "go-plus": 120 } };
+  assert.deepEqual(splitChange({ key: "Alpha", from, to }), [
+    {
+      type: "usage_changed",
+      model: "Alpha",
+      plans: [
+        { plan: "go", from: 15, to: 30 },
+        { plan: "go-plus", from: 60, to: 120 },
+      ],
+    },
+  ]);
+});
+
+test("splitChange: nur ein Plan ändert sich → plans-Array mit genau einem Eintrag", () => {
+  const from = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15, "go-plus": 60 } };
+  const to = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15, "go-plus": 120 } };
+  assert.deepEqual(splitChange({ key: "Alpha", from, to }), [
+    { type: "usage_changed", model: "Alpha", plans: [{ plan: "go-plus", from: 60, to: 120 }] },
+  ]);
+});
+
+test("splitChange: unveränderte Nutzung → kein usage_changed (kein leeres plans-Event)", () => {
+  const p = (o) => ({ input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60, "go-plus": 120 }, ...o });
+  assert.deepEqual(splitChange({ key: "Alpha", from: p({}), to: p({ input: 1.5 }) }), [
+    { type: "price_changed", model: "Alpha", from: p({}), to: p({ input: 1.5 }), fields: ["input"] },
+  ]);
+});
+
+test("splitChange: Preis UND Nutzung ändern sich → getrennte Events", () => {
+  const from = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } };
+  const to = { input: 1, output: 2, cachedRead: 0.5, cachedWrite: null, usage: { go: 120 } };
   assert.deepEqual(splitChange({ key: "Alpha", from, to }), [
     { type: "price_changed", model: "Alpha", from, to, fields: ["cachedRead"] },
-    { type: "usage_changed", model: "Alpha", from: 60, to: 120 },
+    { type: "usage_changed", model: "Alpha", plans: [{ plan: "go", from: 60, to: 120 }] },
   ]);
 });
 
 test("splitChange: mehrere Preisfelder werden aufgelistet, Float-Toleranz zählt gleich", () => {
-  const from = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 };
-  const to = { input: 1.0000000001, output: 2, cachedRead: 0.05, cachedWrite: 0.3, usage: 60 };
+  const from = { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } };
+  const to = { input: 1.0000000001, output: 2, cachedRead: 0.05, cachedWrite: 0.3, usage: { go: 60 } };
   assert.deepEqual(splitChange({ key: "Alpha", from, to }), [
     { type: "price_changed", model: "Alpha", from, to, fields: ["cachedRead", "cachedWrite"] },
   ]);
@@ -733,7 +1029,7 @@ test("buildChanges: entferntes Modell mit Tagen aus firstSeen", () => {
       type: "model_removed",
       model: "Alpha",
       days: 5,
-      pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+      pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } },
     },
   ]);
 });
@@ -745,10 +1041,8 @@ test("buildChanges: capabilities_changed innerhalb von 72h nach model_added unte
   const next = [
     { ...base[0], capabilities: { input: ["text"], output: ["text"], reasoning: true, toolCall: true } },
   ];
-  // 2 Tage nach model_added → models.dev-Nachlieferung, kein Event
   const recent = new Map([["Alpha", "2026-08-04"]]);
   assert.deepEqual(buildChanges(prev, next, [], [], "2026-08-06", recent), []);
-  // 5 Tage nach model_added → echte Quelländerung, Event bleibt
   const older = new Map([["Alpha", "2026-08-01"]]);
   assert.deepEqual(buildChanges(prev, next, [], [], "2026-08-06", older), [
     {
@@ -766,605 +1060,29 @@ test("buildChanges: kostenlose Modelle hinzugefügt/entfernt", () => {
     { id: "a-free", availableFrom: "2026-08-01" },
     { id: "big-pickle", availableFrom: "2026-08-05", name: "Big Pickle" },
   ];
-  // Mit models.dev-Namen → `name` im Event (z. B. x-preview-f-free → „Ox Alpha Free").
   const added = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
   assert.deepEqual(added, [{ type: "free_added", model: "big-pickle", name: "Big Pickle" }]);
 
-  // Ohne Namen → kein `name`-Feld (Rückfall in der UI auf die pretty ID).
   const removed = buildChanges(base, base, prevFree, [], "2026-08-06");
   assert.deepEqual(removed, [
     { type: "free_removed", model: "a-free", availableFrom: "2026-08-01", until: "2026-08-06" },
   ]);
 });
 
-test("mergeFreeModels: übernimmt availableFrom und setzt für neue Modelle das Datum", () => {
-  const merged = mergeFreeModels(
-    [{ id: "a-free", availableFrom: "2026-08-01" }],
-    ["a-free", "big-pickle"],
-    "2026-08-05"
-  );
-  assert.deepEqual(merged, [
-    { id: "a-free", availableFrom: "2026-08-01" },
-    { id: "big-pickle", availableFrom: "2026-08-05" },
-  ]);
+test("buildChanges: capabilities_changed für kostenlose Zen-Modelle", () => {
+  const cap = { input: ["text", "image"], output: ["text"], reasoning: true, toolCall: true };
+  const prevFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: null }];
+  const nextFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: cap }];
+  const changes = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
+  assert.deepEqual(changes, [{ type: "capabilities_changed", model: "a-free", from: null, to: cap }]);
 });
 
-test("parseZenEndpointIds: mappt normalisierten Modellnamen → Model-ID", () => {
-  const html = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"),
-    "utf8"
-  );
-  const ids = parseZenEndpointIds(html);
-  assert.equal(ids.get("bigpickle"), "big-pickle");
-  assert.equal(ids.get("mimov2.5free"), "mimo-v2.5-free");
-  assert.equal(ids.get("nemotron3.5lightningfree"), "nemotron-3.5-lightning-free");
-  assert.equal(ids.size, 8);
-});
-
-test("extractFreeModelsFromDocs: extrahiert nur die kostenlosen Modelle aus Endpunkte + Preise", () => {
-  const html = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"),
-    "utf8"
-  );
-  assert.deepEqual(extractFreeModelsFromDocs(html), [
-    "big-pickle",
-    "hy3-free",
-    "mimo-v2.5-free",
-    "muse-spark-1.2-contributor-free",
-    "nemotron-3-ultra-free",
-    "nemotron-3.5-lightning-free",
-  ]);
-});
-
-test("extractFreeModelsFromDocs: ignoriert kostenpflichtige Modelle", () => {
-  const html = readFileSync(
-    join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"),
-    "utf8"
-  );
-  const free = extractFreeModelsFromDocs(html);
-  assert.ok(!free.includes("deepseek-v4-flash"));
-  assert.ok(!free.includes("minimax-m3"));
-});
-
-test("extractFreeModelsFromDocs: erkennt deutsche „Kostenlos“-Zeilen (z. B. Jev 1.13 Free)", () => {
-  const html = `<!DOCTYPE html><html><body>
-<h2 id="endpunkte">Endpunkte</h2>
-<table><thead><tr><th>Modell</th><th>ID</th></tr></thead><tbody>
-<tr><td>Jev 1.13 Free</td><td>jev-1.13-free</td></tr>
-<tr><td>Jev 1.13</td><td>jev-1.13</td></tr>
-</tbody></table>
-<h2 id="preise">Preise</h2>
-<table><thead><tr><th>Modell</th><th>Input</th><th>Output</th></tr></thead><tbody>
-<tr><td>Jev 1.13 Free</td><td>Kostenlos</td><td>Kostenlos</td></tr>
-<tr><td>Jev 1.13</td><td>$0.042</td><td>Kostenlos</td></tr>
-</tbody></table>
-</body></html>`;
-  assert.deepEqual(extractFreeModelsFromDocs(html), ["jev-1.13-free"]);
-});
-
-test("parseZenFreeModelPrivacy: klassifiziert ZDR, Training und „keine Aussage“", () => {
-  const html = `<!DOCTYPE html><html><body>
-<h2 id="preise">Preise</h2>
-<p>Die kostenlosen Modelle:</p>
-<ul>
-<li>Space Bunny Free ist für begrenzte Zeit kostenlos. Der Anbieter befolgt eine Zero-Retention-Richtlinie und verwendet deine Daten nicht zum Trainieren von Modellen.</li>
-<li>Big Pickle ist ein Stealth-Modell. Das Team nutzt diese Zeit, um Feedback zu sammeln und das Modell zu verbessern.</li>
-<li>Jev 1.13 Free ist für begrenzte Zeit auf OpenCode verfügbar.</li>
-<li>Unbekannt Free ist für begrenzte Zeit verfügbar — nicht in der Endpunkte-Tabelle.</li>
-</ul>
-</body></html>`;
-  const $ = cheerio.load(html);
-  const idsByName = new Map([
-    ["spacebunnyfree", "space-bunny-free"],
-    ["bigpickle", "big-pickle"],
-    ["jev1.13free", "jev-1.13-free"],
-  ]);
-  const privacy = parseZenFreeModelPrivacy($, idsByName);
-  assert.deepEqual(privacy.get("space-bunny-free"), { training: false, retentionDays: true, validUntil: null });
-  assert.deepEqual(privacy.get("big-pickle"), { training: true, validUntil: null });
-  // Fußnote ohne Datenschutz-Aussage → kein Eintrag (Default „unbekannt“).
-  assert.equal(privacy.has("jev-1.13-free"), false);
-  // Nicht auflösbarer Name → ignoriert, kein Wurf.
-  assert.equal(privacy.size, 2);
-});
-
-test("parseZenFreeModelPrivacy: fehlende Liste → leere Map (kein Fehler)", () => {
-  const $ = cheerio.load("<p>Die kostenlosen Modelle:</p><p>kein Listen-Element</p>");
-  const privacy = parseZenFreeModelPrivacy($, new Map());
-  assert.equal(privacy.size, 0);
-});
-
-test("parseZenFreeModelPrivacy: erkennt Trainings-Varianten (Verbesserung/Training)", () => {
-  const html = `<p>Die kostenlosen Modelle:</p><ul>
-<li>A Free ist verfügbar. Der Anbieter verwendet Daten zur Verbesserung des Modells.</li>
-<li>B Free ist verfügbar. Die Daten werden zum Trainieren verwendet.</li>
-</ul>`;
-  const idsByName = new Map([
-    ["afree", "a-free"],
-    ["bfree", "b-free"],
-  ]);
-  const privacy = parseZenFreeModelPrivacy(cheerio.load(html), idsByName);
-  assert.deepEqual(privacy.get("a-free"), { training: true, validUntil: null });
-  assert.deepEqual(privacy.get("b-free"), { training: true, validUntil: null });
-});
-
-test("upsertChangelogJson: ersetzt Eintrag mit gleicher id und entfernt leere Einträge", () => {
-  const existing = {
-    entries: [
-      { id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [] },
-      { id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "Alt", en: "Old" } }] },
-      { id: "2026-08-04T00-00-00Z", date: "2026-08-04", changes: [] },
-      { id: "2026-08-03T00-00-00Z", date: "2026-08-03", changes: [{ type: "text", lang: { de: "Uralt", en: "Ancient" } }] },
-    ],
-  };
-  const result = upsertChangelogJson(existing, "2026-08-05T00-00-00Z", "2026-08-05", [
-    { type: "text", lang: { de: "Neu", en: "New" } },
-  ]);
-  assert.equal(result.entries.length, 2);
-  assert.equal(result.entries[0].id, "2026-08-05T00-00-00Z");
-  assert.deepEqual(result.entries[0].changes, [{ type: "text", lang: { de: "Neu", en: "New" } }]);
-  assert.equal(result.entries[1].id, "2026-08-03T00-00-00Z");
-});
-
-test("upsertChangelogJson: fügt bei leeren Änderungen keinen Eintrag hinzu", () => {
-  const existing = {
-    entries: [{ id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "x", en: "x" } }] }],
-  };
-  const result = upsertChangelogJson(existing, "2026-08-06T00-00-00Z", "2026-08-06", []);
-  assert.equal(result.entries.length, 1);
-  assert.equal(result.entries[0].id, "2026-08-05T00-00-00Z");
-});
-
-test("upsertChangelogJson: leere Änderungen ersetzen den Eintrag derselben id nicht", () => {
-  const existing = {
-    entries: [
-      {
-        id: "2026-08-07T00-00-00Z",
-        date: "2026-08-07",
-        changes: [
-          {
-            type: "usage_changed",
-            model: "DeepSeek V4 Flash",
-            from: 60,
-            to: 120,
-          },
-        ],
-      },
-      { id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }] },
-    ],
-  };
-  const result = upsertChangelogJson(existing, "2026-08-07T00-00-00Z", "2026-08-07", []);
-  assert.equal(result.entries.length, 2);
-  assert.equal(result.entries[0].id, "2026-08-07T00-00-00Z");
-  assert.equal(result.entries[0].changes[0].model, "DeepSeek V4 Flash");
-});
-
-test("validateChangelog: gültiger Changelog mit allen Event-Typen", () => {
-  const changelog = {
-    entries: [
-      {
-        id: "2026-08-05T00-00-00Z",
-        date: "2026-08-05",
-        changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }],
-      },
-      {
-        id: "2026-08-06T00-00-00Z",
-        date: "2026-08-06",
-        changes: [
-          {
-            type: "model_added",
-            model: "Gamma",
-            pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
-          },
-          {
-            type: "model_removed",
-            model: "Alpha",
-            days: 5,
-            pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
-          },
-          {
-            type: "price_changed",
-            model: "Beta",
-            from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 15 },
-            to: { input: 1, output: 2, cachedRead: 0.5, cachedWrite: null, usage: 15 },
-            fields: ["cachedRead"],
-          },
-          {
-            type: "usage_changed",
-            model: "Beta",
-            from: 15,
-            to: 60,
-          },
-          {
-            type: "capabilities_changed",
-            model: "Grok 4.5",
-            from: null,
-            to: { input: ["text", "image"], output: ["text"], reasoning: true, toolCall: true },
-          },
-          {
-            type: "privacy_changed",
-            model: "DeepSeek V4 Flash",
-            from: { training: false, retentionDays: 0, validUntil: "2026-08-31" },
-            to: { training: false, retentionDays: 0, validUntil: "2026-09-30" },
-          },
-          { type: "free_added", model: "big-pickle" },
-          { type: "free_removed", model: "a-free", availableFrom: "2026-08-01", until: "2026-08-06" },
-        ],
-      },
-    ],
-  };
-  assert.doesNotThrow(() => validateChangelog(changelog));
-});
-
-test("validateChangelog: price_changed ohne fields bzw. usage_changed ungültig bricht", () => {
-  assert.throws(() =>
-    validateChangelog({
-      entries: [
-        {
-          id: "2026-08-06T00-00-00Z",
-          date: "2026-08-06",
-          changes: [
-            {
-              type: "price_changed",
-              model: "X",
-              from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
-              to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
-            },
-          ],
-        },
-      ],
-    })
-  );
-  assert.throws(() =>
-    validateChangelog({
-      entries: [
-        {
-          id: "2026-08-06T00-00-00Z",
-          date: "2026-08-06",
-          changes: [
-            { type: "price_changed", model: "X", from: {}, to: {}, fields: [] },
-          ],
-        },
-      ],
-    })
-  );
-  assert.throws(() =>
-    validateChangelog({
-      entries: [
-        {
-          id: "2026-08-06T00-00-00Z",
-          date: "2026-08-06",
-          changes: [{ type: "usage_changed", model: "X", from: -1, to: 60 }],
-        },
-      ],
-    })
-  );
-});
-
-test("mergeChanges: gleiche type+model → neuestes gewinnt, neue Events werden angehängt", () => {
-  const a = { type: "price_changed", model: "Alpha", from: { input: 1 }, to: { input: 2 }, fields: ["input"] };
-  const b = { type: "price_changed", model: "Alpha", from: { input: 2 }, to: { input: 1.5 }, fields: ["input"] };
-  const c = { type: "usage_changed", model: "Alpha", from: 60, to: 120 };
-  assert.deepEqual(mergeChanges([a], [b, c]), [b, c]);
-  assert.deepEqual(mergeChanges([c], [a]), [c, a]);
-});
-
-test("mergeChanges: verschiedene Typen/Modelle bleiben erhalten, ersetzte behalten Position", () => {
-  const a = { type: "free_added", model: "big-pickle" };
-  const b = { type: "price_changed", model: "Alpha", from: { input: 1 }, to: { input: 2 }, fields: ["input"] };
-  const c = { type: "text", lang: { de: "x", en: "x" } };
-  const d = { type: "text", lang: { de: "y", en: "y" } };
-  assert.deepEqual(mergeChanges([a, c], [b, d]), [a, d, b]);
-});
-
-test("upsertChangelogJson: verschiedene Run-ids → eigene Einträge (kein Day-Merge)", () => {
-  const existing = {
-    entries: [
-      {
-        id: "2026-08-07T06-00-00Z",
-        date: "2026-08-07",
-        changes: [{ type: "usage_changed", model: "Alpha", from: 60, to: 120 }],
-      },
-    ],
-  };
-  const result = upsertChangelogJson(
-    existing,
-    "2026-08-07T14-00-00Z",
-    "2026-08-07",
-    [{ type: "free_added", model: "big-pickle" }, { type: "usage_changed", model: "Alpha", from: 120, to: 60 }]
-  );
-  assert.equal(result.entries.length, 2);
-  assert.equal(result.entries[0].id, "2026-08-07T14-00-00Z");
-  assert.equal(result.entries[1].id, "2026-08-07T06-00-00Z");
-});
-
-test("upsertChangelogJson: gleiche Run-id ersetzt den Eintrag idempotent (kein Duplikat)", () => {
-  const existing = {
-    entries: [
-      {
-        id: "2026-08-07T06-00-00Z",
-        date: "2026-08-07",
-        changes: [{ type: "usage_changed", model: "Alpha", from: 60, to: 120 }],
-      },
-    ],
-  };
-  // Wiederholung desselben Run-`id` mit identischen Änderungen → kein neuer
-  // Eintrag, keine Verdopplung der Events.
-  const result = upsertChangelogJson(existing, "2026-08-07T06-00-00Z", "2026-08-07", [
-    { type: "usage_changed", model: "Alpha", from: 60, to: 120 },
-  ]);
-  assert.equal(result.entries.length, 1);
-  assert.equal(result.entries[0].id, "2026-08-07T06-00-00Z");
-  assert.equal(result.entries[0].changes.length, 1);
-  assert.equal(result.entries[0].changes[0].type, "usage_changed");
-});
-
-test("validateChangelog: leere Einträge, unbekannte Typen und fehlende Felder brechen", () => {
-  assert.throws(() => validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [] }] }));
-  assert.throws(() =>
-    validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "baseline", modelCount: 1 }] }] })
-  );
-  assert.throws(() =>
-    validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "model_added", model: "X" }] }] })
-  );
-  assert.throws(() =>
-    validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "text", text: "no lang map" }] }] })
-  );
-  assert.throws(() =>
-    validateChangelog({
-      entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "model_removed", model: "X", days: -1 }] }],
-    })
-  );
-  assert.throws(() =>
-    validateChangelog({
-      entries: [
-        {
-          id: "2026-08-06T00-00-00Z",
-          date: "2026-08-06",
-          changes: [
-            { type: "capabilities_changed", model: "X", from: null, to: { input: ["text"] } },
-          ],
-        },
-      ],
-    })
-  );
-});
-
-test("patternPartMatches: härtet gegen Kollisionen", () => {
-  assert.equal(patternPartMatches("5.1", "glm5.1", "glm"), true);
-  assert.equal(patternPartMatches("5.1", "glm5.10", "glm"), false);
-  assert.equal(patternPartMatches("k2.6", "kimik2.6", "kimik"), true);
-  assert.equal(patternPartMatches("kimik2.7", "kimik2.7code", "kimik"), true);
-});
-
-test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () => {
-  const snapshot = {
-    fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
-    capabilitiesSourceUrl: "https://models.dev",
-    sourceLang: "de",
-    monthlyCredit: 60,
-    monthlyCost: 10,
-    plans: [
-      {
-        id: "go",
-        name: "Go",
-        priceMonthly: 10,
-        creditsMonthly: 60,
-        sourceUrl: "https://opencode.ai/docs/de/go/",
-      },
-    ],
-    peakHours: {},
-    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
-    freeModels: [
-      {
-        id: "big-pickle",
-        fullId: "opencode/big-pickle",
-        availableFrom: "2026-08-05",
-        capabilities: null,
-        contextWindow: null,
-        privacy: { training: true, validUntil: null },
-      },
-    ],
-  };
-  assert.doesNotThrow(() => validateSnapshot(snapshot));
-});
-
-test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung", () => {
-  const models = parseHtml(fixture);
-  const withoutPattern = { ...models[0], pattern: null };
-  const snapshot = {
-    fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
-    capabilitiesSourceUrl: "https://models.dev",
-    sourceLang: "de",
-    monthlyCredit: 60,
-    monthlyCost: 10,
-    plans: [
-      {
-        id: "go",
-        name: "Go",
-        priceMonthly: 10,
-        creditsMonthly: 60,
-        sourceUrl: "https://opencode.ai/docs/de/go/",
-      },
-    ],
-    models: [withoutPattern],
-    freeModels: [],
-  };
-  assert.throws(() => validateSnapshot(snapshot));
-});
-
-test("recomputeUsageDerived: kostenlose Zeile (alles '-') bekommt Preise 0 statt null", () => {
-  const model = {
-    name: "Ox Alpha Free",
-    tier: null,
-    input: null,
-    output: null,
-    cachedRead: null,
-    cachedWrite: null,
-    usage: null,
-    multiplier: null,
-    effectiveInput: null,
-    effectiveOutput: null,
-    effectiveCachedRead: null,
-    effectiveCachedWrite: null,
-  };
-  recomputeUsageDerived(model, 60);
-  assert.equal(model.multiplier, null);
-  assert.deepEqual(
-    [model.input, model.output, model.cachedRead, model.cachedWrite],
-    [0, 0, 0, 0]
-  );
-  assert.deepEqual(
-    [model.effectiveInput, model.effectiveOutput, model.effectiveCachedRead, model.effectiveCachedWrite],
-    [0, 0, 0, 0]
-  );
-});
-
-test("validateSnapshot: kostenlose Zeile (Preise 0) ohne Token-Stats ist gültig", () => {
-  const snapshot = {
-    fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
-    capabilitiesSourceUrl: "https://models.dev",
-    sourceLang: "de",
-    monthlyCredit: 60,
-    monthlyCost: 10,
-    plans: [
-      {
-        id: "go",
-        name: "Go",
-        priceMonthly: 10,
-        creditsMonthly: 60,
-        sourceUrl: "https://opencode.ai/docs/de/go/",
-      },
-    ],
-    peakHours: {},
-    models: [
-      {
-        name: "Ox Alpha Free",
-        tier: null,
-        input: 0,
-        output: 0,
-        cachedRead: 0,
-        cachedWrite: 0,
-        usage: null,
-        multiplier: null,
-        effectiveInput: 0,
-        effectiveOutput: 0,
-        effectiveCachedRead: 0,
-        effectiveCachedWrite: 0,
-        pattern: null,
-        capabilities: null,
-        contextWindow: null,
-        privacy: { training: true, validUntil: null },
-      },
-    ],
-    freeModels: [],
-  };
-  assert.doesNotThrow(() => validateSnapshot(snapshot));
-});
-
-test("enrichCapabilities: löst über den opencode-Provider auf", () => {
-  const models = [{ name: "Grok 4.5", tier: null }];
-  const opencodeModels = {
-    "grok-4.5": {
-      id: "grok-4.5",
-      name: "Grok 4.5",
-      reasoning: true,
-      tool_call: true,
-      modalities: { input: ["text", "image"], output: ["text"] },
-    },
-  };
-  const enriched = enrichCapabilities(models, opencodeModels, {});
-  assert.deepEqual(enriched[0].capabilities, {
-    input: ["text", "image"],
-    output: ["text"],
-    reasoning: true,
-    toolCall: true,
-  });
-});
-
-test("enrichCapabilities: fällt auf kanonische Metadaten zurück", () => {
-  const models = [{ name: "MiMo V2.5", tier: null }];
-  const metadataModels = {
-    "xiaomi/mimo-v2.5": {
-      id: "xiaomi/mimo-v2.5",
-      name: "MiMo-V2.5",
-      modalities: { input: ["text", "image", "audio", "video"], output: ["text"] },
-    },
-  };
-  const enriched = enrichCapabilities(models, {}, metadataModels);
-  assert.deepEqual(enriched[0].capabilities, {
-    input: ["text", "image", "audio", "video"],
-    output: ["text"],
-    reasoning: false,
-    toolCall: false,
-  });
-});
-
-test("enrichCapabilities: lässt capabilities null bei unbekanntem Modell", () => {
-  const models = [{ name: "Völlig Unbekannt", tier: null }];
-  const enriched = enrichCapabilities(models, {}, {});
-  assert.equal(enriched[0].capabilities, null);
-});
-
-test("enrichCapabilities: befüllt provider aus dem models.dev-id-Prefix", () => {
-  const models = [{ name: "Grok 4.5", tier: null }];
-  const metadataModels = {
-    "xai/grok-4.5": {
-      id: "xai/grok-4.5",
-      name: "Grok 4.5",
-      modalities: { input: ["text"], output: ["text"] },
-    },
-  };
-  const enriched = enrichCapabilities(models, {}, metadataModels);
-  assert.equal(enriched[0].provider, "xAI");
-});
-
-test("enrichCapabilities: provider null ohne ableitbaren Prefix", () => {
-  const models = [{ name: "Intern", tier: null }];
-  const opencodeModels = {
-    intern: { id: "intern", name: "Intern", modalities: { input: ["text"], output: ["text"] } },
-  };
-  const enriched = enrichCapabilities(models, opencodeModels, {});
-  assert.equal(enriched[0].provider, null);
-});
-
-test("enrichFreeModels: befüllt provider aus dem models.dev-id-Prefix", () => {
-  const free = [{ id: "some-model", availableFrom: "2026-08-05" }];
-  const metadataModels = {
-    "opencode/some-model": {
-      id: "opencode/some-model",
-      name: "Some Model",
-      modalities: { input: ["text"], output: ["text"] },
-    },
-  };
-  const enriched = enrichFreeModels(free, {}, metadataModels);
-  assert.equal(enriched[0].provider, "OpenCode");
-});
-
-test("computeCapabilityDiff: erkennt Änderung und ignoriert gleiche Werte", () => {
+test("buildChanges: keine capabilities_changed für unveränderte Zen-Modelle", () => {
   const cap = { input: ["text"], output: ["text"], reasoning: false, toolCall: false };
-  const prev = [{ name: "Alpha", tier: null, capabilities: null }];
-  const next = [{ name: "Alpha", tier: null, capabilities: cap }];
-  assert.deepEqual(computeCapabilityDiff(prev, next), [{ key: "Alpha", from: null, to: cap }]);
-  assert.deepEqual(computeCapabilityDiff(next, next), []);
-  assert.deepEqual(
-    computeCapabilityDiff([{ name: "Alpha" }], [{ name: "Alpha", capabilities: null }]),
-    []
-  );
-});
-
-test("buildChanges: capabilities_changed bei geänderten Fähigkeiten", () => {
-  const cap = { input: ["text"], output: ["text"], reasoning: true, toolCall: true };
-  const prev = [{ ...base[0], capabilities: null }];
-  const next = [{ ...base[0], capabilities: cap }];
-  const changes = buildChanges(prev, next, [], []);
-  assert.deepEqual(changes, [{ type: "capabilities_changed", model: "Alpha", from: null, to: cap }]);
+  const prevFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: cap }];
+  const nextFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: { ...cap } }];
+  const changes = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
+  assert.deepEqual(changes, []);
 });
 
 test("buildChanges: privacy_changed bei geänderter Datenaufbewahrung", () => {
@@ -1411,22 +1129,10 @@ test("buildChanges: privacy_changed nur bei Status-Änderung (validUntil zählt 
   assert.deepEqual(changes[0].to, { training: true, retentionDays: true, validUntil: "2026-09-30" });
 });
 
-test("buildChanges: reine validUntil-Änderung bei kostenlosen Modellen erzeugt keinen privacy_changed", () => {
-  const prevFree = [
-    {
-      id: "a-free",
-      availableFrom: "2026-08-01",
-      privacy: { training: true, validUntil: null },
-    },
-  ];
-  const nextFree = [
-    {
-      id: "a-free",
-      availableFrom: "2026-08-01",
-      privacy: { training: true, validUntil: "2026-09-30" },
-    },
-  ];
-  assert.deepEqual(buildChanges(base, base, prevFree, nextFree, "2026-08-06"), []);
+test("buildChanges: kein Baseline-Event bei erstmals vorhandenem privacy", () => {
+  const prev = [{ ...base[0] }];
+  const next = [{ ...base[0], privacy: { training: false, retentionDays: true, validUntil: null } }];
+  assert.deepEqual(buildChanges(prev, next, [], []), []);
 });
 
 test("buildChanges: keine privacy_changed bei gleichen Werten", () => {
@@ -1436,27 +1142,15 @@ test("buildChanges: keine privacy_changed bei gleichen Werten", () => {
   assert.deepEqual(buildChanges(prev, next, [], []), []);
 });
 
-test("buildChanges: kein Baseline-Event bei erstmals vorhandenem privacy", () => {
-  const prev = [{ ...base[0] }];
-  const next = [{ ...base[0], privacy: { training: false, retentionDays: true, validUntil: null } }];
-  assert.deepEqual(buildChanges(prev, next, [], []), []);
+test("buildChanges: reine validUntil-Änderung bei kostenlosen Modellen erzeugt keinen privacy_changed", () => {
+  const prevFree = [{ id: "a-free", availableFrom: "2026-08-01", privacy: { training: true, validUntil: null } }];
+  const nextFree = [{ id: "a-free", availableFrom: "2026-08-01", privacy: { training: true, validUntil: "2026-09-30" } }];
+  assert.deepEqual(buildChanges(base, base, prevFree, nextFree, "2026-08-06"), []);
 });
 
 test("buildChanges: privacy_changed für kostenlose Zen-Modelle", () => {
-  const prevFree = [
-    {
-      id: "a-free",
-      availableFrom: "2026-08-01",
-      privacy: { training: true, validUntil: null },
-    },
-  ];
-  const nextFree = [
-    {
-      id: "a-free",
-      availableFrom: "2026-08-01",
-      privacy: { training: false, retentionDays: true, validUntil: null },
-    },
-  ];
+  const prevFree = [{ id: "a-free", availableFrom: "2026-08-01", privacy: { training: true, validUntil: null } }];
+  const nextFree = [{ id: "a-free", availableFrom: "2026-08-01", privacy: { training: false, retentionDays: true, validUntil: null } }];
   const changes = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
   assert.deepEqual(changes, [
     {
@@ -1468,94 +1162,442 @@ test("buildChanges: privacy_changed für kostenlose Zen-Modelle", () => {
   ]);
 });
 
-test("buildChanges: keine capabilities_changed bei gleichen Fähigkeiten", () => {
-  const cap = { input: ["text"], output: ["text"], reasoning: false, toolCall: false };
-  const prev = [{ ...base[0], capabilities: cap }];
-  const next = [{ ...base[0], capabilities: { ...cap } }];
+test("buildChanges: capabilities_changed bei geänderten Fähigkeiten", () => {
+  const cap = { input: ["text"], output: ["text"], reasoning: true, toolCall: true };
+  const prev = [{ ...base[0], capabilities: null }];
+  const next = [{ ...base[0], capabilities: cap }];
   const changes = buildChanges(prev, next, [], []);
-  assert.deepEqual(changes, []);
+  assert.deepEqual(changes, [{ type: "capabilities_changed", model: "Alpha", from: null, to: cap }]);
 });
 
-test("enrichFreeModels: reichert Zen-Modelle über die opencode-ID an", () => {
-  const free = [{ id: "mimo-v2.5-free", availableFrom: "2026-08-05" }];
-  const opencodeModels = {
-    "mimo-v2.5-free": {
-      id: "mimo-v2.5-free",
-      name: "MiMo V2.5 Free",
-      modalities: { input: ["text", "image", "audio", "video"], output: ["text"] },
-    },
-  };
-  const enriched = enrichFreeModels(free, opencodeModels, {});
-  assert.deepEqual(enriched[0].capabilities, {
-    input: ["text", "image", "audio", "video"],
-    output: ["text"],
-    reasoning: false,
-    toolCall: false,
-  });
-});
+test("computePrivacyDiff: erzeugt privacy_changed nur bei Stufen-Wechsel (Erst-Befüllung/validUntil ohne Event)", () => {
+  const withPrivacy = (privacy) => ({ id: "m-1", name: "M 1", privacy });
+  const b = withPrivacy({ training: true, retentionDays: undefined, validUntil: null });
 
-test("enrichFreeModels: Provider-Familie longcat → Hersteller Meituan", () => {
-  // models.dev liefert LongCat ohne Hersteller-Prefix (`id` ohne Slash/Colon),
-  // nur `family: "longcat"` ⇒ ohne Label-Eintrag wäre es "Longcat".
-  const zenModels = {
-    "longcat-2.5-preview-free": {
-      id: "longcat-2.5-preview-free",
-      name: "LongCat 2.5 Preview Free",
-      family: "longcat",
-      limit: { context: 1_000_000 },
-      modalities: { input: ["text", "image"], output: ["text"] },
-    },
-  };
-  const enriched = enrichFreeModels([{ id: "longcat-2.5-preview-free", availableFrom: "2026-09-26" }], zenModels, {});
-  assert.equal(enriched[0].provider, "Meituan");
-});
-
-test("enrichFreeModels: setzt privacy (Modelltraining) für Zen-Modelle", () => {
-  const enriched = enrichFreeModels([{ id: "big-pickle", availableFrom: "2026-08-05" }], {}, {});
-  assert.deepEqual(enriched[0].privacy, { training: true, validUntil: null });
-});
-
-test("enrichFreeModels: geparste ZDR-Fußnote schlägt den Default", () => {
-  const privacyById = new Map([
-    ["space-bunny-free", { training: false, retentionDays: true, validUntil: null }],
-  ]);
-  const enriched = enrichFreeModels(
-    [{ id: "space-bunny-free", availableFrom: "2026-09-23" }],
-    {},
-    {},
-    {},
-    privacyById
+  const diff = computePrivacyDiff(
+    [b],
+    [withPrivacy({ training: false, retentionDays: true, validUntil: null })]
   );
-  assert.deepEqual(enriched[0].privacy, { training: false, retentionDays: true, validUntil: null });
+  assert.equal(diff.length, 1);
+  assert.equal(diff[0].key, "M 1");
+  assert.deepEqual(diff[0].to, { training: false, retentionDays: true, validUntil: null });
+
+  assert.equal(
+    computePrivacyDiff(
+      [withPrivacy({ training: false, retentionDays: 30, validUntil: null })],
+      [withPrivacy({ training: false, retentionDays: true, validUntil: null })]
+    ).length,
+    1
+  );
+
+  assert.deepEqual(
+    computePrivacyDiff(
+      [withPrivacy({ training: false, retentionDays: true, validUntil: "2026-01-01" })],
+      [withPrivacy({ training: false, retentionDays: true, validUntil: "2026-12-31" })]
+    ),
+    []
+  );
+
+  assert.deepEqual(
+    computePrivacyDiff(
+      [{ id: "m-1", name: "M 1", privacy: undefined }],
+      [withPrivacy({ training: false, retentionDays: true, validUntil: null })]
+    ),
+    []
+  );
 });
 
-test("enrichFreeModels: geparstes Training wird übernommen (quellenkorrekt)", () => {
-  const privacyById = new Map([["big-pickle", { training: true, validUntil: null }]]);
-  const enriched = enrichFreeModels([{ id: "big-pickle", availableFrom: "2026-08-05" }], {}, {}, {}, privacyById);
-  assert.deepEqual(enriched[0].privacy, { training: true, validUntil: null });
-});
+// ---------------------------------------------------------------------------
+// Changelog-Speicher (id-basiert)
+// ---------------------------------------------------------------------------
 
-test("enrichFreeModels: FREE_MODEL_PRIVACY_OVERRIDES schlägt die geparste Map", () => {
-  const privacyById = new Map([["big-pickle", { training: false, retentionDays: true, validUntil: null }]]);
-  // big-pickle ist kein Override → Map gewinnt; x-preview-f-free ist Override → schlägt die Map.
-  const enriched = enrichFreeModels(
-    [
-      { id: "big-pickle", availableFrom: "2026-08-05" },
-      { id: "x-preview-f-free", availableFrom: "2026-08-20" },
+test("upsertChangelogJson: ersetzt Eintrag mit gleicher id und entfernt leere Einträge", () => {
+  const existing = {
+    entries: [
+      { id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [] },
+      { id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "Alt", en: "Old" } }] },
+      { id: "2026-08-04T00-00-00Z", date: "2026-08-04", changes: [] },
+      { id: "2026-08-03T00-00-00Z", date: "2026-08-03", changes: [{ type: "text", lang: { de: "Uralt", en: "Ancient" } }] },
     ],
-    {},
-    {},
-    {},
-    privacyById
-  );
-  assert.deepEqual(enriched[0].privacy, { training: false, retentionDays: true, validUntil: null });
-  assert.deepEqual(enriched[1].privacy, { training: false, retentionDays: true, validUntil: null });
+  };
+  const result = upsertChangelogJson(existing, "2026-08-05T00-00-00Z", "2026-08-05", [
+    { type: "text", lang: { de: "Neu", en: "New" } },
+  ]);
+  assert.equal(result.entries.length, 2);
+  assert.equal(result.entries[0].id, "2026-08-05T00-00-00Z");
+  assert.deepEqual(result.entries[0].changes, [{ type: "text", lang: { de: "Neu", en: "New" } }]);
+  assert.equal(result.entries[1].id, "2026-08-03T00-00-00Z");
 });
 
-test("enrichFreeModels: ohne Map-Eintrag bleibt training:true (unbekannt)", () => {
-  const privacyById = new Map([["other-free", { training: false, retentionDays: true, validUntil: null }]]);
-  const enriched = enrichFreeModels([{ id: "big-pickle", availableFrom: "2026-08-05" }], {}, {}, {}, privacyById);
-  assert.deepEqual(enriched[0].privacy, { training: true, validUntil: null });
+test("upsertChangelogJson: fügt bei leeren Änderungen keinen Eintrag hinzu", () => {
+  const existing = {
+    entries: [{ id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "x", en: "x" } }] }],
+  };
+  const result = upsertChangelogJson(existing, "2026-08-06T00-00-00Z", "2026-08-06", []);
+  assert.equal(result.entries.length, 1);
+  assert.equal(result.entries[0].id, "2026-08-05T00-00-00Z");
+});
+
+test("upsertChangelogJson: leere Änderungen ersetzen den Eintrag derselben id nicht", () => {
+  const existing = {
+    entries: [
+      {
+        id: "2026-08-07T00-00-00Z",
+        date: "2026-08-07",
+        changes: [{ type: "usage_changed", model: "DeepSeek V4 Flash", plan: "go", from: 60, to: 120 }],
+      },
+      { id: "2026-08-05T00-00-00Z", date: "2026-08-05", changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }] },
+    ],
+  };
+  const result = upsertChangelogJson(existing, "2026-08-07T00-00-00Z", "2026-08-07", []);
+  assert.equal(result.entries.length, 2);
+  assert.equal(result.entries[0].id, "2026-08-07T00-00-00Z");
+  assert.equal(result.entries[0].changes[0].model, "DeepSeek V4 Flash");
+});
+
+test("upsertChangelogJson: verschiedene Run-ids → eigene Einträge (kein Day-Merge)", () => {
+  const existing = {
+    entries: [
+      {
+        id: "2026-08-07T06-00-00Z",
+        date: "2026-08-07",
+        changes: [{ type: "usage_changed", model: "Alpha", plan: "go", from: 60, to: 120 }],
+      },
+    ],
+  };
+  const result = upsertChangelogJson(
+    existing,
+    "2026-08-07T14-00-00Z",
+    "2026-08-07",
+    [{ type: "free_added", model: "big-pickle" }, { type: "usage_changed", model: "Alpha", plan: "go", from: 120, to: 60 }]
+  );
+  assert.equal(result.entries.length, 2);
+  assert.equal(result.entries[0].id, "2026-08-07T14-00-00Z");
+  assert.equal(result.entries[1].id, "2026-08-07T06-00-00Z");
+});
+
+test("mergeChanges: gleiche type+model → neuestes gewinnt, neue Events werden angehängt", () => {
+  const a = { type: "price_changed", model: "Alpha", from: { input: 1 }, to: { input: 2 }, fields: ["input"] };
+  const b = { type: "price_changed", model: "Alpha", from: { input: 2 }, to: { input: 1.5 }, fields: ["input"] };
+  const c = { type: "usage_changed", model: "Alpha", plan: "go", from: 60, to: 120 };
+  assert.deepEqual(mergeChanges([a], [b, c]), [b, c]);
+  assert.deepEqual(mergeChanges([c], [a]), [c, a]);
+});
+
+test("mergeChanges: verschiedene Typen/Modelle bleiben erhalten, ersetzte behalten Position", () => {
+  const a = { type: "free_added", model: "big-pickle" };
+  const b = { type: "price_changed", model: "Alpha", from: { input: 1 }, to: { input: 2 }, fields: ["input"] };
+  const c = { type: "text", lang: { de: "x", en: "x" } };
+  const d = { type: "text", lang: { de: "y", en: "y" } };
+  assert.deepEqual(mergeChanges([a, c], [b, d]), [a, d, b]);
+});
+
+test("normalizeChangelogIds: weist fehlendes id = date zu, vorhandene bleiben", () => {
+  const out = normalizeChangelogIds({
+    entries: [
+      { date: "2026-08-15", changes: [{ type: "text", lang: { en: "Initial", de: "Start" } }] },
+      { id: "2026-08-16T10-00-00Z", date: "2026-08-16", changes: [{ type: "text", lang: { en: "x", de: "x" } }] },
+    ],
+  });
+  assert.equal(out.entries[0].id, "2026-08-15");
+  assert.equal(out.entries[1].id, "2026-08-16T10-00-00Z");
+});
+
+// ---------------------------------------------------------------------------
+// Changelog-Validierung
+// ---------------------------------------------------------------------------
+
+test("validateChangelog: gültiger Changelog mit allen Event-Typen (neue Form)", () => {
+  const changelog = {
+    entries: [
+      {
+        id: "2026-08-05T00-00-00Z",
+        date: "2026-08-05",
+        changes: [{ type: "text", lang: { de: "Initialversion", en: "Initial version" } }],
+      },
+      {
+        id: "2026-08-06T00-00-00Z",
+        date: "2026-08-06",
+        changes: [
+          {
+            type: "model_added",
+            model: "Gamma",
+            pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60, "go-plus": 120 } },
+          },
+          {
+            type: "model_removed",
+            model: "Alpha",
+            days: 5,
+            pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } },
+          },
+          {
+            type: "price_changed",
+            model: "Beta",
+            from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 15 } },
+            to: { input: 1, output: 2, cachedRead: 0.5, cachedWrite: null, usage: { go: 15 } },
+            fields: ["cachedRead"],
+          },
+          { type: "usage_changed", model: "Beta", plans: [{ plan: "go", from: 15, to: 60 }] },
+          {
+            type: "capabilities_changed",
+            model: "Grok 4.7",
+            from: null,
+            to: { input: ["text", "image"], output: ["text"], reasoning: true, toolCall: true },
+          },
+          {
+            type: "privacy_changed",
+            model: "DeepSeek V4 Flash",
+            from: { training: false, retentionDays: 0, validUntil: "2026-08-31" },
+            to: { training: false, retentionDays: 0, validUntil: "2026-09-30" },
+          },
+          { type: "free_added", model: "big-pickle" },
+          { type: "free_removed", model: "a-free", availableFrom: "2026-08-01", until: "2026-08-06" },
+          { type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 },
+        ],
+      },
+    ],
+  };
+  assert.doesNotThrow(() => validateChangelog(changelog));
+});
+
+test("validateChangelog: historische Events (Skalar-usage, usage_changed ohne plan) bleiben gültig", () => {
+  assert.doesNotThrow(() =>
+    validateChangelog({
+      entries: [
+        {
+          id: "2026-08-06T00-00-00Z",
+          date: "2026-08-06",
+          changes: [
+            {
+              type: "model_added",
+              model: "Gamma",
+              pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: 60 },
+            },
+            { type: "usage_changed", model: "Beta", from: 15, to: 60 },
+          ],
+        },
+      ],
+    })
+  );
+});
+
+test("validateChangelog: usage_changed akzeptiert plans-Array UND Legacy-Formen", () => {
+  assert.doesNotThrow(() =>
+    validateChangelog({
+      entries: [
+        {
+          id: "2026-08-06T00-00-00Z",
+          date: "2026-08-06",
+          changes: [
+            { type: "usage_changed", model: "A", plans: [{ plan: "go", from: 15, to: 30 }] },
+            {
+              type: "usage_changed",
+              model: "B",
+              plans: [
+                { plan: "go", from: 15, to: 30 },
+                { plan: "go-plus", from: 60, to: 120 },
+              ],
+            },
+            { type: "usage_changed", model: "C", from: 15, to: 60 },
+            { type: "usage_changed", model: "D", plan: "go", from: 15, to: 60 },
+          ],
+        },
+      ],
+    })
+  );
+});
+
+test("validateChangelog: plan_added akzeptiert die vollständige Form, lehnt unvollständige ab", () => {
+  const wrap = (change) => ({
+    entries: [{ id: "2026-09-28T00-00-00Z", date: "2026-09-28", changes: [change] }],
+  });
+  assert.doesNotThrow(() =>
+    validateChangelog(
+      wrap({ type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 })
+    )
+  );
+  assert.throws(() => validateChangelog(wrap({ type: "plan_added", plan: "go-plus" })));
+  assert.throws(() =>
+    validateChangelog(wrap({ type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40 }))
+  );
+  assert.throws(() =>
+    validateChangelog(wrap({ type: "plan_added", plan: "go-plus", name: "Go Plus", creditsMonthly: 240 }))
+  );
+  assert.throws(() =>
+    validateChangelog(wrap({ type: "plan_added", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 }))
+  );
+  assert.throws(() =>
+    validateChangelog(wrap({ type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 0, creditsMonthly: 240 }))
+  );
+});
+
+test("validateChangelog: usage_changed mit leerem plans, Mischform oder fehlendem from/to bricht", () => {
+  const wrap = (change) => ({
+    entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [change] }],
+  });
+  assert.throws(() => validateChangelog(wrap({ type: "usage_changed", model: "A", plans: [] })));
+  assert.throws(() => validateChangelog(wrap({ type: "usage_changed", model: "A" })));
+  assert.throws(() =>
+    validateChangelog(
+      wrap({ type: "usage_changed", model: "A", plans: [{ plan: "go", from: 15, to: 30 }], from: 15 })
+    )
+  );
+  assert.throws(() => validateChangelog(wrap({ type: "usage_changed", model: "A", from: 15 })));
+  assert.throws(() =>
+    validateChangelog(wrap({ type: "usage_changed", model: "A", plans: [{ plan: "go", from: -1, to: 30 }] }))
+  );
+});
+
+test("validateChangelog: fehlende fields, leere fields, ungültige usage brechen", () => {
+  assert.throws(() =>
+    validateChangelog({
+      entries: [
+        {
+          id: "2026-08-06T00-00-00Z",
+          date: "2026-08-06",
+          changes: [
+            {
+              type: "price_changed",
+              model: "X",
+              from: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } },
+              to: { input: 1.5, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { go: 60 } },
+            },
+          ],
+        },
+      ],
+    })
+  );
+  assert.throws(() =>
+    validateChangelog({
+      entries: [
+        {
+          id: "2026-08-06T00-00-00Z",
+          date: "2026-08-06",
+          changes: [{ type: "price_changed", model: "X", from: {}, to: {}, fields: [] }],
+        },
+      ],
+    })
+  );
+  assert.throws(() =>
+    validateChangelog({
+      entries: [
+        {
+          id: "2026-08-06T00-00-00Z",
+          date: "2026-08-06",
+          changes: [{ type: "usage_changed", model: "X", plan: "go", from: -1, to: 60 }],
+        },
+      ],
+    })
+  );
+});
+
+test("validateChangelog: leere Einträge, unbekannte Typen und fehlende Felder brechen", () => {
+  assert.throws(() => validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [] }] }));
+  assert.throws(() =>
+    validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "baseline", modelCount: 1 }] }] })
+  );
+  assert.throws(() =>
+    validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "model_added", model: "X" }] }] })
+  );
+  assert.throws(() =>
+    validateChangelog({ entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "text", text: "no lang map" }] }] })
+  );
+  assert.throws(() =>
+    validateChangelog({
+      entries: [{ id: "2026-08-06T00-00-00Z", date: "2026-08-06", changes: [{ type: "model_removed", model: "X", days: -1 }] }],
+    })
+  );
+  assert.throws(() =>
+    validateChangelog({
+      entries: [
+        {
+          id: "2026-08-06T00-00-00Z",
+          date: "2026-08-06",
+          changes: [{ type: "capabilities_changed", model: "X", from: null, to: { input: ["text"] } }],
+        },
+      ],
+    })
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Snapshot-Validierung
+// ---------------------------------------------------------------------------
+
+const SNAPSHOT_PLANS = [
+  { id: "go", name: "Go", priceMonthly: 10, creditsMonthly: 60, sourceUrl: "https://opencode.ai/docs/de/go/" },
+  { id: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240, sourceUrl: "https://opencode.ai/docs/de/go/" },
+];
+
+test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () => {
+  const snapshot = {
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    plans: SNAPSHOT_PLANS,
+    peakHours: {},
+    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
+    freeModels: [
+      {
+        id: "big-pickle",
+        fullId: "opencode/big-pickle",
+        availableFrom: "2026-08-05",
+        capabilities: null,
+        contextWindow: null,
+        privacy: { training: true, validUntil: null },
+      },
+    ],
+  };
+  assert.doesNotThrow(() => validateSnapshot(snapshot));
+});
+
+test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung", () => {
+  const models = parseHtml(fixture);
+  const withUsage = models.find((m) => Object.values(m.usage).some((v) => v !== null));
+  const withoutPattern = { ...withUsage, pattern: null, contextWindow: null };
+  const snapshot = {
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    plans: SNAPSHOT_PLANS,
+    peakHours: {},
+    models: [withoutPattern],
+    freeModels: [],
+  };
+  assert.throws(() => validateSnapshot(snapshot));
+});
+
+test("validateSnapshot: kostenlose Zeile (Preise 0, usage null) ohne Token-Stats ist gültig", () => {
+  const snapshot = {
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    plans: SNAPSHOT_PLANS,
+    peakHours: {},
+    models: [
+      {
+        name: "Ox Alpha Free",
+        tier: null,
+        input: 0,
+        output: 0,
+        cachedRead: 0,
+        cachedWrite: 0,
+        usage: { go: null, "go-plus": null },
+        pattern: null,
+        capabilities: null,
+        contextWindow: null,
+        privacy: { training: true, validUntil: null },
+      },
+    ],
+    freeModels: [],
+  };
+  assert.doesNotThrow(() => validateSnapshot(snapshot));
 });
 
 test("validateSnapshot: kostenloses Modell ohne privacy bricht", () => {
@@ -1565,27 +1607,192 @@ test("validateSnapshot: kostenloses Modell ohne privacy bricht", () => {
     freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
-    monthlyCredit: 60,
-    monthlyCost: 10,
-    plans: [
-      {
-        id: "go",
-        name: "Go",
-        priceMonthly: 10,
-        creditsMonthly: 60,
-        sourceUrl: "https://opencode.ai/docs/de/go/",
-      },
-    ],
-    models: parseHtml(fixture),
-    freeModels: [{ id: "big-pickle", availableFrom: "2026-08-05", capabilities: null }],
+    plans: SNAPSHOT_PLANS,
+    peakHours: {},
+    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
+    freeModels: [{ id: "big-pickle", fullId: "opencode/big-pickle", availableFrom: "2026-08-05", capabilities: null, contextWindow: null }],
   };
   assert.throws(() => validateSnapshot(snapshot));
 });
 
-test("enrichFreeModels: lässt capabilities null bei unbekannter ID", () => {
-  const free = [{ id: "does-not-exist-free", availableFrom: "2026-08-05" }];
-  const enriched = enrichFreeModels(free, {}, {});
+test("validateSnapshot: kostenloses Modell ohne fullId bricht", () => {
+  const snapshot = {
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    plans: SNAPSHOT_PLANS,
+    peakHours: {},
+    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
+    freeModels: [
+      {
+        id: "big-pickle",
+        availableFrom: "2026-08-05",
+        capabilities: null,
+        contextWindow: null,
+        privacy: { training: true, validUntil: null },
+      },
+    ],
+  };
+  assert.throws(() => validateSnapshot(snapshot));
+});
+
+test("validateSnapshot: Plan-Id ist frei (kein enum) — künftige Pläne validieren", () => {
+  const snapshot = {
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    plans: [...SNAPSHOT_PLANS, { id: "go-ultra", name: "Go Ultra", priceMonthly: 100, creditsMonthly: 1000, sourceUrl: "https://opencode.ai/docs/de/go/" }],
+    peakHours: {},
+    // Ein künftiger Plan liefert für jedes Modell eine Nutzung — die
+    // usage-Schlüssel müssen exakt den Plan-Ids entsprechen. Der Wert spiegelt
+    // die bestehende go-Nutzung (kostenlose Zeilen bleiben null).
+    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null, usage: { ...m.usage, "go-ultra": m.usage.go } })),
+    freeModels: [],
+  };
+  assert.doesNotThrow(() => validateSnapshot(snapshot));
+});
+
+test("validateSnapshot: usage-Schlüssel müssen exakt die Plan-Ids sein", () => {
+  const base = {
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    plans: SNAPSHOT_PLANS,
+    peakHours: {},
+    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
+    freeModels: [],
+  };
+  assert.doesNotThrow(() => validateSnapshot(base));
+  // Fehlender Plan-Schlüssel → rot.
+  const missing = structuredClone(base);
+  delete missing.models[0].usage.go;
+  assert.throws(() => validateSnapshot(missing), /usage-Schlüssel/);
+  // Unbekannter Plan-Schlüssel → rot.
+  const extra = structuredClone(base);
+  extra.models[0].usage.phantom = 5;
+  assert.throws(() => validateSnapshot(extra), /usage-Schlüssel/);
+});
+
+test("validateSnapshot: Free-Modelle tragen keine Plan-Dimension (usage/plan/allowances)", () => {
+  const makeSnapshot = (freeExtra) => ({
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    plans: SNAPSHOT_PLANS,
+    peakHours: {},
+    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
+    freeModels: [
+      {
+        id: "big-pickle",
+        fullId: "opencode/big-pickle",
+        availableFrom: "2026-08-05",
+        capabilities: null,
+        contextWindow: null,
+        privacy: { training: true, validUntil: null },
+        ...freeExtra,
+      },
+    ],
+  });
+  assert.doesNotThrow(() => validateSnapshot(makeSnapshot()));
+  for (const key of ["usage", "plan", "plans", "allowances"]) {
+    assert.throws(() => validateSnapshot(makeSnapshot({ [key]: key === "usage" ? { go: 60 } : "go" })));
+  }
+});
+
+test("buildChanges: free_added/free_removed sind plan-unabhängig (kein plan/plans)", () => {
+  const prevFree = [{ id: "a-free", availableFrom: "2026-08-01" }];
+  const nextFree = [
+    { id: "a-free", availableFrom: "2026-08-01" },
+    { id: "big-pickle", availableFrom: "2026-08-05", name: "Big Pickle" },
+  ];
+  const added = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
+  const removed = buildChanges(base, base, prevFree, [], "2026-08-06");
+  for (const c of [...added, ...removed]) {
+    assert.equal("plan" in c, false, `${c.type} darf kein plan-Feld haben`);
+    assert.equal("plans" in c, false, `${c.type} darf kein plans-Feld haben`);
+  }
+  assert.deepEqual(added, [{ type: "free_added", model: "big-pickle", name: "Big Pickle" }]);
+  assert.deepEqual(removed, [
+    { type: "free_removed", model: "a-free", availableFrom: "2026-08-01", until: "2026-08-06" },
+  ]);
+});
+
+// ---------------------------------------------------------------------------
+// models.dev-Anreicherung
+// ---------------------------------------------------------------------------
+
+test("enrichCapabilities: löst über den opencode-Provider auf", () => {
+  const models = [{ name: "Grok 4.7", tier: null }];
+  const opencodeModels = {
+    "grok-4.7": {
+      id: "grok-4.7",
+      name: "Grok 4.7",
+      reasoning: true,
+      tool_call: true,
+      modalities: { input: ["text", "image"], output: ["text"] },
+    },
+  };
+  const enriched = enrichCapabilities(models, opencodeModels, {});
+  assert.deepEqual(enriched[0].capabilities, {
+    input: ["text", "image"],
+    output: ["text"],
+    reasoning: true,
+    toolCall: true,
+  });
+});
+
+test("enrichCapabilities: fällt auf kanonische Metadaten zurück", () => {
+  const models = [{ name: "MiMo V2.5", tier: null }];
+  const metadataModels = {
+    "xiaomi/mimo-v2.5": {
+      id: "xiaomi/mimo-v2.5",
+      name: "MiMo-V2.5",
+      modalities: { input: ["text", "image", "audio", "video"], output: ["text"] },
+    },
+  };
+  const enriched = enrichCapabilities(models, {}, metadataModels);
+  assert.deepEqual(enriched[0].capabilities, {
+    input: ["text", "image", "audio", "video"],
+    output: ["text"],
+    reasoning: false,
+    toolCall: false,
+  });
+});
+
+test("enrichCapabilities: lässt capabilities null bei unbekanntem Modell", () => {
+  const models = [{ name: "Völlig Unbekannt", tier: null }];
+  const enriched = enrichCapabilities(models, {}, {});
   assert.equal(enriched[0].capabilities, null);
+});
+
+test("enrichCapabilities: befüllt provider aus dem models.dev-id-Prefix", () => {
+  const models = [{ name: "Grok 4.7", tier: null }];
+  const metadataModels = {
+    "xai/grok-4.7": {
+      id: "xai/grok-4.7",
+      name: "Grok 4.7",
+      modalities: { input: ["text"], output: ["text"] },
+    },
+  };
+  const enriched = enrichCapabilities(models, {}, metadataModels);
+  assert.equal(enriched[0].provider, "xAI");
+});
+
+test("enrichCapabilities: provider null ohne ableitbaren Prefix", () => {
+  const models = [{ name: "Intern", tier: null }];
+  const opencodeModels = {
+    intern: { id: "intern", name: "Intern", modalities: { input: ["text"], output: ["text"] } },
+  };
+  const enriched = enrichCapabilities(models, opencodeModels, {});
+  assert.equal(enriched[0].provider, null);
 });
 
 test("enrichCapabilities: mappt glm-flash-Familie auf Z.ai (kein Glm-Flash-Fallback)", () => {
@@ -1618,13 +1825,216 @@ test("enrichCapabilities: mappt muse-Familie auf Meta (konsistent mit muse-free)
 
 test("enrichCapabilities: Stealth-IDs bekommen OpenCode Stealth (Vorrang vor models.dev)", () => {
   const models = [{ name: "Union Alpha Free", tier: null }];
-  const opencodeModels = {};
   const goModels = {
     "union-alpha": { id: "union-alpha", name: "Union Alpha Free", family: "alpha" },
   };
-  const enriched = enrichCapabilities(models, opencodeModels, {}, goModels);
+  const enriched = enrichCapabilities(models, {}, {}, goModels);
   assert.equal(enriched[0].id, "opencode-go/union-alpha");
   assert.equal(enriched[0].provider, "OpenCode Stealth");
+});
+
+test("enrichCapabilities: Space Bunny Free (Go-Preiszeile) → OpenCode Stealth", () => {
+  const models = [{ name: "Space Bunny Free", tier: null }];
+  const goModels = {
+    "space-bunny-free": { id: "space-bunny-free", name: "Space Bunny Free", family: "space-bunny" },
+  };
+  const enriched = enrichCapabilities(models, {}, {}, goModels);
+  assert.equal(enriched[0].id, "opencode-go/space-bunny-free");
+  assert.equal(enriched[0].provider, "OpenCode Stealth");
+});
+
+test("computeCapabilityDiff: erkennt Änderung und ignoriert gleiche Werte", () => {
+  const cap = { input: ["text"], output: ["text"], reasoning: false, toolCall: false };
+  const prev = [{ name: "Alpha", tier: null, capabilities: null }];
+  const next = [{ name: "Alpha", tier: null, capabilities: cap }];
+  assert.deepEqual(computeCapabilityDiff(prev, next), [{ key: "Alpha", from: null, to: cap }]);
+  assert.deepEqual(computeCapabilityDiff(next, next), []);
+  assert.deepEqual(
+    computeCapabilityDiff([{ name: "Alpha" }], [{ name: "Alpha", capabilities: null }]),
+    []
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Zen-Free-Models
+// ---------------------------------------------------------------------------
+
+test("parseZenEndpointIds: mappt normalisierten Modellnamen → Model-ID", () => {
+  const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"), "utf8");
+  const ids = parseZenEndpointIds(html);
+  assert.equal(ids.get("bigpickle"), "big-pickle");
+  assert.equal(ids.get("mimov2.5free"), "mimo-v2.5-free");
+  assert.equal(ids.get("nemotron3.5lightningfree"), "nemotron-3.5-lightning-free");
+  assert.equal(ids.size, 8);
+});
+
+test("extractFreeModelsFromDocs: extrahiert nur die kostenlosen Modelle aus Endpunkte + Preise", () => {
+  const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"), "utf8");
+  assert.deepEqual(extractFreeModelsFromDocs(html), [
+    "big-pickle",
+    "hy3-free",
+    "mimo-v2.5-free",
+    "muse-spark-1.2-contributor-free",
+    "nemotron-3-ultra-free",
+    "nemotron-3.5-lightning-free",
+  ]);
+});
+
+test("extractFreeModelsFromDocs: ignoriert kostenpflichtige Modelle", () => {
+  const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"), "utf8");
+  const free = extractFreeModelsFromDocs(html);
+  assert.ok(!free.includes("deepseek-v4-flash"));
+  assert.ok(!free.includes("minimax-m3"));
+});
+
+test("extractFreeModelsFromDocs: erkennt deutsche „Kostenlos“-Zeilen (z. B. Jev 1.13 Free)", () => {
+  const html = `<!DOCTYPE html><html><body>
+<h2 id="endpunkte">Endpunkte</h2>
+<table><thead><tr><th>Modell</th><th>ID</th></tr></thead><tbody>
+<tr><td>Jev 1.13 Free</td><td>jev-1.13-free</td></tr>
+<tr><td>Jev 1.13</td><td>jev-1.13</td></tr>
+</tbody></table>
+<h2 id="preise">Preise</h2>
+<table><thead><tr><th>Modell</th><th>Input</th><th>Output</th></tr></thead><tbody>
+<tr><td>Jev 1.13 Free</td><td>Kostenlos</td><td>Kostenlos</td></tr>
+<tr><td>Jev 1.13</td><td>$0.042</td><td>Kostenlos</td></tr>
+</tbody></table>
+</body></html>`;
+  assert.deepEqual(extractFreeModelsFromDocs(html), ["jev-1.13-free"]);
+});
+
+test("parseZenFreeModelPrivacy: klassifiziert ZDR, Training und „keine Aussage“", () => {
+  const html = `<!DOCTYPE html><html><body>
+<h2 id="preise">Preise</h2>
+<p>Die kostenlosen Modelle:</p>
+<ul>
+<li>Space Bunny Free ist für begrenzte Zeit kostenlos. Der Anbieter befolgt eine Zero-Retention-Richtlinie und verwendet deine Daten nicht zum Trainieren von Modellen.</li>
+<li>Big Pickle ist ein Stealth-Modell. Das Team nutzt diese Zeit, um Feedback zu sammeln und das Modell zu verbessern.</li>
+<li>Jev 1.13 Free ist für begrenzte Zeit auf OpenCode verfügbar.</li>
+<li>Unbekannt Free ist für begrenzte Zeit verfügbar — nicht in der Endpunkte-Tabelle.</li>
+</ul>
+</body></html>`;
+  const $ = cheerio.load(html);
+  const idsByName = new Map([
+    ["spacebunnyfree", "space-bunny-free"],
+    ["bigpickle", "big-pickle"],
+    ["jev1.13free", "jev-1.13-free"],
+  ]);
+  const privacy = parseZenFreeModelPrivacy($, idsByName);
+  assert.deepEqual(privacy.get("space-bunny-free"), { training: false, retentionDays: true, validUntil: null });
+  assert.deepEqual(privacy.get("big-pickle"), { training: true, validUntil: null });
+  assert.equal(privacy.has("jev-1.13-free"), false);
+  assert.equal(privacy.size, 2);
+});
+
+test("parseZenFreeModelPrivacy: fehlende Liste → leere Map (kein Fehler)", () => {
+  const $ = cheerio.load("<p>Die kostenlosen Modelle:</p><p>kein Listen-Element</p>");
+  const privacy = parseZenFreeModelPrivacy($, new Map());
+  assert.equal(privacy.size, 0);
+});
+
+test("parseZenFreeModelPrivacy: erkennt Trainings-Varianten (Verbesserung/Training)", () => {
+  const html = `<p>Die kostenlosen Modelle:</p><ul>
+<li>A Free ist verfügbar. Der Anbieter verwendet Daten zur Verbesserung des Modells.</li>
+<li>B Free ist verfügbar. Die Daten werden zum Trainieren verwendet.</li>
+</ul>`;
+  const idsByName = new Map([
+    ["afree", "a-free"],
+    ["bfree", "b-free"],
+  ]);
+  const privacy = parseZenFreeModelPrivacy(cheerio.load(html), idsByName);
+  assert.deepEqual(privacy.get("a-free"), { training: true, validUntil: null });
+  assert.deepEqual(privacy.get("b-free"), { training: true, validUntil: null });
+});
+
+test("mergeFreeModels: übernimmt availableFrom und setzt für neue Modelle das Datum", () => {
+  const merged = mergeFreeModels(
+    [{ id: "a-free", availableFrom: "2026-08-01" }],
+    ["a-free", "big-pickle"],
+    "2026-08-05"
+  );
+  assert.deepEqual(merged, [
+    { id: "a-free", availableFrom: "2026-08-01" },
+    { id: "big-pickle", availableFrom: "2026-08-05" },
+  ]);
+});
+
+test("enrichFreeModels: befüllt provider aus dem models.dev-id-Prefix", () => {
+  const free = [{ id: "some-model", availableFrom: "2026-08-05" }];
+  const metadataModels = {
+    "opencode/some-model": {
+      id: "opencode/some-model",
+      name: "Some Model",
+      modalities: { input: ["text"], output: ["text"] },
+    },
+  };
+  const enriched = enrichFreeModels(free, {}, metadataModels);
+  assert.equal(enriched[0].provider, "OpenCode");
+});
+
+test("enrichFreeModels: reichert Zen-Modelle über die opencode-ID an", () => {
+  const free = [{ id: "mimo-v2.5-free", availableFrom: "2026-08-05" }];
+  const opencodeModels = {
+    "mimo-v2.5-free": {
+      id: "mimo-v2.5-free",
+      name: "MiMo V2.5 Free",
+      modalities: { input: ["text", "image", "audio", "video"], output: ["text"] },
+    },
+  };
+  const enriched = enrichFreeModels(free, opencodeModels, {});
+  assert.deepEqual(enriched[0].capabilities, {
+    input: ["text", "image", "audio", "video"],
+    output: ["text"],
+    reasoning: false,
+    toolCall: false,
+  });
+});
+
+test("enrichFreeModels: Provider-Familie longcat → Hersteller Meituan", () => {
+  const zenModels = {
+    "longcat-2.5-preview-free": {
+      id: "longcat-2.5-preview-free",
+      name: "LongCat 2.5 Preview Free",
+      family: "longcat",
+      limit: { context: 1_000_000 },
+      modalities: { input: ["text", "image"], output: ["text"] },
+    },
+  };
+  const enriched = enrichFreeModels([{ id: "longcat-2.5-preview-free", availableFrom: "2026-09-26" }], zenModels, {});
+  assert.equal(enriched[0].provider, "Meituan");
+});
+
+test("enrichFreeModels: setzt privacy (Modelltraining) für Zen-Modelle", () => {
+  const enriched = enrichFreeModels([{ id: "big-pickle", availableFrom: "2026-08-05" }], {}, {});
+  assert.deepEqual(enriched[0].privacy, { training: true, validUntil: null });
+});
+
+test("enrichFreeModels: geparste ZDR-Fußnote schlägt den Default", () => {
+  const privacyById = new Map([["space-bunny-free", { training: false, retentionDays: true, validUntil: null }]]);
+  const enriched = enrichFreeModels([{ id: "space-bunny-free", availableFrom: "2026-09-23" }], {}, {}, {}, privacyById);
+  assert.deepEqual(enriched[0].privacy, { training: false, retentionDays: true, validUntil: null });
+});
+
+test("enrichFreeModels: FREE_MODEL_PRIVACY_OVERRIDES schlägt die geparste Map", () => {
+  const privacyById = new Map([["big-pickle", { training: false, retentionDays: true, validUntil: null }]]);
+  const enriched = enrichFreeModels(
+    [
+      { id: "big-pickle", availableFrom: "2026-08-05" },
+      { id: "x-preview-f-free", availableFrom: "2026-08-20" },
+    ],
+    {},
+    {},
+    {},
+    privacyById
+  );
+  assert.deepEqual(enriched[0].privacy, { training: false, retentionDays: true, validUntil: null });
+  assert.deepEqual(enriched[1].privacy, { training: false, retentionDays: true, validUntil: null });
+});
+
+test("enrichFreeModels: ohne Map-Eintrag bleibt training:true (unbekannt)", () => {
+  const privacyById = new Map([["other-free", { training: false, retentionDays: true, validUntil: null }]]);
+  const enriched = enrichFreeModels([{ id: "big-pickle", availableFrom: "2026-08-05" }], {}, {}, {}, privacyById);
+  assert.deepEqual(enriched[0].privacy, { training: true, validUntil: null });
 });
 
 test("enrichFreeModels: Stealth-IDs bekommen OpenCode Stealth", () => {
@@ -1639,19 +2049,7 @@ test("enrichFreeModels: Stealth-IDs bekommen OpenCode Stealth", () => {
   );
   assert.equal(enriched[0].provider, "OpenCode Stealth");
   assert.equal(enriched[1].provider, "OpenCode Stealth");
-  // Zen-Doku: „Space Bunny Free ist ein Stealth-Modell …“; models.dev führt es
-  // ohne Hersteller ⇒ ohne STEALTH_IDS wäre die Ableitung null.
   assert.equal(enriched[2].provider, "OpenCode Stealth");
-});
-
-test("enrichCapabilities: Space Bunny Free (Go-Preiszeile) → OpenCode Stealth", () => {
-  const models = [{ name: "Space Bunny Free", tier: null }];
-  const goModels = {
-    "space-bunny-free": { id: "space-bunny-free", name: "Space Bunny Free", family: "space-bunny" },
-  };
-  const enriched = enrichCapabilities(models, {}, {}, goModels);
-  assert.equal(enriched[0].id, "opencode-go/space-bunny-free");
-  assert.equal(enriched[0].provider, "OpenCode Stealth");
 });
 
 test("enrichFreeModels: setzt fullId mit opencode-Prefix (Fallback ohne models.dev-Treffer)", () => {
@@ -1667,114 +2065,45 @@ test("enrichFreeModels: fullId bevorzugt opencode-go vor opencode", () => {
   assert.equal(enriched[0].fullId, "opencode-go/union-alpha");
 });
 
-test("validateSnapshot: kostenloses Modell ohne fullId bricht", () => {
-  const snapshot = {
-    fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
-    capabilitiesSourceUrl: "https://models.dev",
-    sourceLang: "de",
-    monthlyCredit: 60,
-    monthlyCost: 10,
-    plans: [
-      {
-        id: "go",
-        name: "Go",
-        priceMonthly: 10,
-        creditsMonthly: 60,
-        sourceUrl: "https://opencode.ai/docs/de/go/",
-      },
-    ],
-    peakHours: {},
-    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
-    freeModels: [
-      {
-        id: "big-pickle",
-        availableFrom: "2026-08-05",
-        capabilities: null,
-        contextWindow: null,
-        privacy: { training: true, validUntil: null },
-      },
-    ],
-  };
-  assert.throws(() => validateSnapshot(snapshot));
+test("enrichFreeModels: lässt capabilities null bei unbekannter ID", () => {
+  const enriched = enrichFreeModels([{ id: "does-not-exist-free", availableFrom: "2026-08-05" }], {}, {});
+  assert.equal(enriched[0].capabilities, null);
 });
 
-test("buildChanges: capabilities_changed für kostenlose Zen-Modelle", () => {
-  const cap = { input: ["text", "image"], output: ["text"], reasoning: true, toolCall: true };
-  const prevFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: null }];
-  const nextFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: cap }];
-  const changes = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
-  assert.deepEqual(changes, [{ type: "capabilities_changed", model: "a-free", from: null, to: cap }]);
-});
-
-test("buildChanges: keine capabilities_changed für unveränderte Zen-Modelle", () => {
-  const cap = { input: ["text"], output: ["text"], reasoning: false, toolCall: false };
-  const prevFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: cap }];
-  const nextFree = [{ id: "a-free", availableFrom: "2026-08-01", capabilities: { ...cap } }];
-  const changes = buildChanges(base, base, prevFree, nextFree, "2026-08-06");
-  assert.deepEqual(changes, []);
-});
-
-test("computePrivacyDiff: erzeugt privacy_changed nur bei Stufen-Wechsel (Erst-Befüllung/validUntil ohne Event)", () => {
-  const withPrivacy = (privacy) => ({ id: "m-1", name: "M 1", privacy });
-  const base = withPrivacy({ training: true, retentionDays: undefined, validUntil: null });
-
-  // Training → ZDR: Stufe ändert sich → Event
-  const diff = computePrivacyDiff(
-    [base],
-    [withPrivacy({ training: false, retentionDays: true, validUntil: null })]
-  );
-  assert.equal(diff.length, 1);
-  assert.equal(diff[0].key, "M 1");
-  assert.deepEqual(diff[0].to, { training: false, retentionDays: true, validUntil: null });
-
-  // 30 Tage → ZDR: Stufe ändert sich → Event
-  assert.equal(
-    computePrivacyDiff(
-      [withPrivacy({ training: false, retentionDays: 30, validUntil: null })],
-      [withPrivacy({ training: false, retentionDays: true, validUntil: null })]
-    ).length,
-    1
-  );
-
-  // Reine validUntil-Änderung (ZDR-Verlängerung): kein Event
-  assert.deepEqual(
-    computePrivacyDiff(
-      [withPrivacy({ training: false, retentionDays: true, validUntil: "2026-01-01" })],
-      [withPrivacy({ training: false, retentionDays: true, validUntil: "2026-12-31" })]
-    ),
-    []
-  );
-
-  // Erst-Befüllung (Vorgänger ohne privacy): kein Event
-  assert.deepEqual(
-    computePrivacyDiff(
-      [{ id: "m-1", name: "M 1", privacy: undefined }],
-      [withPrivacy({ training: false, retentionDays: true, validUntil: null })]
-    ),
-    []
-  );
-});
-
-test("normalizeChangelogIds: weist fehlendes id = date zu, vorhandene bleiben", () => {
-  const out = normalizeChangelogIds({
-    entries: [
-      { date: "2026-08-15", changes: [{ type: "text", lang: { en: "Initial", de: "Start" } }] },
-      { id: "2026-08-16T10-00-00Z", date: "2026-08-16", changes: [{ type: "text", lang: { en: "x", de: "x" } }] },
-    ],
-  });
-  assert.equal(out.entries[0].id, "2026-08-15");
-  assert.equal(out.entries[1].id, "2026-08-16T10-00-00Z");
-});
+// ---------------------------------------------------------------------------
+// Datum
+// ---------------------------------------------------------------------------
 
 test("parseGermanDate: deutsches Datum → ISO, ungültige Eingaben → null", () => {
   assert.equal(parseGermanDate("31. August 2026"), "2026-08-31");
   assert.equal(parseGermanDate("5. Januar 2026"), "2026-01-05");
   assert.equal(parseGermanDate("3. Februar 2026."), "2026-02-03");
+  assert.equal(parseGermanDate("31. Oktober 2026"), "2026-10-31");
   assert.equal(parseGermanDate("32. August 2026"), null);
   assert.equal(parseGermanDate("31. August"), null);
   assert.equal(parseGermanDate("31. Monat 2026"), null);
   assert.equal(parseGermanDate("gibtsnicht"), null);
   assert.equal(parseGermanDate(null), null);
+});
+
+// ---------------------------------------------------------------------------
+// Generierter Datensatz (data/latest.json): Plan-Dimension nur auf models[],
+// freeModels bleiben plan-unabhängig.
+// ---------------------------------------------------------------------------
+
+test("data/latest.json: 39 Modelle, usage-Schlüssel == Plan-Ids, 10 Free-Modelle ohne Plan-Feld", () => {
+  const data = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "data", "latest.json"), "utf8"));
+  const planIds = data.plans.map((p) => p.id);
+  assert.deepEqual(planIds, ["go", "go-plus"]);
+  assert.equal(data.models.length, 39);
+  for (const m of data.models) {
+    assert.deepEqual(Object.keys(m.usage).slice().sort(), planIds.slice().sort(), `${m.name}: usage-Schlüssel`);
+  }
+  assert.equal(data.freeModels.length, 10);
+  for (const f of data.freeModels) {
+    for (const key of ["usage", "plan", "plans", "allowances"]) {
+      assert.equal(key in f, false, `${f.id}: Free-Modell darf kein ${key}-Feld haben`);
+    }
+  }
+  assert.doesNotThrow(() => validateSnapshot(data));
 });

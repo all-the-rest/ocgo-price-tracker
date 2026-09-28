@@ -347,12 +347,7 @@ test.describe("share card sizes", { tag: ["@screenshot"] }, () => {
         output: 0,
         cachedRead: 0,
         cachedWrite: null,
-        usage: null,
-        multiplier: null,
-        effectiveInput: 0,
-        effectiveOutput: 0,
-        effectiveCachedRead: 0,
-        effectiveCachedWrite: null,
+        usage: { go: null, "go-plus": null },
         pattern: null,
         capabilities: null,
         contextWindow: null,
@@ -366,22 +361,26 @@ test.describe("share card sizes", { tag: ["@screenshot"] }, () => {
         input: 1,
         output: 3,
         cachedRead: 0.2,
-        usage: 15,
-        multiplier: 4,
-        effectiveInput: 4,
-        effectiveOutput: 12,
-        effectiveCachedRead: 0.8,
+        usage: { go: 15, "go-plus": 60 },
         pattern: { input: 390, cachedRead: 32500, output: 120 },
       };
-      const freeValue = share.shareRequests(free);
-      const rows = share.topModels([paid, free], 5, []);
+      // Aktiver Plan (Go) — die Anfragen pro Monat sind plan-abhängig.
+      const plan = {
+        id: "go",
+        name: "Go",
+        priceMonthly: 10,
+        creditsMonthly: 60,
+        sourceUrl: "https://opencode.ai/docs/de/go/",
+      };
+      const freeValue = share.shareRequests(free, plan);
+      const rows = share.topModels([paid, free], 5, plan, []);
       // Same-table caps filter: video-only keeps video models (OR-semantics).
       const withCaps = {
         ...paid,
         name: "Video Test",
         capabilities: { input: ["text", "video"], output: ["text"], reasoning: false, toolCall: false },
       };
-      const filtered = share.topModels([paid, withCaps], 5, ["video"]);
+      const filtered = share.topModels([paid, withCaps], 5, plan, ["video"]);
       return {
         freeValue: freeValue === Infinity ? "Infinity" : String(freeValue),
         first: rows[0]?.name ?? null,

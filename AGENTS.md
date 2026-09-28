@@ -6,14 +6,20 @@ Preis-Tracking für OpenCode Go. Ein täglicher GitHub-Actions-Lauf scrapet
 `https://opencode.ai/docs/de/go/`, berechnet die Preise auf Basis des vollen
 Monatsguthabens (Effektivpreis = Listpreis × Guthaben/Nutzung) und stellt eine
 statische SolidJS-Seite unter `https://ocgo-pricing.all-the.rest` bereit.
+OpenCode Go hat **zwei Abonnemente** (Stand 2026-09-28): **Go** ($10/Monat) und
+**Go Plus** ($40/Monat). Die Tokenpreise sind in beiden identisch, die **Nutzung
+pro Modell ist pro Plan verschieden** — die Doku liefert dafür je eine
+Preistabelle in einem `starlight-tabs`-Baustein. Die Seite hat entsprechend
+Plan-Tabs, und `models[].usage` ist eine **Plan-Map**.
+
 Alle Daten kommen von der einen Doku-Seite: Temporäre Nutzungs-Boni stehen
 **inline in der Preistabelle**
 (`<del>$15</del> <strong>$60</strong><br><small>4x · Endet am 20. Sept.</small>`
-→ `parseUsageCell` liest den aktuellen Wert). Monatsguthaben und Monatspreis
-werden **dynamisch** aus der Doku-Prosa gefetcht (Intro `10 $/Monat`,
-Limit-Liste „Monatliches Limit — Nutzung im Wert von $60“, ersatzweise
-Faktor-Satz „das Sechsfache dieses Betrags“ → Guthaben = Preis × Faktor),
-Fallback auf 60/10.
+→ `parseUsageCell` liest den aktuellen Wert). Pläne, Monatspreise und
+Monatsguthaben kommen aus der **Plan-Tabelle** (`Abonnement | Preis | Enthaltene
+Nutzung`) und den **Tab-Panels**; `creditsMonthly` ist die höchste endliche
+Nutzung des jeweiligen Plans (ersetzt die 2026-09 entfernte Prosa „Nutzung im
+Wert von $60“ / „das Sechsfache dieses Betrags“).
 
 - Repo (remote): `all-the-rest/ocgo-price-tracker`
 - GitHub Pages Custom Domain: `ocgo-pricing.all-the.rest` (CNAME)
@@ -83,24 +89,21 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "capabilitiesSourceUrl": "https://models.dev",
   "sourceLang": "de",
-  "monthlyCredit": 60,
-  "monthlyCost": 10,
+  "plans": [
+    { "id": "go", "name": "Go", "priceMonthly": 10, "creditsMonthly": 60, "sourceUrl": "https://opencode.ai/docs/de/go/" },
+    { "id": "go-plus", "name": "Go Plus", "priceMonthly": 40, "creditsMonthly": 240, "sourceUrl": "https://opencode.ai/docs/de/go/" }
+  ],
   "freeModels": [{ "id": "big-pickle", "fullId": "opencode/big-pickle", "availableFrom": "2026-08-05", "privacy": { "training": true, "retentionDays": null, "validUntil": null } }],
   "models": [
     {
-      "name": "Grok 4.5",
+      "name": "Grok 4.7",
       "tier": null,
       "input": 2.0,
       "output": 6.0,
       "cachedRead": 0.3,
       "cachedWrite": null,
-      "usage": 15,
-      "multiplier": 4,
-      "effectiveInput": 8.0,
-      "effectiveOutput": 24.0,
-      "effectiveCachedRead": 1.2,
-      "effectiveCachedWrite": null,
-      "pattern": { "input": 1100, "cachedRead": 71500, "output": 220 },
+      "usage": { "go": 15, "go-plus": 120 },
+      "pattern": { "input": 390, "cachedRead": 32500, "output": 120 },
       "capabilities": { "input": ["text", "image"], "output": ["text"], "reasoning": true, "toolCall": true },
       "privacy": { "training": false, "retentionDays": 30, "validUntil": null }
     }
@@ -108,40 +111,43 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 }
 ```
 
-- `multiplier = monthlyCredit / usage`; `usage` = aktueller Nutzungs-Wert aus der Preistabelle (inkl. inline eingepreister Boni, z. B. `<del>$15</del> <strong>$60</strong>` → `usage` = `60`). Ein Bonus-Anstieg senkt `multiplier` und damit die Effektivpreise.
-- **Kostenlose Preistabellen-Zeilen** (`Nutzung` = `-`, z. B. Ox Alpha Free): Token-Preise (`input`/`output`/`cachedRead`/`cachedWrite`) werden als `0` erfasst, nicht als `null` — gratis ist ein bekannter Preis (`recomputeUsageDerived`, Nutzungszweig `usage === null`; `multiplier` bleibt `null`). `pattern` bleibt für diese Zeilen `null` und ist **nicht** Pflicht (zod-Prüfung: nur von 0 verschiedene Preise erfordern ein Muster); `requestCost` = 0 → UI zeigt `$0.00` statt `-`.
-- `monthlyCost` = laufender Abo-Preis (dynamisch, aktuell 10); die UI berechnet daraus die zusätzliche Preisbasis „Was du zahlst“ (`Effektivpreis = Listpreis × monthlyCost/Nutzung`).
-- `monthlyCredit` = Monatsguthaben (dynamisch, aktuell 60); Quelle: Doku-Limit-Liste („Monatliches Limit — Nutzung im Wert von $60“), ersatzweise `monthlyCost × Faktor` (Faktor aus „das Sechsfache dieses Betrags“). Fallback-Konstante 60 bei fehlender Extraktion (Warnung, kein Abbruch).
-- `effective* = preis × multiplier`
+- `usage` = **Plan-Map** `PlanId → Nutzung in $` (aktueller Wert aus der Preistabelle des Plans, inkl. inline eingepreister Boni, z. B. `<del>$15</del> <strong>$60</strong>` → `60`); `null` = unbegrenzt (kostenlose Zeilen). Die Schlüssel sind **exakt** die `plans[].id`. Ein Bonus-Anstieg senkt `multiplier` und damit die Effektivpreise.
+- `plans[]` = die Abonnemente aus der Plan-Tabelle; `id` = Tab-Label normalisiert (lowercase, Whitespace → `-`: „Go Plus“ → `go-plus`). `priceMonthly` = Abo-Preis, `creditsMonthly` = **höchste endliche Nutzung dieses Plans** (Go 60, Go Plus 240) — das ist die Quelle für die Preisbasis „volles Monatsguthaben“ (`multiplier = plan.creditsMonthly / usage[plan.id]`).
+- **Effektivpreise und `multiplier` werden NICHT mehr vorberechnet** (bis 2026-09-28 gab es `models[].multiplier` + `models[].effective*` und die Top-Level-Felder `monthlyCredit`/`monthlyCost`; alle vier sind entfernt). Grund: sie sind plan-abhängig. Die Rechnung liegt jetzt in der UI (`src/weighted.ts`: `usageOf`/`multiplierOf`/`fieldPrice`) — **eine** Quelle der Wahrheit statt zwei.
+- **Kostenlose Preistabellen-Zeilen** (`Monatliches Limit` = `-`/`Unbegrenzt`, z. B. Space Bunny Free): Token-Preise (`input`/`output`/`cachedRead`/`cachedWrite`) werden als `0` erfasst, nicht als `null` — gratis ist ein bekannter Preis. `usage` ist in **allen** Plänen `null`. `pattern` bleibt für diese Zeilen `null` und ist **nicht** Pflicht (zod-Prüfung: nur von 0 verschiedene Preise erfordern ein Muster); `requestCost` = 0 → UI zeigt `$0.00` statt `-`.
 - `pattern` = dokumentiertes Anfragemuster (Input/Cached/Output Tokens pro Anfrage) — **Pflicht** (zod). Kosten pro Anfrage = Muster × Modellpreis (Input: 5% Input-Preis + 95% Cached-Write-Preis, Cached: Cached Read, Output: Output). Fehlendes Muster bricht den Lauf rot ab.
 - `capabilities` = Fähigkeiten aus models.dev (via `@opencode-ai/models`): `input`/`output`-Modalitäten (`text`, `audio`, `image`, `video`, `pdf`), `reasoning`, `toolCall`. `null` = kein models.dev-Eintrag. **Nur Fähigkeiten — die Preise bleiben aus dem Go-Scrape (models.dev-Preise weichen ab und werden ignoriert).**
 - `privacy` = Datenschutz-Info aus der Doku-Tabelle (`Modelltraining`/`Datenaufbewahrung`): `training` (bool, `true` = Daten fürs Modelltraining), `retentionDays` (**`true`** = ZDR/0 Tage, **`false`** = kein ZDR (Daten werden aufbewahrt, Dauer unbekannt), **`number`** = N Tage Aufbewahrung, **fehlend/`undefined`** = unbekannt/"–"), `validUntil` (ISO-Datum = Ablauf der ZDR-Vereinbarung, z. B. monatliche Verlängerung DeepSeek V4 Flash), `fallback` (optional `true` = nicht in der Doku gelistet, Angabe aus derselben Modellfamilie via `PRIVACY_FALLBACKS`). `null` = keine Angabe (weder eigene Zeile noch Familien-Fallback). **Kostenlose Zen-Modelle** beziehen ihre Angabe aus der Fußnoten-Liste „Die kostenlosen Modelle:“ auf `/docs/de/zen/` (`parseZenFreeModelPrivacy` in `enrichFreeModels`): ZDR-Modelle („Zero-Retention“ + „nicht zum Trainieren“) sind `training: false, retentionDays: true`, Feedback-Modelle `training: true`; die Go-Datenschutz-Tabelle ist für Free-Modelle **nicht** maßgeblich. `training: true` ist der Fallback für Modelle ganz ohne Datenschutz-Aussage („unbekannt“); manuelle `FREE_MODEL_PRIVACY_OVERRIDES` haben Vorrang.
 - `capabilitiesSourceUrl` = `https://models.dev` (Fähigkeiten-Quelle).
 - `cachedWrite: null` (= `-` in der Doku) bedeutet: Cached-Write-Preis = **Input-Preis** (1:1, keine Schätzung). In `requestCost` fließt er als Cached-Write-Preis in die 5/95-Heuristik ein; in der Tabelle steht weiterhin `-` (Heuristik nur im Footer dokumentiert). Die 5/95-Gewichtung (5% Input-Preis + 95% Cached-Write-Preis für Input-Tokens) basiert auf beobachteter Nutzung (Luna ~28/72, Qwen3.8 Max ~0/100 Input/Cached-Write).
 - `freeModels` = kostenlose Zen-Modelle aus der Zen-Doku `https://opencode.ai/docs/de/zen/` („Endpunkte"-Tabelle liefert die Model-IDs, „Preise"-Tabelle markiert die gratis Zeilen via `extractFreeModelsFromDocs`, `privacy` aus der Fußnoten-Liste „Die kostenlosen Modelle:“ via `parseZenFreeModelPrivacy`); `availableFrom` = erstes Beobachtungsdatum (bleibt über Läufe erhalten). `fullId` = volle Kopier-ID aus der UI (`opencode/<id>` bzw. `opencode-go/…`, via `resolveOpencodeId`); `id` bleibt stabiler Schlüssel (Merge, Changelog, Zen-Endpunkte).
+- **`freeModels` sind plan-unabhängig:** die Zen-Free-Modelle sind in **allen** Abonnements nutzbar und tragen **keine** Plan-Dimension — kein `usage`, kein `plan` (zod-Invariante: `FreeModelSchema` bekommt kein solches Feld). Die `usage`-Map gilt ausschließlich für die Go-Katalogzeilen in `models[]`. Die UI filtert Free- und Datenschutz-Tabelle deshalb **nie** nach Plan; `free_added`/`free_removed`-Events sind ebenfalls plan-unabhängig. Nicht zu verwechseln mit den zwei **Gratis-Zeilen in der Go-Preistabelle** (`LongCat 2.5 Preview Free`, `Space Bunny Free`): die stehen in beiden Plan-Tabellen mit `usage: null` und sind damit in beiden Plänen gratis.
 - `data/history.json` = `{ "snapshots": [ … ] }` (Chronologie, append, nur bei Änderungen)
 - `CHANGELOG.json` = `{ "entries": [{ "date", "changes": [ … ] }] }`; wird bewusst **minified** (`JSON.stringify`, eine Zeile) geschrieben — nie hübsch formatiert, damit Git-Diffs minimal bleiben. Events (zod via `validateChangelog`):
   - `text` (mit `lang` = `{ de, en }`-Übersetzungen, z. B. `{ de: "Initialversion", en: "Initial version" }`; keine freien Texte)
   - `model_added` (mit `pricing` = `{ input, output, cachedRead, cachedWrite, usage }`, die Go-Tabellen-Zeile)
   - `model_removed` (mit `days` = verfügbare Tage, `firstSeen` aus `history.json`-Chronologie)
   - `price_changed` (mit `from`/`to` = komplette Pricing-Zeile und `fields` = geänderte Preisfelder `["input","output","cachedRead","cachedWrite"]`; die UI stellt die Felder in **beiden** Zeilen fett dar)
-  - `usage_changed` (mit `from`/`to` = Nutzungswert; getrenntes Event, damit Nutzungs- und Preisänderungen unterscheidbar sind)
+  - `usage_changed` (**plan-aware**, Muster aus `cc-price-tracker`): `{ model, plans: [{ plan, from, to }] }` — **ein Event pro Modell**, im `plans`-Array nur die Pläne, deren Nutzung sich tatsächlich geändert hat (leeres Array → kein Event). Preis-, Datenschutz-, Fähigkeits- und Free-Events bleiben plan-unabhängig. **Legacy**: die Einträge vor der Plan-Einführung haben nur `{ model, from, to }` **ohne** Plan-Feld und zu ihnen existieren bereits Releases, deren Notizen byte-identisch bleiben müssen — zod akzeptiert beide Formen, die UI rendert beide, `release-notes.mjs` rendert Legacy ohne Plan-Nennung.
+  - `plan_added` (mit `plan` = Plan-Id, `name`, `priceMonthly`, `creditsMonthly`): **genau ein** Event, wenn ein Plan in `plans[]` neu auftaucht. **Nutzungsänderungen für einen neu hinzugekommenen Plan werden im selben Lauf unterdrückt** — es gab vorher nichts, was sich geändert haben könnte. Bewusste Entscheidung gegen 37 Einzel-Events („Nutzung Go Plus: nichts → $180"): die sind informationsleer (jeder Wert steht ohnehin im Plan-Tab der Preistabelle) und überlagern die echten Nachrichten desselben Tages. Wer den neuen Tarif kennen will, braucht **eine** Zeile mit Preis und Guthaben. Typisiert statt `text`, weil ein späteres `plan_removed` sonst wieder Sonderfälle braucht und der Plan nicht maschinell filterbar wäre.
   - `capabilities_changed` (mit `from`/`to` = capabilities-Objekt oder `null`; löst auch bei Nur-Fähigkeiten-Änderungen einen Daten-Commit aus)
   - `privacy_changed` (mit `from`/`to` = privacy-Objekt oder `null`; löst bei Änderung von `training`/`retentionDays`/`fallback` aus — **nicht** bei Erst-Befüllung `undefined`/`null` → Wert und **nicht** bei reiner `validUntil`-Änderung: ZDR-Verlängerung/-Datum wird still in die Daten übernommen, ohne Changelog-Event)
   - `free_added`/`free_removed` (mit `availableFrom`/`until`)
   - Preis- UND Nutzungsänderung am selben Tag → **zwei Events** (`price_changed` + `usage_changed`). **Keine** `baseline`/`pricing_changed`-Events. Einträge haben IMMER `changes.length > 0`; ohne Änderungen wird kein Eintrag angelegt, leere Einträge werden entfernt. **Jeder Run** (alle 2h + 22:30) schreibt bei Änderungen einen **eigenen** Changelog-Eintrag (`id` = Run-Zeitstempel) — mehrere Läufe pro Tag ergeben mehrere Einträge, es gibt **kein Day-Merge** mehr (`upsertChangelogJson` schreibt pro `id` einen Eintrag, ersetzt bei gleichem `id` idempotent).
-- **Manuelle Korrekturen (Patches):** Werden Zuordnungs-Fehler von Hand ausgebessert (z. B. `CAPABILITY_OVERRIDES` führt `capabilities: null` → Objekt), erzeugt der Scrape dafür Changelog-Events — die werden **manuell aus `CHANGELOG.json`/`src/data/changelog.json` entfernt** (bereinigter Changelog, der Patch ist eine Fehlerkorrektur, keine echte Änderung der Quelle). Die Events-Mechanik bleibt dabei **generell aktiv** (insbesondere `capabilities_changed` — echte Fähigkeitsänderungen der Quelle sind selten, aber ein wichtiges Signal). Die Daten (`data/latest.json`/`history.json`) behalten die korrigierten Werte.
+- **Manuelle Korrekturen (Patches):** Werden Zuordnungs-Fehler von Hand ausgebessert (z. B. `CAPABILITY_OVERRIDES` führt `capabilities: null` → Objekt), erzeugt der Scrape dafür Changelog-Events — die werden **manuell aus `CHANGELOG.json`/`src/data/changelog.json` entfernt** (bereinigter Changelog, der Patch ist eine Fehlerkorrektur, keine echte Änderung der Quelle). Die Events-Mechanik bleibt dabei **generell aktiv** (insbesondere `capabilities_changed` — echte Fähigkeitsänderungen der Quelle sind selten, aber ein wichtiges Signal). Die Daten (`data/latest.json`/`history.json`) behalten die korrigierten Werte. **Gilt auch für Schema-Migrationen:** beim Plan-Umbau (2026-09-28) erzeugte der erste Lauf 37 `usage_changed` für Go Plus, obwohl sich an den Modellen nichts geändert hat (Go Plus existierte im Datensatz vorher nicht). Die wurden von Hand entfernt, die 5 echten `model_removed` (GLM-5.1, MiniMax M2.5, Qwen3.7 Max, 2× Qwen3.6 Plus — wirklich aus der Doku verschwunden) blieben stehen. Faustregel: **bleibt nur übrig, was sich an der Quelle geändert hat.**
 
 ## Scraper-Regeln (`scripts/scrape.mjs`)
 
-- Preistabelle über die **Header-Zeile** identifizieren (Zellen enthalten `Input` UND `Output`) — NICHT über `nth-child`-Selektoren.
-- Preise: `$1.40` → `1.4`; `Free` (case-insensitive) → `0`; `-` → `null`. Nutzung `Unbegrenzt`/`Unlimited` → `null` (kein Limit, z. B. Union Alpha); `<small>`-Hinweise wie „für begrenzte Zeit“ werden von `parseUsageCell` ignoriert.
-- `Nutzung` ist `$15` oder `$60`; Modellname mit `(… tokens)`-Suffix → `tier`-Feld.
+- Preistabelle über die **Header-Zeile** identifizieren — NICHT über `nth-child`-Selektoren. **Beide Sprachen** akzeptieren (die Doku hat die Tabellen am 2026-09-28 auf Deutsch umgestellt): Eingabe `input` **oder** `eingabe`, Ausgabe `output` **oder** `ausgabe`, Cached Read `cached read` **oder** `cache-lesevorgang`, Cached Write `cached write` **oder** `cache-schreibvorgang`, Nutzung `nutzung`/`usage`/`limit`/`monatliches limit`/`monthly limit`, Modell `model`/`modell`. Es gibt jetzt **mehrere** Preistabellen (eine pro Plan) — jede wird gefunden, nicht nur die erste.
+- **Plan-Zuordnung der Preistabellen:** die Preistabellen liegen in `<starlight-tabs>`-Panels. Zuordnung über **ARIA**, nicht über Position: Panel `[role=tabpanel][aria-labelledby=tab-NN]` → Tab `[role=tab]#tab-NN` (im selben `starlight-tabs`) → dessen Label ist der Plan-Name → normalisiert = `plans[].id`. Panel ohne Label, Tab ohne Panel, zwei Preistabellen in einem Panel, Panel-Label ohne passenden Plan aus der Plan-Tabelle oder Anzahl Preistabellen ≠ Anzahl Pläne → `ScrapeError` (rot). Die zwei **Rate-Limit-Tabellen** (`Anfragen pro 5 Stunden`/`pro Woche`/`pro Monat`) werden nicht geparst und dürfen nicht als Preistabelle matchen.
+- **Preis-Kreuzprüfung über die Pläne:** die Doku verspricht, dass die Tokenpreise in allen Plänen identisch sind. Datenquelle ist die erste Preis-Tabelle; alle weiteren werden dagegen geprüft. Abweichende Tokenpreise **oder** abweichende Modellnamen-Mengen zwischen den Tabellen → `ScrapeError`. Gewollt: lieber rot als eine falsche Anzeige — Preis-Korrektheit ist die wichtigere Invariante als Plan-Vollständigkeit.
+- Preise: `$1.40` → `1.4`; `Free`/`Kostenlos` (case-insensitive) → `0`; `-` → `null`. Nutzung `Unbegrenzt`/`Unlimited` → `null` (kein Limit); `<small>`-Hinweise wie „für begrenzte Zeit“ werden von `parseUsageCell` ignoriert.
+- `Monatliches Limit` ist `$15` oder `$60` und **pro Plan verschieden** (Go Plus z. B. $120/$180/$240); Modellname mit `(… tokens)`-Suffix → `tier`-Feld.
 - **Nutzungs-Boni** stehen inline in der Doku-Preistabelle (`<del>$15</del> <strong>$60</strong>` + `<small>4x · Endet …</small>` in der Nutzungs-Zelle; `parseUsageCell` liest den aktuellen Wert, `parseDocsUsageBonuses` liefert nur Reporting-Labels). Keine zweite Quelle — die Landingpage wird nicht gefetcht.
-- **Monatsguthaben/-preis dynamisch, alles aus der Doku-Seite** (`parseMonthlyCreditDirect`/`parseMonthlyCost`/`parseMonthlyPricing`/`parseCreditFactor`): Monatspreis aus dem Intro (`10 $/Monat`, auch `$10/Monat`), Monatsguthaben direkt aus der Limit-Liste („Monatliches Limit — Nutzung im Wert von $60“), ersatzweise Guthaben-Faktor aus der Doku-Prosa „das Sechsfache dieses Betrags“ (= 6; auch `das 6-fache`/`das 6×`; unbekannter Faktor bei vorhandenem Satz → rot) via Guthaben = Monatspreis × Faktor. Fehlt alles → Fallback-Konstanten 60/10 mit Warnung (kein Rot-Abbruch, Layout-Wechsel bricht die Pipeline nicht). `monthlyCredit`/`monthlyCost` werden danach in die Effektivpreise (`recomputeUsageDerived`) gerechnet.
+- **Pläne, Monatspreis und Monatsguthaben kommen aus der Plan-Tabelle** (`Abonnement | Preis | Enthaltene Nutzung`, Aliase auch `plan`/`price`): je Zeile ein Plan (Name → `id`, `$10/Monat` → `priceMonthly: 10`). `creditsMonthly` = **höchste endliche `usage` in diesem Plan** (Go 60, Go Plus 240) — das ist die Basis für „volles Monatsguthaben“. Fehlt die Plan-Tabelle oder ist ein Planpreis unparsebar → `ScrapeError`. **Kein Fallback auf Konstanten mehr**: die früheren Prosa-Parser (`parseMonthlyCreditDirect` „Monatliches Limit — Nutzung im Wert von $60“, `parseCreditFactor` „das Sechsfache dieses Betrags“, `parseMonthlyPricing`, `DEFAULT_MONTHLY_CREDIT/COST`) sind entfernt — die Doku hat diese Sätze am 2026-09-28 gestrichen, und ein stiller 60/10-Fallback wäre für Go Plus schlicht falsch.
 - **Schreibweisen normalisieren (nie add/remove bei Umbenennung):** Die Doku wechselt teils die Schreibweise (`MiMo V2.5` ↔ `MiMo-V2.5`). `canonicalModelName` (via `MODEL_NAME_ALIASES`, neue Varianten dort ergänzen; `canonicalFreeName` für Free-Anzeigenamen) mappt beim Parsen auf die kanonische Form; `computeDiff`/`computeCapabilityDiff`/`computePrivacyDiff` matchen zusätzlich auf normalisiertem Key (`normalizeName`: Kleinbuchstaben ohne Leerzeichen/Bindestrich), Events tragen die bisherige Schreibweise (stabil). `firstSeen` toleriert Legacy-Snapshot-Einträge (freie IDs als reine Strings).
-- **Anfragemuster** (`Name — N Input-, M Cached-, K Output-Tokens pro Anfrage`) pro Modell extrahieren; Kurzschreibweisen (`GLM-5.2/5.1`, `Kimi K2.7/K2.6`) gegen die Modellnamen auflösen. Fehlende Muster über `PATTERN_FALLBACKS` (z. B. MiniMax M2.5 → M2.7) auffüllen.
-- **zod-Validierung** (`validateSnapshot`): jedes Modell MIT Preisen/Nutzung MUSS `pattern` haben; kostenlose Zeilen (Preise 0, `usage` = null) sind ausgenommen; ungültige Daten → `process.exit(1)` → CI rot.
+- **Anfragemuster** pro Modell extrahieren; Kurzschreibweisen (`GLM-5.3/5.2`, `Kimi K2.7/K2.6`) gegen die Modellnamen auflösen. Fehlende Muster über `PATTERN_FALLBACKS` (z. B. MiniMax M2.5 → M2.7) auffüllen. Die Notizen sind **deutsch und Zahlenformat haben mitgewechselt**: Labels `Eingabe|Input`, `Cache|Cached`, `Ausgabe|Output` (`Grok 4.7/4.6 — 390 Eingabe-, 32,500 Cache-, 120 Ausgabe-Tokens pro Anfrage`). Tausendertrennzeichen ist jetzt **Komma** (`32,500` → `32500`), vorher Punkt (`1.100` → `1100`) — `parsePatternNum` akzeptiert beides in 3-Gruppen, ein echtes Dezimaltrennzeichen bleibt unterstützt. Ein Tausendertrennzeichen nicht als Dezimal zu lesen ist hier kein Schönheitsfehler, sondern ein still falscher `pattern`-Wert.
+- **zod-Validierung** (`validateSnapshot`): jedes Modell MIT Preisen/Nutzung MUSS `pattern` haben; kostenlose Zeilen (Preise 0, `usage` in allen Plänen `null`) sind ausgenommen; ungültige Daten → `process.exit(1)` → CI rot. Zusätzliche Invarianten: die `usage`-Schlüssel müssen **exakt** den `plans[].id` entsprechen (fehlend oder unbekannt → rot), `FreeModelSchema` ist **`.strict()`** (jedes `usage`/`plan`/`plans`/`allowances`-Feld dort → rot, die Zen-Modelle sind plan-unabhängig).
 - Zen-Free-Models via `https://opencode.ai/docs/de/zen/` (`extractFreeModelsFromDocs`: „Endpunkte"-Tabelle liefert die Model-IDs, „Preise"-Tabelle markiert die gratis Zeilen; `parseZenFreeModelPrivacy` liest ZDR/Training aus der Fußnoten-Liste „Die kostenlosen Modelle:“), `availableFrom` aus dem vorherigen Lauf übernehmen (`mergeFreeModels`).
 - Diff gegen das vorherige `latest.json`: Modell hinzugefügt (mit Pricing-Zeile), Modell entfernt (mit `days` aus `firstSeen`), Nutzung verbessert/verschlechtert → `usage_changed`, Preisänderungen (Float-Toleranz 1e-9) → `price_changed` mit `fields` (geänderte Preisfelder), Preis- UND Nutzungsänderung → zwei Events (`splitChange`), Fähigkeitsänderungen → `capabilities_changed` (undefiniert und `null` gelten als gleich; unterdrückt innerhalb von **72h** nach `model_added`/`free_added` — verzögerte models.dev-Erstbefüllung), Free-Model-Events.
 - **Fähigkeiten** aus models.dev via `@opencode-ai/models`: Live-API (`client.catalog()`, Timeout 10 s) mit Fallback auf den gebündelten Snapshot (`@opencode-ai/models/snapshot`, `source` = `live`/`snapshot`). Zuordnung über normalisierte Namen (`normalizeName`): zuerst `providers.opencode.models` (per ID/Name), dann kanonische `models`-Metadaten (bei Kollisionen exakter Normalized-ID-Treffer, sonst erste nach ID sortiert), Ausnahmen via `CAPABILITY_OVERRIDES`. Modelle ohne Treffer → `capabilities: null`. Die models.dev-Preise werden ignoriert. Hersteller-Anzeige (`provider`): `id`-Prefix via `PROVIDER_LABELS` (`glm-flash`/`zai` → `Z.ai`, `muse` → `Meta`), ersatzweise `family`, sonst Titel-Schreibweise; Stealth-IDs (`STEALTH_IDS`: `big-pickle`, `union-alpha`, Lab unbekannt) → `"OpenCode Stealth"` mit Vorrang (analog opencode-usage, bei Enthüllung austragen).
@@ -150,7 +156,7 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 - Diff gegen das vorherige `latest.json`: Modell hinzugefügt (mit Pricing-Zeile), Modell entfernt (mit `days` aus `firstSeen`), Nutzung verbessert/verschlechtert → `usage_changed`, Preisänderungen (Float-Toleranz 1e-9) → `price_changed` mit `fields` (geänderte Preisfelder), Preis- UND Nutzungsänderung → zwei Events (`splitChange`), Fähigkeitsänderungen → `capabilities_changed` (undefiniert und `null` gelten als gleich), Datenschutzänderungen → `privacy_changed` (**nicht** bei Erst-Befüllung `undefined`/`null` → Wert; reine `validUntil`-Änderungen sind still — kein Event), Free-Model-Events.
 - CHANGELOG.json: neuer `{ id, date, changes }`-Eintrag oben, `id` = git-tag-sicherer Run-Zeitstempel (`YYYY-MM-DDTHH-MM-SSZ`, UTC), `date` = `YYYY-MM-DD` nur für Anzeige/Groupierung. **Jeder Run** mit Änderungen erzeugt einen eigenen Eintrag (kein Day-Merge); ein Eintrag mit gleichem `id` wird ersetzt (idempotent bei CI-Wiederholungen). **Leere** Einträge (`changes: []`) werden entfernt, bei `changes.length === 0` wird kein Eintrag angelegt (auch kein Basis-Snapshot beim ersten Lauf). Vorschema-Einträge ohne `id` werden beim Laden via `normalizeChangelogIds` mit `id = date` migriert (passende bestehende Releases waren nach Datum getaggt). `validateChangelog` (zod) bricht bei leeren Einträgen/unbekannten Typen rot ab. **Minified schreiben** (`JSON.stringify(changelog)` — eine Zeile), niemals hübsch formatiert, damit Changelog-Diffs nur die tatsächlichen Änderungen zeigen.
 - `model_removed.days` = `heute − firstSeen`, `firstSeen` = frühester Snapshot in `data/history.json`, der das Modell enthält.
-- `data/latest.json`/`data/history.json` werden **nur bei Datenänderungen** geschrieben (`changes.length > 0`, `privacyPopulated` — stille Erst-Befüllung des `privacy`-Felds, `privacySilentUpdate` — reine `validUntil`-Änderung, `monthlyPricingChanged` — geänderte dynamische Monatsguthaben/-preis-Werte, oder stille Anreicherungs-Updates `modelIdsPopulated`/`contextWindowPopulated`/`providerPopulated`/`fullIdsPopulated`; alle ohne Changelog-Events); sonst bleibt der Stand vom letzten Änderungstag erhalten (kein Commit, aber Deploy läuft weiter).
+- `data/latest.json`/`data/history.json` werden **nur bei Datenänderungen** geschrieben (`changes.length > 0`, `privacyPopulated` — stille Erst-Befüllung des `privacy`-Felds, `privacySilentUpdate` — reine `validUntil`-Änderung, `plansChanged` — geänderte `plans`-Liste (Preise/Guthaben/Reihenfolge, ersetzt den früheren `monthlyPricingChanged`), oder stille Anreicherungs-Updates `modelIdsPopulated`/`contextWindowPopulated`/`providerPopulated`/`fullIdsPopulated`; alle ohne Changelog-Events); sonst bleibt der Stand vom letzten Änderungstag erhalten (kein Commit, aber Deploy läuft weiter).
 - **Build-Stempel:** `fetchedAt` (der „Stand“ im Footer) wird beim `vite build` in `vite.config.ts` (Plugin `stamp-build-time`) auf die **Build-Zeit** gesetzt — auch ohne Datenänderung, weil der Lauf den Stand ja verifiziert hat. Das passiert **nur im Build-Output** (gebundeltes JS + `dist/data/latest.json`), `data/latest.json` bleibt unverändert → alleinige `fetchedAt`-Änderungen erzeugen **keinen Commit**. In `data/latest.json` steht weiterhin die letzte Scrape-/Änderungszeit.
 - **Parsing-Fehler** (keine Preistabelle, unerwartete Spaltenstruktur, unparsebare Werte) → `process.exit(1)` → CI-Lauf wird rot.
 
@@ -178,6 +184,7 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
   EOF
   ```
   `<SHA>` = committeter Datenstand (z. B. `git rev-parse HEAD`). Verifikation: `gh run list -R all-the-rest/ai-10-usd` → neuer `repository_dispatch`-Lauf (`source-updated`) wird grün.
+- **Datenvertrag mit `ai-10-usd`:** Der Consumer normalisiert über `scripts/normalize.mjs` (`normalizeOpenCodeData`) und akzeptiert **beide** Formate — Legacy (`monthlyCredit`/`monthlyCost`, `usage` als Skalar, `multiplier`/`effective*`) und das Plan-Format (`plans[]`, `usage`-Map). Grund: zwischen dem Deploy dieses Repos und dem Umbau des Consumers ist die Live-JSON noch in der alten Form; ein Format-Bruch würde die $10-Seite mitnehmen. `ai-10-usd` wählt aus `plans` den **günstigsten** Plan (kleinstes `priceMonthly`, Gleichstand → zuerst gelistet), also „Go" ($10), **nicht** „Go Plus" ($40) — es ist eine $10-Seite. Bei einem Schema-Bruch hier zuerst `normalize.mjs` im Schwestern-Repo nachziehen, dann hier.
 - Ein fehlgeschlagenes `pnpm scrape` bricht die Pipeline ab (kein Commit/Deploy, Lauf rot).
 
 ## SEO / Prerender & Sprachen
@@ -210,6 +217,23 @@ Nach jeder Umsetzung prüft ein **unabhängiger Agent**:
 Außerdem wird geprüft, dass **aktuelle Tool-Versionen** verwendet werden
 (`pnpm outdated` ohne ungewollte Abweichungen, Node ≥22, pnpm aus `packageManager`). Nach Push wird die CI bis zum grünen Lauf beobachtet.
 
+**Visuelle Verifikation (Pflicht bei UI-Änderungen, Skill `ui-review`):**
+`pnpm test:screenshots` (eigene Config auf Port 5177, gateet nie CI) → PNGs unter
+`test-results/ui-screenshots/<state>/<viewport>/`, Full-Page **plus** `-secN`-Abschnitte
+(eine Seite >2000 px wird im Full-Page-PNG downskkaliert und unterhalb des Folds unlesbar).
+Analyse selbst in Batches (≤10 Bilder, nach Zustand → Viewport → Route) gegen die
+Checkliste des Skills; unsichere Befunde (Hairline-Borders, 8-px-Gaps, unlesbare
+Downscale-Regionen) an den `vision-creative`-Subagenten eskalieren statt zu raten.
+Findings-Report mit `Severity | File:Line | Screenshot | Finding | Suggested fix`;
+`critical`/`high` blockieren die Freigabe. Zusätzlich `pnpm test:contrast` — die
+automatisierte WCAG-AA-Matrix über alle daisyUI-Badge-/Alert-Kombinationen in
+hell **und** dunkel; Failures sind blockierend wie `critical`/`high`. Nach einem Fix
+nur die betroffenen Routen neu schießen (`--grep`) und alt vs. neu vergleichen.
+
+**Manuelle Abnahme vor Push:** Bei größeren UI-Änderungen `pnpm build` + `pnpm preview`
+starten (produktionsnahes Prerender, beide Sprachen, `?plan=`/`?basis=`/`?lang=`/`?theme=`
+funktionieren) und **vor** Commit/Push abnehmen lassen. Kein Push ohne Abnahme.
+
 ## Delegation & Parallelisierung (Subagenten)
 
 - Wo möglich arbeitet OpenCode mit Subagenten statt alles selbst zu tun: `explore` für Recherche, `general` für
@@ -221,6 +245,15 @@ Außerdem wird geprüft, dass **aktuelle Tool-Versionen** verwendet werden
   und Akzeptanzkriterien — keine Annahmen über bereits Gesehenes.
 - **Kleine Änderungen** (einzelne Edits, offensichtliche Fixes, Versions-/Befehlskosmetik) macht OpenCode weiter
   **direkt selbst** — Subagenten sind für größere, unabhängige Arbeitspakete gedacht.
+- **Entscheidungen werden IMMER als interaktive Frage gestellt** (Tool `question`), nie als Frage im Fließtext:
+  echte Wahlmöglichkeiten (Alternative ja/nein, Datenmodell, Event-Form, Abbruch-vs-weiter) mit einer Empfehlung
+  als erster Option, Varianten in einem Satz begründet. Begründung: eine Entscheidung, die im Chat-Text „irgendwo"
+  steht, wird beim nächsten Turn übersehen; eine Frage mit Optionen nicht.
+- **Jede so getroffene Entscheidung wird in `AGENTS.md` UND `AGENTS.todo.md` eingetragen.** `AGENTS.md` ist die
+  dauerhafte Quelle der Wahrheit (Datenmodell, Event-Regeln, Scrap- und UI-Verhalten). `AGENTS.todo.md` führt
+  zusätzlich die Kurzfassung mit Begründung als Checkliste (`[x]` umgesetzt / `[ ]` offen) plus einen Abschnitt
+  „Verworfen" für zurückgezogene Ansätze — damit sie nicht erneut implementiert werden. Nie nur im Chat.
+  Diese Regel steht auch global in `~/.config/opencode/AGENTS.md`.
 
 ## Schwester-Projekte (Git-Remotes)
 

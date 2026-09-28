@@ -4,7 +4,7 @@ import { HEADING_IDS } from "../headings";
 import Heading from "./Heading";
 import type { Basis, Model, PeakHours, Plan } from "../types";
 import { fmt, fmtContextWindow, fmtPricing } from "../util";
-import { fieldPrice, formatTokens, formatReqPerMonth, requestCost, requestsPerMonth } from "../weighted";
+import { fieldPrice, formatTokens, formatReqPerMonth, requestCost, requestsPerMonth, usageOf } from "../weighted";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import { setupDragScroll } from "../dragscroll";
 import Tooltip from "./Tooltip";
@@ -53,9 +53,9 @@ export default function PriceTable(props: PriceTableProps) {
 
   const sortValue = (m: Model, f: SortField): number | string | null => {
     if (f === "cost") return requestCost(m, props.basis, props.plan);
-    if (f === "requests") return requestsPerMonth(m);
+    if (f === "requests") return requestsPerMonth(m, props.plan);
     if (f === "name") return m.name.toLowerCase();
-    if (f === "usage") return m.usage ?? Infinity; // unbegrenzte Nutzung = bester Wert
+    if (f === "usage") return usageOf(m, props.plan) ?? Infinity; // unbegrenzte Nutzung = bester Wert
     if (f === "input" || f === "output" || f === "cachedRead" || f === "cachedWrite") {
       return fieldPrice(m, f, props.basis, props.plan);
     }
@@ -143,7 +143,9 @@ export default function PriceTable(props: PriceTableProps) {
 
   const factorNote = createMemo(() => {
     if (props.basis === "list") return "";
-    const usages = [...new Set(props.models.map((m) => m.usage))].filter((u): u is number => u !== null).sort((a, b) => a - b);
+    const usages = [...new Set(props.models.map((m) => usageOf(m, props.plan)))]
+      .filter((u): u is number => u !== null)
+      .sort((a, b) => a - b);
     if (props.basis === "paid") {
       const rows = usages
         .map((u) => `$${u} → ${factorPhrase(u / props.plan.priceMonthly, props.lang, "value")}`)
@@ -312,7 +314,7 @@ export default function PriceTable(props: PriceTableProps) {
                   <td>{priceCell(fieldPrice(m, "cachedWrite", props.basis, props.plan))}</td>
                   <td class="text-right whitespace-nowrap">
                     <Show
-                      when={m.usage}
+                      when={usageOf(m, props.plan)}
                       fallback={
                         <Tooltip tip={props.t.usageUnlimited} class="inline-block">
                           <span class="badge badge-sm badge-success font-bold">∞</span>
@@ -348,7 +350,7 @@ export default function PriceTable(props: PriceTableProps) {
                   </td>
                   <td class="text-right tabular-nums whitespace-nowrap">
                     <Show
-                      when={requestsPerMonth(m)}
+                      when={requestsPerMonth(m, props.plan)}
                       fallback={priceCell(null)}
                     >
                       {(rpm) => <span>{formatReqPerMonth(rpm(), props.lang)}</span>}

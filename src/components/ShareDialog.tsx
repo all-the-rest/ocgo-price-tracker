@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, onMount } from "solid-js";
-import type { Model, PeakHours } from "../types";
+import type { Model, PeakHours, Plan } from "../types";
 import type { CapId } from "../capabilities";
 import type { Lang } from "../i18n";
 import { HEADING_IDS } from "../headings";
@@ -29,6 +29,8 @@ interface ShareDialogProps {
   peakHours?: PeakHours;
   /** Page capability filter (OR-semantics, like the table): card default, always in sync. */
   caps: CapId[];
+  /** Active plan — the request counts (and thus the card) are plan-dependent. */
+  plan: Plan;
 }
 
 const DIALOG_ID = "share_modal";
@@ -112,7 +114,7 @@ export default function ShareDialog(props: ShareDialogProps) {
     size: size(),
   }));
 
-  const rows = createMemo(() => topModels(props.models, cfg().topN, props.caps));
+  const rows = createMemo(() => topModels(props.models, cfg().topN, props.plan, props.caps));
 
   const svg = createMemo(() =>
     buildShareSvg({
@@ -121,6 +123,7 @@ export default function ShareDialog(props: ShareDialogProps) {
       lang: shareLang(),
       fetchedAt: props.fetchedAt,
       site: props.site,
+      planName: props.plan.name,
       peakHours: props.peakHours,
     }),
   );
@@ -158,7 +161,9 @@ export default function ShareDialog(props: ShareDialogProps) {
   };
 
   const onCopyLink = () =>
-    copyText(buildShareUrl(window.location.origin, window.location.pathname, cfg(), shareLang(), props.caps));
+    copyText(
+      buildShareUrl(window.location.origin, window.location.pathname, cfg(), shareLang(), props.caps, props.plan.id),
+    );
 
   return (
     <dialog id={DIALOG_ID} class="modal" aria-labelledby="share-title">

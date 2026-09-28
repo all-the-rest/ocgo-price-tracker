@@ -1,4 +1,4 @@
-import type { Capabilities, Model, PeakHours } from "./types";
+import type { Capabilities, Model, PeakHours, Plan } from "./types";
 import { formatReqPerMonth, requestsPerMonth } from "./weighted";
 import { PEAK_PRICING_RULES } from "./config/peakPricing";
 
@@ -127,23 +127,25 @@ export function matchesShareCaps(
 
 /**
  * Total requests per month — the EXACT value the main table sorts and
- * displays (`requestsPerMonth` at list basis): usage ÷ list-cost per request,
- * free models (usage = null) → Infinity (top rank, displayed as ∞). No
- * card-side special path: ranking and display value are identical to the
- * table cell.
+ * displays (`requestsPerMonth` at list basis): plan usage ÷ list-cost per
+ * request, free models (usage = null in the active plan) → Infinity (top rank,
+ * displayed as ∞). The value is plan-dependent, so the card mirrors the
+ * currently selected plan. No card-side special path: ranking and display
+ * value are identical to the table cell.
  */
-export function shareRequests(m: Model): number | null {
-  return requestsPerMonth(m);
+export function shareRequests(m: Model, plan: Plan): number | null {
+  return requestsPerMonth(m, plan);
 }
 
 /**
- * TOP information = the models with the most requests per month, ranked
- * exactly like the main table (requests desc) and pre-filtered by the page's
- * capability filter (OR-semantics, same as the table).
+ * TOP information = the models with the most requests per month for the given
+ * plan, ranked exactly like the main table (requests desc) and pre-filtered by
+ * the page's capability filter (OR-semantics, same as the table).
  */
 export function topModels(
   models: Model[],
   topN: number,
+  plan: Plan,
   caps: readonly string[] = [],
 ): RankedModel[] {
   const valued = models
@@ -151,7 +153,7 @@ export function topModels(
     .map((m) => ({
       name: m.name,
       tier: m.tier,
-      value: shareRequests(m),
+      value: shareRequests(m, plan),
     }));
   valued.sort((a, b) => {
     if (a.value === null && b.value === null) return 0;
@@ -183,6 +185,8 @@ export interface ShareCardInput {
   lang: "de" | "en";
   fetchedAt: string;
   site: string;
+  /** Name des aktiven Plans — die Werte sind plan-abhängig, das Bild darf nicht plan-ambiguous sein. */
+  planName: string;
   peakHours?: PeakHours;
 }
 
@@ -301,7 +305,9 @@ export function buildShareSvg(input: ShareCardInput): string {
   // lines plus a compact rules block instead of uninteresting filler models.
   const rows = portrait ? input.rows : input.rows.slice(0, autoTopN(input.cfg.size));
   const title = de ? `Top ${rows.length} · OpenCode Go Modelle` : `Top ${rows.length} · OpenCode Go models`;
-  const subtitle = metricLabel(input.lang);
+  // Plan name in the subtitle: the request counts are plan-specific, so a
+  // shared card must name the plan it was computed for.
+  const subtitle = `${input.planName} · ${metricLabel(input.lang)}`;
   const updated = shareUpdatedLine(input.lang, input.fetchedAt);
   // Dense cards (portrait Top 10/15) get a slimmer header so all rows fit.
   // Compact rows divide the remaining space (never overflows by
@@ -392,6 +398,7 @@ export function buildShareUrl(
   cfg: ShareConfig,
   lang: "de" | "en",
   caps: readonly string[] = [],
+  planId?: string,
 ): string {
   const q = new URLSearchParams();
   q.set("metric", cfg.metric);
@@ -399,6 +406,9 @@ export function buildShareUrl(
   q.set("shareTheme", cfg.theme);
   q.set("shareSize", cfg.size);
   q.set("lang", lang);
+  // Plan round-trip: the card values are plan-dependent, so a shared link must
+  // reopen the same plan (the default plan is omitted like the page URL does).
+  if (planId && planId !== "go") q.set("plan", planId);
   // Capability filter round-trip: the page restores ?cap= for the table and
   // the dialog adopts the same default, so link and table never diverge.
   if (caps.length > 0) q.set("cap", caps.join(","));

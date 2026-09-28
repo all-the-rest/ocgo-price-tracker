@@ -2,7 +2,7 @@ import { renderToString } from "solid-js/web";
 import PriceTable from "../src/components/PriceTable";
 import PrivacyTable from "../src/components/PrivacyTable";
 import Changelog from "../src/components/Changelog";
-import type { Basis, Model, FreeModel, ChangelogEntry, Plan } from "../src/types";
+import type { Basis, Model, FreeModel, ChangelogEntry, Plan, PlanId } from "../src/types";
 import type { SortField, PrivacySortState } from "../src/sort";
 import { i18n, type Lang } from "../src/i18n";
 
@@ -44,9 +44,14 @@ export function renderPriceTable(models: Model[], opts: RenderOptions): string {
 }
 
 /** Rendert die echte Changelog-Komponente serverseitig (für Zeit/Anker-Tests). */
-export function renderChangelog(entries: ChangelogEntry[], plan: Plan, lang: Lang = "en"): string {
+export function renderChangelog(
+  entries: ChangelogEntry[],
+  plans: Plan[],
+  lang: Lang = "en",
+  planId: PlanId = "go"
+): string {
   return renderToString(() => (
-    <Changelog entries={entries} t={i18n[lang]} lang={lang} plan={plan} />
+    <Changelog entries={entries} t={i18n[lang]} lang={lang} plans={plans} planId={planId} />
   ));
 }
 

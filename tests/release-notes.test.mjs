@@ -20,6 +20,7 @@ const notesFor = (date, changes, id = `${date}T10-00-00Z`) =>
 
 const full = (date, changes) => notesFor(date, changes);
 
+// Historische Form (vor der Plan-Umstellung): Usage ist ein einzelner Wert.
 const pricing = (over = {}) => ({
   input: 0.3,
   output: 1.2,
@@ -29,17 +30,31 @@ const pricing = (over = {}) => ({
   ...over,
 });
 
+// Neue Form: Usage ist eine Map Plan-Id → Nutzung.
+const pricingMap = (over = {}) => ({
+  input: 0.3,
+  output: 1.2,
+  cachedRead: 0.06,
+  cachedWrite: null,
+  usage: { go: 30, "go-plus": 120 },
+  ...over,
+});
+
+const isUsageMap = (u) => typeof u === "object" && u !== null;
+const usageChanged = (a, b) =>
+  isUsageMap(a) || isUsageMap(b) ? JSON.stringify(a ?? null) !== JSON.stringify(b ?? null) : a !== b;
+
 // ---------------------------------------------------------------------------
 // Vollständiger Release-Post: Kopf + Bullets müssen dem Changelog-Eintrag
-// entsprechen (inkl. Usage-Limit `@ $usage`).
+// entsprechen (inkl. Usage-Map je Plan).
 // ---------------------------------------------------------------------------
 
-test("release notes: model_added enthält Preise UND Usage-Limit", () => {
+test("release notes: model_added enthält Preise UND Usage je Plan", () => {
   const notes = full("2026-08-28", [
     {
       type: "model_added",
       model: "GLM-5.3-Flash",
-      pricing: { input: 0.15, output: 0.5, cachedRead: 0.03, cachedWrite: null, usage: 30 },
+      pricing: { input: 0.15, output: 0.5, cachedRead: 0.03, cachedWrite: null, usage: { go: 30, "go-plus": 120 } },
     },
   ]);
   assert.equal(
@@ -49,7 +64,7 @@ test("release notes: model_added enthält Preise UND Usage-Limit", () => {
       "",
       "Price changes for OpenCode Go on **2026-08-28**:",
       "",
-      "- **GLM-5.3-Flash** — added ($0.15 / $0.5 / $0.03 @ $30)",
+      "- **GLM-5.3-Flash** — added ($0.15 / $0.5 / $0.03 @ go $30, go-plus $120)",
     ].join("\n")
   );
 });
@@ -58,54 +73,106 @@ test("release notes: model_added enthält Preise UND Usage-Limit", () => {
 // Modell-Events
 // ---------------------------------------------------------------------------
 
+test("release notes: model_added (historisch, Skalar-usage) bleibt unverändert", () => {
+  assert.equal(
+    renderChange({
+      type: "model_added",
+      model: "GLM-5.3-Flash",
+      pricing: { input: 0.15, output: 0.5, cachedRead: 0.03, cachedWrite: null, usage: 30 },
+    }),
+    "- **GLM-5.3-Flash** — added ($0.15 / $0.5 / $0.03 @ $30)"
+  );
+});
+
 test("release notes: model_removed enthält Pricing (mit ∞-Usage) + Tage", () => {
   assert.equal(
     renderChange({
       type: "model_removed",
       model: "Ox Alpha Free",
       days: 5,
-      pricing: { input: 0, output: 0, cachedRead: 0, cachedWrite: 0, usage: null },
+      pricing: { input: 0, output: 0, cachedRead: 0, cachedWrite: 0, usage: { go: null } },
     }),
-    "- **Ox Alpha Free** — removed ($0 / $0 / $0 / $0 @ ∞ (unlimited), was available 5 days)"
+    "- **Ox Alpha Free** — removed ($0 / $0 / $0 / $0 @ go ∞ (unlimited), was available 5 days)"
   );
 });
 
-test("release notes: price_changed zeigt from/to mit Usage + Feldnamen", () => {
+test("release notes: price_changed zeigt from/to mit Usage-Map + Feldnamen", () => {
   assert.equal(
     renderChange({
       type: "price_changed",
       model: "DeepSeek V4 Pro",
-      from: pricing({ input: 0.435, output: 0.87, cachedRead: 0.003625 }),
-      to: pricing({ input: 0.66, output: 1.98, cachedRead: 0.022 }),
+      from: pricingMap({ input: 0.435, output: 0.87, cachedRead: 0.003625 }),
+      to: pricingMap({ input: 0.66, output: 1.98, cachedRead: 0.022 }),
       fields: ["input", "output", "cachedRead"],
     }),
     "- **DeepSeek V4 Pro** — price change (Input, Output, Cached Read): " +
-      "**$0.435** / **$0.87** / **$0.003625** @ $30 → **$0.66** / **$1.98** / **$0.022** @ $30"
+      "**$0.435** / **$0.87** / **$0.003625** @ go $30, go-plus $120 → **$0.66** / **$1.98** / **$0.022** @ go $30, go-plus $120"
   );
 });
 
-test("release notes: price_changed mit Usage-Wechsel boldet auch Usage (wie Changelog)", () => {
+test("release notes: price_changed mit Usage-Wechsel boldet die geänderten Nutzungswerte", () => {
   assert.equal(
     renderChange({
       type: "price_changed",
       model: "DeepSeek V4 Flash",
-      from: pricing({ input: 0.14, output: 0.28, cachedRead: 0.0028, usage: 120 }),
-      to: pricing({ input: 0.22, output: 0.66, cachedRead: 0.007, usage: 15 }),
+      from: pricingMap({ input: 0.14, output: 0.28, cachedRead: 0.0028, usage: { go: 120 } }),
+      to: pricingMap({ input: 0.22, output: 0.66, cachedRead: 0.007, usage: { go: 15 } }),
       fields: ["input", "output", "cachedRead"],
     }),
     "- **DeepSeek V4 Flash** — price change (Input, Output, Cached Read): " +
-      "**$0.14** / **$0.28** / **$0.0028** @ **$120** → **$0.22** / **$0.66** / **$0.007** @ **$15**"
+      "**$0.14** / **$0.28** / **$0.0028** @ go **$120** → **$0.22** / **$0.66** / **$0.007** @ go **$15**"
   );
 });
 
-test("release notes: usage_changed zeigt from/to inkl. unbegrenzt", () => {
+test("release notes: usage_changed nennt die Plan-Id (ohne auflösbaren Plan)", () => {
+  assert.equal(
+    renderChange({ type: "usage_changed", model: "Grok 4.7", plan: "go-plus", from: 15, to: null }),
+    "- **Grok 4.7** — go-plus usage: **$15** → **∞ (unlimited)**"
+  );
+  assert.equal(
+    renderChange({ type: "usage_changed", model: "GPT 5.6 Luna", plan: "go", from: null, to: 60 }),
+    "- **GPT 5.6 Luna** — go usage: **∞ (unlimited)** → **$60**"
+  );
+});
+
+test("release notes: usage_changed (plans-Form) nennt die Plannamen", () => {
+  assert.equal(
+    renderChange(
+      { type: "usage_changed", model: "Grok 4.7", plans: [{ plan: "go-plus", from: 15, to: 120 }] },
+      { go: "Go", "go-plus": "Go Plus" }
+    ),
+    "- **Grok 4.7** — usage: Go Plus $15 → $120"
+  );
+});
+
+test("release notes: usage_changed (plans-Form) listet mehrere Pläne auf", () => {
+  assert.equal(
+    renderChange(
+      {
+        type: "usage_changed",
+        model: "GLM-5.3",
+        plans: [
+          { plan: "go", from: 15, to: 30 },
+          { plan: "go-plus", from: null, to: 120 },
+        ],
+      },
+      { go: "Go", "go-plus": "Go Plus" }
+    ),
+    "- **GLM-5.3** — usage: Go $15 → $30, Go Plus ∞ (unlimited) → $120"
+  );
+});
+
+test("release notes: usage_changed (plans-Form) fällt ohne Plannamen auf die Plan-Id zurück", () => {
+  assert.equal(
+    renderChange({ type: "usage_changed", model: "Grok 4.7", plans: [{ plan: "go-plus", from: 15, to: 120 }] }),
+    "- **Grok 4.7** — usage: go-plus $15 → $120"
+  );
+});
+
+test("release notes: historisches usage_changed (ohne plan) bleibt unverändert", () => {
   assert.equal(
     renderChange({ type: "usage_changed", model: "Grok 4.6", from: 15, to: null }),
     "- **Grok 4.6** — usage: **$15** → **∞ (unlimited)**"
-  );
-  assert.equal(
-    renderChange({ type: "usage_changed", model: "GPT 5.6 Luna", from: null, to: 60 }),
-    "- **GPT 5.6 Luna** — usage: **∞ (unlimited)** → **$60**"
   );
 });
 
@@ -122,7 +189,6 @@ test("release notes: capabilities_changed zeigt From/To-Fähigkeiten", () => {
 });
 
 test("release notes: privacy_changed zeigt Stufen (training/ZDR/retention), Retention-true = ZDR", () => {
-  // Regression: retentionDays===true ist ZDR (0 Tage), nicht "true days retention".
   assert.equal(
     renderChange({
       type: "privacy_changed",
@@ -164,6 +230,21 @@ test("release notes: free_added nutzt Namen, free_removed mit Tagen + verfügbar
   );
 });
 
+test("release notes: plan_added nennt Plannamen, Monatspreis und Guthaben", () => {
+  assert.equal(
+    renderChange(
+      { type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 },
+      { go: "Go", "go-plus": "Go Plus" }
+    ),
+    "- **Go Plus** — new plan: $40/month, up to $240 included usage per model"
+  );
+  // Ohne auflösbaren Plannamen fällt der Release-Text auf den Event-Namen zurück.
+  assert.equal(
+    renderChange({ type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 }),
+    "- **Go Plus** — new plan: $40/month, up to $240 included usage per model"
+  );
+});
+
 test("release notes: text-Event rendert englischen Text", () => {
   assert.equal(
     renderChange({ type: "text", lang: { en: "Initial version", de: "Initialversion" } }),
@@ -176,7 +257,7 @@ test("release notes: text-Event rendert englischen Text", () => {
 // ---------------------------------------------------------------------------
 
 function fmtUsage(u) {
-  return u === null ? "∞ (unlimited)" : `$${u}`;
+  return u === null || u === undefined ? "∞ (unlimited)" : `$${u}`;
 }
 
 /** Fragment-Checks pro Change-Typ: Der Release-Text muss alle Kern-Infos enthalten. */
@@ -198,12 +279,21 @@ function assertCovered(notes, c) {
       return;
     case "price_changed":
       has(c.model);
-      has(pricingLine(c.from, c.fields, c.from.usage !== c.to.usage));
-      has(pricingLine(c.to, c.fields, c.from.usage !== c.to.usage));
+      has(pricingLine(c.from, c.fields, usageChanged(c.from.usage, c.to.usage)));
+      has(pricingLine(c.to, c.fields, usageChanged(c.from.usage, c.to.usage)));
       for (const f of c.fields) has(PRICE_FIELD_NAMES[f] ?? f);
       return;
     case "usage_changed":
       has(c.model);
+      if (Array.isArray(c.plans)) {
+        for (const p of c.plans) {
+          has(p.plan);
+          has(fmtUsage(p.from));
+          has(fmtUsage(p.to));
+        }
+        return;
+      }
+      if (c.plan) has(c.plan);
       has(`**${fmtUsage(c.from)}**`);
       has(`**${fmtUsage(c.to)}**`);
       return;
@@ -220,6 +310,11 @@ function assertCovered(notes, c) {
     case "free_added":
       has(c.name ?? c.model);
       return;
+    case "plan_added":
+      has(c.name);
+      has(String(c.priceMonthly));
+      has(String(c.creditsMonthly));
+      return;
     case "free_removed": {
       has(c.name ?? c.model);
       has(c.availableFrom);
@@ -234,9 +329,7 @@ function assertCovered(notes, c) {
 }
 
 test("CHANGELOG.json: Release-Text deckt jeden Change vollständig ab (release text == changelog entry)", () => {
-  const changelog = JSON.parse(
-    readFileSync(join(ROOT, "..", "CHANGELOG.json"), "utf8")
-  );
+  const changelog = JSON.parse(readFileSync(join(ROOT, "..", "CHANGELOG.json"), "utf8"));
   assert.ok(changelog.entries.length > 0, "Changelog darf nicht leer sein");
   for (const entry of changelog.entries) {
     const notes = renderReleaseNotesForEntry(entry);
@@ -257,15 +350,17 @@ test("CHANGELOG.json: Release-Text deckt jeden Change vollständig ab (release t
 test("renderChange: jeder Schema-Change-Typ hat einen Handler (kein JSON-Dump-Fallback)", () => {
   const samples = [
     { type: "text", lang: { en: "Initial version", de: "Initialversion" } },
-    { type: "model_added", model: "GLM-5.3-Flash", pricing: pricing() },
-    { type: "model_removed", model: "Ox Alpha Free", days: 5, pricing: pricing() },
+    { type: "model_added", model: "GLM-5.3-Flash", pricing: pricingMap() },
+    { type: "model_removed", model: "Ox Alpha Free", days: 5, pricing: pricingMap() },
     {
       type: "price_changed",
       model: "DeepSeek V4 Pro",
-      from: pricing(),
-      to: pricing(),
+      from: pricingMap(),
+      to: pricingMap(),
       fields: ["input"],
     },
+    { type: "usage_changed", model: "Grok 4.7", plans: [{ plan: "go-plus", from: 15, to: null }] },
+    { type: "usage_changed", model: "Grok 4.7", plan: "go-plus", from: 15, to: null },
     { type: "usage_changed", model: "Grok 4.6", from: 15, to: null },
     {
       type: "capabilities_changed",
@@ -276,6 +371,7 @@ test("renderChange: jeder Schema-Change-Typ hat einen Handler (kein JSON-Dump-Fa
     { type: "privacy_changed", model: "x", from: { training: true, validUntil: null }, to: { training: false, retentionDays: true, validUntil: null } },
     { type: "free_added", model: "laguna-s-2.1-free", name: "Laguna S 2.1 Free" },
     { type: "free_removed", model: "laguna-s-2.1-free", name: "Laguna S 2.1 Free", availableFrom: "2026-08-05", until: "2026-08-28" },
+    { type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 },
   ];
   for (const c of samples) {
     const line = renderChange(c);
@@ -286,10 +382,11 @@ test("renderChange: jeder Schema-Change-Typ hat einen Handler (kein JSON-Dump-Fa
   }
 });
 
-test("fmtPrice/pricingLine: Nutzungsformatierung bleibt stabil", () => {
+test("fmtPrice/pricingLine: Nutzungsformatierung bleibt stabil (alt + neu)", () => {
   assert.equal(fmtPrice(0.15), "$0.15");
   assert.equal(fmtPrice(0.5), "$0.5");
   assert.equal(fmtPrice(null), "–");
+  // Historische Form (Skalar) bleibt unverändert.
   assert.equal(
     pricingLine({ input: 0.15, output: 0.5, cachedRead: 0.03, cachedWrite: null, usage: 30 }),
     "$0.15 / $0.5 / $0.03 @ $30"
@@ -297,5 +394,10 @@ test("fmtPrice/pricingLine: Nutzungsformatierung bleibt stabil", () => {
   assert.equal(
     pricingLine({ input: 0, output: 0, cachedRead: 0, cachedWrite: 0, usage: null }),
     "$0 / $0 / $0 / $0 @ ∞ (unlimited)"
+  );
+  // Neue Form (Map) nennt die Pläne.
+  assert.equal(
+    pricingLine({ input: 0.15, output: 0.5, cachedRead: 0.03, cachedWrite: null, usage: { go: 30, "go-plus": 120 } }, [], false, { go: "Go", "go-plus": "Go Plus" }),
+    "$0.15 / $0.5 / $0.03 @ Go $30, Go Plus $120"
   );
 });

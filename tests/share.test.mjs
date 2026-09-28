@@ -13,6 +13,15 @@ import solid from "vite-plugin-solid";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "tests", ".ssr");
 
+// Aktiver Plan für die Share-Tests (entspricht `plans[0]` aus data/latest.json).
+const PLAN = {
+  id: "go",
+  name: "Go",
+  priceMonthly: 10,
+  creditsMonthly: 60,
+  sourceUrl: "https://opencode.ai/docs/de/go/",
+};
+
 let ssr;
 
 before(async () => {
@@ -44,12 +53,7 @@ const freeModel = {
   output: 0,
   cachedRead: 0,
   cachedWrite: null,
-  usage: null,
-  multiplier: null,
-  effectiveInput: 0,
-  effectiveOutput: 0,
-  effectiveCachedRead: 0,
-  effectiveCachedWrite: null,
+  usage: { go: null, "go-plus": null },
   pattern: null,
   capabilities: null,
   contextWindow: null,
@@ -63,11 +67,7 @@ const paidModel = {
   input: 1,
   output: 3,
   cachedRead: 0.2,
-  usage: 15,
-  multiplier: 4,
-  effectiveInput: 4,
-  effectiveOutput: 12,
-  effectiveCachedRead: 0.8,
+  usage: { go: 15, "go-plus": 60 },
   pattern: { input: 390, cachedRead: 32500, output: 120 },
 };
 
@@ -78,9 +78,17 @@ test("share-Exports sind verfügbar (fängt fehlende weighted-Exports)", () => {
 });
 
 test("kostenloses Modell rankt per Infinity ganz oben", () => {
-  assert.equal(ssr.shareRequests(freeModel), Infinity);
-  const rows = ssr.topModels([paidModel, freeModel], 5, []);
+  assert.equal(ssr.shareRequests(freeModel, PLAN), Infinity);
+  const rows = ssr.topModels([paidModel, freeModel], 5, PLAN, []);
   assert.equal(rows[0]?.name, "Free Test");
+});
+
+test("Anfragen/Monat sind plan-abhängig (Go vs. Go Plus)", () => {
+  // paidModel: usage go 15, go-plus 60 → mehr inkludierte Nutzung im Plus-Plan,
+  // Listenpreis-Kosten identisch → mehr Anfragen pro Monat.
+  const go = ssr.shareRequests(paidModel, PLAN);
+  const plus = ssr.shareRequests(paidModel, { ...PLAN, id: "go-plus", priceMonthly: 40, creditsMonthly: 240 });
+  assert.ok(plus > go, "Go Plus enthält mehr Nutzung → mehr Anfragen/Monat");
 });
 
 test("Fähigkeiten-Filter mit OR-Semantik wie die Tabelle", () => {
@@ -89,6 +97,6 @@ test("Fähigkeiten-Filter mit OR-Semantik wie die Tabelle", () => {
     name: "Video Test",
     capabilities: { input: ["text", "video"], output: ["text"], reasoning: false, toolCall: false },
   };
-  const filtered = ssr.topModels([paidModel, withVideo], 5, ["video"]);
+  const filtered = ssr.topModels([paidModel, withVideo], 5, PLAN, ["video"]);
   assert.deepEqual(filtered.map((r) => r.name), ["Video Test"]);
 });

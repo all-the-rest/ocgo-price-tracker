@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { renderReleaseNotesForEntry } from "./release-notes.mjs";
+import { renderReleaseNotesForEntry, loadPlans } from "./release-notes.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -24,6 +24,7 @@ function releaseBody(tag) {
 
 function main() {
   const changelog = JSON.parse(readFileSync(join(ROOT, "CHANGELOG.json"), "utf8"));
+  const plans = loadPlans();
   const entries = changelog?.entries ?? [];
   const errors = [];
 
@@ -35,7 +36,7 @@ function main() {
       continue;
     }
     seenTags.add(tag);
-    const notes = renderReleaseNotesForEntry(entry);
+    const notes = renderReleaseNotesForEntry(entry, plans);
     if (notes === null) continue; // keine Änderungen → kein Release erwartet
     const body = releaseBody(tag);
     if (body === null) {

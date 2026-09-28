@@ -2,30 +2,51 @@ import type { Basis, Model, Plan, PriceField } from "./types";
 
 export type { PriceField };
 
-const EFFECTIVE_FIELD: Record<PriceField, keyof Model> = {
-  input: "effectiveInput",
-  output: "effectiveOutput",
-  cachedRead: "effectiveCachedRead",
-  cachedWrite: "effectiveCachedWrite",
-};
+/**
+ * Nutzung eines Modells im gegebenen Plan (Plan-Map, `null` = unbegrenzt).
+ * Die Multiplikator-Rechnung liegt bewusst hier in der UI (nicht mehr
+ * vorberechnet im Snapshot) — sie ist plan-abhängig.
+ */
+export function usageOf(m: Model, plan: Plan): number | null {
+  return m.usage[plan.id] ?? null;
+}
+
+/**
+ * Multiplikator für die Preisbasis „volles Monatsguthaben“:
+ * `plan.creditsMonthly / Nutzung`; `null` bei unbegrenzter Nutzung.
+ */
+export function multiplierOf(m: Model, plan: Plan): number | null {
+  const usage = usageOf(m, plan);
+  return usage === null ? null : plan.creditsMonthly / usage;
+}
 
 /**
  * Preis je Modellfeld für die gewählte Preisbasis:
  * - "list" → Listenpreis (aus der Doku)
- * - "full" → Effektivpreis bei vollem Monatsguthaben (Listenpreis × credits/Nutzung,
- *   vom Scraper vorberechnet)
+ * - "full" → Effektivpreis bei vollem Monatsguthaben
+ *            (Listenpreis × creditsMonthly/Nutzung des Plans)
  * - "paid" → Effektivpreis auf Basis dessen, was man tatsächlich zahlt
- *            (Listenpreis × Monatspreis/Nutzung, z. B. $10 → 1,5× bei $15-Nutzung).
- *            Braucht den Plan; ohne Plan → null.
+ *            (Listenpreis × priceMonthly/Nutzung, z. B. $10 → 1,5× bei
+ *            $15-Nutzung). Beide Effektivbasen brauchen den Plan; unbegrenzte
+ *            Nutzung (`null`) → null.
+ *
+ * Unbegrenzte Nutzung: bei `paid` gibt es keinen Faktor (Nutzung im Nenner
+ * fehlt) → `null`/`–`. Bei `full` bleibt dagegen der **Listenpreis** stehen —
+ * so war es auch vorher, als der Scraper für Gratis-Zeilen `multiplier = null`
+ * und `effective* = input` (= 0) schrieb. Das ist gewollt: gratis ist ein
+ * bekannter Preis, die Spalte zeigt `$0.00` und nicht `–` (analog
+ * `requestCost` = 0 → `$0.00`).
  */
-export function fieldPrice(m: Model, f: PriceField, basis: Basis, plan?: Plan): number | null {
+export function fieldPrice(m: Model, f: PriceField, basis: Basis, plan: Plan): number | null {
   const raw = m[f];
   if (basis === "list") return raw;
+  if (raw === null) return null;
   if (basis === "paid") {
-    if (raw === null || plan == null || m.usage === null) return null;
-    return raw * (plan.priceMonthly / m.usage);
+    const usage = usageOf(m, plan);
+    return usage === null ? null : raw * (plan.priceMonthly / usage);
   }
-  return (m[EFFECTIVE_FIELD[f]] ?? raw) as number | null;
+  const mult = multiplierOf(m, plan);
+  return mult === null ? raw : raw * mult;
 }
 
 /**
@@ -43,11 +64,11 @@ export function fieldPrice(m: Model, f: PriceField, basis: Basis, plan?: Plan): 
  * frischen Token auf Cached-Write (Luna ~28/72, Qwen3.8 Max ~0/100), nicht auf
  * den reinen Input-Preis.
  */
-export function requestCost(m: Model, basis: Basis, plan?: Plan): number | null {
+export function requestCost(m: Model, basis: Basis, plan: Plan): number | null {
   if (!m.pattern) {
     // Kostenlose Modelle (Preise 0, kein dokumentiertes Anfragemuster):
     // Kosten pro Anfrage = 0 statt "-".
-    return m.usage === null ? 0 : null;
+    return usageOf(m, plan) === null ? 0 : null;
   }
   const input = fieldPrice(m, "input", basis, plan);
   const cached = fieldPrice(m, "cachedRead", basis, plan);
@@ -63,18 +84,19 @@ export function requestCost(m: Model, basis: Basis, plan?: Plan): number | null 
 }
 
 /**
- * Anzahl der Anfragen pro Monat: inkl. Nutzung (usage, der im Plan enthaltene
- * $‑Betrag für das Modell) ÷ Kosten pro Anfrage zum Listenpreis. Absichtlich
- * plan-unabhängig — immer auf Listenpreisbasis gerechnet, egal welche
- * Preisbasis die Tabelle gerade zeigt. Unbegrenzte Nutzung (usage = null,
- * kostenlose Modelle) → Infinity (sortiert bei absteigender Sortierung ganz
- * nach oben).
+ * Anzahl der Anfragen pro Monat: die im Plan enthaltene Nutzung für das Modell
+ * (plan-spezifisch) ÷ Kosten pro Anfrage zum **Listenpreis**. Die Kosten sind
+ * absichtlich immer auf Listenpreisbasis gerechnet — die Preisbasis-Umschaltung
+ * der Tabelle darf diese Zahl nicht verändern. Unbegrenzte Nutzung im aktiven
+ * Plan (usage = null, kostenlose Modelle) → Infinity (sortiert bei absteigender
+ * Sortierung ganz nach oben).
  */
-export function requestsPerMonth(m: Model): number | null {
-  if (m.usage === null) return Infinity;
-  const cost = requestCost(m, "list");
+export function requestsPerMonth(m: Model, plan: Plan): number | null {
+  const usage = usageOf(m, plan);
+  if (usage === null) return Infinity;
+  const cost = requestCost(m, "list", plan);
   if (cost === null || cost <= 0) return null;
-  return m.usage / cost;
+  return usage / cost;
 }
 
 export function formatReqPerMonth(n: number, lang: "de" | "en"): string {
