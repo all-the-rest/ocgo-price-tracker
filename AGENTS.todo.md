@@ -235,8 +235,19 @@ Scraper-Regeln, UI-Regeln) — hier nur die getroffenen Entscheidungen samt Begr
 - [x] Fixture-Counts bewusst **nicht** angefasst (`parseHtml: extrahiert 39 Modelle aus dem
   HTML-Dump`, `tests/fixtures/*.html`): deterministisch und korrekt. Ebenso Changelog-EVENT-Zählungen
   (`assert.equal(result.entries.length, 1)`), wo der Test die Eingabe selbst baut.
-- [x] Schwester-Repos (`ai-10-usd`, `cc-price-tracker`, `provider-plans`) auf dieselbe Pin-Klasse
-  geprüft.
+- [x] `freeModels` NICHT mit „nicht leer" erzwingen: **0 kostenlose Zen-Modelle sind ein legitimer
+  Quellstand.** Ein Helper, der das abbricht, baut einen neuen Ausfall, den es vorher nicht gab. Die
+  echte Lücke ist eine andere: nicht erreichbare Zen-Doku **ohne** Vorlauf. Dafür wirft
+  `fetchZenFreeModels` jetzt `ScrapeError` — vorher warnte es und gab ein leeres Ergebnis zurück, das
+  wie „0 Gratis-Modelle" aussah und einen Ausfall als Tatsache ausgab. Die Unterscheidung
+  „nicht lesbar" vs. „leer" ist nur im Fetch möglich, nicht im späteren Helper.
+- [x] `assertNonEmptyCatalog` auf `plans`/`models` beschränkt; für die beiden ist es redundant zu
+  `SnapshotSchema` (dort bereits `.min(1)`). Bewusst als benannter Helper behalten, weil die
+  zod-Meldung den Grund („Doku umgebaut?") nicht nennt — der Fehler soll lesbar sein.
+- [x] Schwester-Repos (`ai-10-usd`, `cc-price-tracker`, `provider-plans`) geprüft: **keine** harten
+  Pins auf generierte Daten. `cc-price-tracker` deckt leere Kataloge schon im Scrape ab (zod
+  `.min(1)` in `SnapshotSchema` + `extractCatalog`), `provider-plans` in `validateVendorData`. Die
+  einzigen Zahlen-Assertions dort sind Fixture-Pins — die bleiben.
 
 ### Verworfen
 - **Zahl auf 11 hochzählen** (Symptomkur): hätte den Test gerettet und beim nächsten echten

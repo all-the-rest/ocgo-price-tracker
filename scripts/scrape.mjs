@@ -639,9 +639,13 @@ export function parseZenFreeModelPrivacy($, idsByName) {
   return privacyById;
 }
 
-async function fetchZenFreeModels(previousFree) {
+export async function fetchZenFreeModelsForTest(previousFree, fetcher = fetch) {
+  return fetchZenFreeModels(previousFree, fetcher);
+}
+
+async function fetchZenFreeModels(previousFree, fetcher = fetch) {
   try {
-    const res = await fetch(ZEN_DOCS_URL, { headers: { "User-Agent": USER_AGENT } });
+    const res = await fetcher(ZEN_DOCS_URL, { headers: { "User-Agent": USER_AGENT } });
     if (!res.ok) throw new ScrapeError(`HTTP ${res.status} bei ${ZEN_DOCS_URL}`);
     const html = await res.text();
     const idsByName = parseZenEndpointIds(html);
@@ -650,6 +654,15 @@ async function fetchZenFreeModels(previousFree) {
       privacyById: parseZenFreeModelPrivacy(cheerio.load(html), idsByName),
     };
   } catch (err) {
+    // Der Quellzustand „0 kostenlose Modelle" ist legitim und darf nicht
+    // abbrechen. Ein NICHT ERREICHBARER Quell ist das nicht: ohne Vorlauf zum
+    // Zurückfallen entstünde sonst ein stilles Null-Datum, das wie eine leere
+    // Gratis-Liste aussieht und einen Parse-Ausfall als Tatsache ausgibt.
+    if (previousFree.length === 0) {
+      throw new ScrapeError(
+        `Zen-Doku nicht erreichbar (${err instanceof Error ? err.message : String(err)}) und kein Vorlauf zum Zurückfallen — 0 Gratis-Modelle wäre hier eine Vermutung, kein Quellstand.`
+      );
+    }
     console.error(
       `[scrape] Warnung: Zen-Doku nicht erreichbar (${err instanceof Error ? err.message : String(err)}); behalte ${previousFree.length} bisherige Einträge.`
     );
@@ -2422,23 +2435,22 @@ export function validateSnapshot(snapshot) {
 }
 
 /**
- * Strukturelle Abdeckungs-Invariante: die drei Kataloge, die diese Seite speist,
- * müssen nach einem Lauf befüllt sein. KEINE festen Zahlen — der Katalog wächst
- * und schrumpft an der Quelle, ein Pin wäre bei jeder legitimen Änderung rot.
- * Der Fehlerfall, den ein Pin sonst abfing, ist der stille Parser-Ausfall: eine
- * umgebaute Doku (Tabelle umbenannt, Überschrift entfernt) liefert 0 Zeilen, und
- * ohne diese Prüfung würde der Lauf einen leeren, schema-validen Snapshot
- * committen und die Seite leeren. Leere Kataloge sind nie korrekt.
+ * Strukturelle Abdeckungs-Invariante für die Kataloge, aus denen die
+ * Preistabelle gespeist wird. KEINE festen Zahlen — der Katalog wächst und
+ * schrumpft an der Quelle, ein Pin wäre bei jeder legitimen Änderung rot.
+ *
+ * `freeModels` ist hier bewusst NICHT enthalten: 0 kostenlose Zen-Modelle sind
+ * ein legitimer Quellzustand. Der echte Ausfall — Zen-Doku unerreichbar OHNE
+ * Vorlauf zum Zurückfallen — wird in `fetchZenFreeModels` abgefangen, wo der
+ * Unterschied zwischen „Quelle sagt: keine" und „Quelle war nicht lesbar"
+ * noch vorhanden ist. Hier wäre beides nicht mehr unterscheidbar.
  */
-export function assertNonEmptyCatalog({ plans, models, freeModels }) {
+export function assertNonEmptyCatalog({ plans, models }) {
   if (!Array.isArray(plans) || plans.length === 0) {
     throw new ScrapeError("Keine Pläne extrahiert — Doku umgebaut?");
   }
   if (!Array.isArray(models) || models.length === 0) {
     throw new ScrapeError("Keine Modelle extrahiert — Doku umgebaut?");
-  }
-  if (!Array.isArray(freeModels) || freeModels.length === 0) {
-    throw new ScrapeError("Keine kostenlosen Zen-Modelle extrahiert — Doku umgebaut?");
   }
 }
 
@@ -2487,7 +2499,8 @@ async function main() {
       privacyById
     );
     // Abdeckung, nicht Pin: leere Kataloge bedeuten einen stillen Parser-Ausfall.
-    assertNonEmptyCatalog({ plans, models, freeModels });
+    // `freeModels` fehlt hier bewusst (0 ist ein legitimer Quellstand).
+    assertNonEmptyCatalog({ plans, models });
 
     // Abgelaufene ZDR-Vereinbarungen → Worst-Case visualisieren.
     // DeepSeek: monatlich erneuert, gilt bis 31. Aug → am 1. Sept ohne

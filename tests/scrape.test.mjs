@@ -18,6 +18,7 @@ import {
   mergeChanges,
   splitChange,
   mergeFreeModels,
+  fetchZenFreeModelsForTest,
   validateSnapshot,
   validateChangelog,
   assertNonEmptyCatalog,
@@ -2265,8 +2266,8 @@ test("parseGermanDate: deutsches Datum → ISO, ungültige Eingaben → null", (
 
 // Keine festen Modell-Zahlen pinnen: der Katalog wächst und schrumpft an der
 // Quelle, ein Pin machte CI bei jeder legitimen Änderung rot (2026-10-02: 10 →
-// 11 Free-Modelle). Stattdessen Struktur-Invarianten — die Abdeckung, die der
-// Pin eigentlich liefern sollte, steckt jetzt im Scrape (`assertNonEmptyCatalog`).
+// 11 Free-Modelle). Stattdessen Struktur-Invarianten; die Abdeckung gegen leere
+// Kataloge steckt im Scrape (`assertNonEmptyCatalog`, `fetchZenFreeModels`).
 test("data/latest.json: usage-Schlüssel == Plan-Ids, Free-Modelle ohne Plan-Feld", () => {
   const data = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "data", "latest.json"), "utf8"));
   const planIds = data.plans.map((p) => p.id);
@@ -2275,9 +2276,8 @@ test("data/latest.json: usage-Schlüssel == Plan-Ids, Free-Modelle ohne Plan-Fel
   for (const m of data.models) {
     assert.deepEqual(Object.keys(m.usage).slice().sort(), planIds.slice().sort(), `${m.name}: usage-Schlüssel`);
   }
-  // Nicht leer, aber ohne Pin: fängt einen stillen Parser-Ausfall (Zen-Doku
-  // umgebaut → 0 Gratis-Zilen) ab, ohne eine legitime Katalogänderung zu treffen.
-  assert.ok(data.freeModels.length > 0, "freeModels darf nicht leer sein");
+  // Kein Pin auf die Anzahl: 0 kostenlose Modelle sind ein legitimer Quellstand
+  // (und die Zen-Doku ist nicht immer erreichbar — dann zählt der Vorlauf).
   for (const f of data.freeModels) {
     for (const key of ["usage", "plan", "plans", "allowances"]) {
       assert.equal(key in f, false, `${f.id}: Free-Modell darf kein ${key}-Feld haben`);
@@ -2293,14 +2293,36 @@ test("data/latest.json: usage-Schlüssel == Plan-Ids, Free-Modelle ohne Plan-Fel
   assert.doesNotThrow(() => assertNonEmptyCatalog(data));
 });
 
-test("assertNonEmptyCatalog: leere Kataloge → ScrapeError (stiller Parser-Ausfall)", () => {
-  const full = {
-    plans: [{ id: "go" }],
-    models: [{ name: "X" }],
-    freeModels: [{ id: "big-pickle" }],
+test("fetchZenFreeModels: nicht erreichbar OHNE Vorlauf → ScrapeError (kein stilles Null-Datum)", async () => {
+  const broken = async () => {
+    throw new Error("ECONNREFUSED");
   };
+  // Ohne Vorlauf: „nicht lesbar" darf nicht wie „0 Gratis-Modelle" aussehen.
+  await assert.rejects(
+    () => fetchZenFreeModelsForTest([], broken),
+    (err) => err instanceof ScrapeError && /nicht erreichbar/.test(err.message)
+  );
+  // Mit Vorlauf: der bekannte Stand wird unverändert zurückgegeben und in
+  // `main()` von `mergeFreeModels` auf IDs gemappt — der Lauf läuft weiter.
+  const kept = await fetchZenFreeModelsForTest([{ id: "big-pickle", availableFrom: "2026-08-05" }], broken);
+  assert.deepEqual(kept.ids, [{ id: "big-pickle", availableFrom: "2026-08-05" }]);
+});
+
+test("fetchZenFreeModels: erreichbar, aber 0 Gratis-Modelle → gültiger Quellstand, kein Fehler", async () => {
+  // Eine Doku, die keine gratis Zeilen mehr führt, ist ein legitimer Zustand.
+  const noFree = async () => ({
+    ok: true,
+    status: 200,
+    text: async () => "<html><body><h2>Endpunkte</h2><table><tbody></tbody></table><h2>Preise</h2><table><tbody><tr><td>Grok 4.7</td><td>$2.00</td></tr></tbody></table></body></html>",
+  });
+  const res = await fetchZenFreeModelsForTest([{ id: "big-pickle" }], noFree);
+  assert.deepEqual(res.ids, [], "keine gratis Zeilen in der Quelle → leere Liste, kein Abbruch");
+});
+
+test("assertNonEmptyCatalog: leere Preis-Kataloge → ScrapeError (stiller Parser-Ausfall)", () => {
+  const full = { plans: [{ id: "go" }], models: [{ name: "X" }] };
   assert.doesNotThrow(() => assertNonEmptyCatalog(full));
-  for (const key of ["plans", "models", "freeModels"]) {
+  for (const key of ["plans", "models"]) {
     for (const bad of [[], null, undefined]) {
       assert.throws(
         () => assertNonEmptyCatalog({ ...full, [key]: bad }),
@@ -2309,13 +2331,7 @@ test("assertNonEmptyCatalog: leere Kataloge → ScrapeError (stiller Parser-Ausf
       );
     }
   }
-  // Genau ein Modell / genau ein Free-Modell ist gültig — die Invariante prüft
-  // Abdeckung, nicht eine Menge (bewusst kein Pin).
-  assert.doesNotThrow(() =>
-    assertNonEmptyCatalog({
-      plans: [{ id: "go" }],
-      models: [{ name: "X" }],
-      freeModels: [{ id: "big-pickle" }],
-    })
-  );
+  // `freeModels` ist bewusst NICHT Teil der Invariante: 0 kostenlose Zen-Modelle
+  // sind ein legitimer Quellstand und dürfen den Lauf nicht abbrechen.
+  assert.doesNotThrow(() => assertNonEmptyCatalog({ ...full, freeModels: [] }));
 });
