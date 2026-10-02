@@ -2421,6 +2421,27 @@ export function validateSnapshot(snapshot) {
   return SnapshotSchema.parse(snapshot);
 }
 
+/**
+ * Strukturelle Abdeckungs-Invariante: die drei Kataloge, die diese Seite speist,
+ * müssen nach einem Lauf befüllt sein. KEINE festen Zahlen — der Katalog wächst
+ * und schrumpft an der Quelle, ein Pin wäre bei jeder legitimen Änderung rot.
+ * Der Fehlerfall, den ein Pin sonst abfing, ist der stille Parser-Ausfall: eine
+ * umgebaute Doku (Tabelle umbenannt, Überschrift entfernt) liefert 0 Zeilen, und
+ * ohne diese Prüfung würde der Lauf einen leeren, schema-validen Snapshot
+ * committen und die Seite leeren. Leere Kataloge sind nie korrekt.
+ */
+export function assertNonEmptyCatalog({ plans, models, freeModels }) {
+  if (!Array.isArray(plans) || plans.length === 0) {
+    throw new ScrapeError("Keine Pläne extrahiert — Doku umgebaut?");
+  }
+  if (!Array.isArray(models) || models.length === 0) {
+    throw new ScrapeError("Keine Modelle extrahiert — Doku umgebaut?");
+  }
+  if (!Array.isArray(freeModels) || freeModels.length === 0) {
+    throw new ScrapeError("Keine kostenlosen Zen-Modelle extrahiert — Doku umgebaut?");
+  }
+}
+
 async function main() {
   try {
     const response = await fetch(SOURCE_URL, {
@@ -2465,6 +2486,8 @@ async function main() {
       goModels,
       privacyById
     );
+    // Abdeckung, nicht Pin: leere Kataloge bedeuten einen stillen Parser-Ausfall.
+    assertNonEmptyCatalog({ plans, models, freeModels });
 
     // Abgelaufene ZDR-Vereinbarungen → Worst-Case visualisieren.
     // DeepSeek: monatlich erneuert, gilt bis 31. Aug → am 1. Sept ohne

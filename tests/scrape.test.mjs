@@ -20,6 +20,7 @@ import {
   mergeFreeModels,
   validateSnapshot,
   validateChangelog,
+  assertNonEmptyCatalog,
   modelKey,
   extractFreeModelsFromDocs,
   parseZenEndpointIds,
@@ -2262,15 +2263,21 @@ test("parseGermanDate: deutsches Datum → ISO, ungültige Eingaben → null", (
 // freeModels bleiben plan-unabhängig.
 // ---------------------------------------------------------------------------
 
-test("data/latest.json: 39 Modelle, usage-Schlüssel == Plan-Ids, 10 Free-Modelle ohne Plan-Feld", () => {
+// Keine festen Modell-Zahlen pinnen: der Katalog wächst und schrumpft an der
+// Quelle, ein Pin machte CI bei jeder legitimen Änderung rot (2026-10-02: 10 →
+// 11 Free-Modelle). Stattdessen Struktur-Invarianten — die Abdeckung, die der
+// Pin eigentlich liefern sollte, steckt jetzt im Scrape (`assertNonEmptyCatalog`).
+test("data/latest.json: usage-Schlüssel == Plan-Ids, Free-Modelle ohne Plan-Feld", () => {
   const data = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "data", "latest.json"), "utf8"));
   const planIds = data.plans.map((p) => p.id);
   assert.deepEqual(planIds, ["go", "go-plus"]);
-  assert.equal(data.models.length, 39);
+  assert.ok(data.models.length > 0, "Katalog darf nicht leer sein");
   for (const m of data.models) {
     assert.deepEqual(Object.keys(m.usage).slice().sort(), planIds.slice().sort(), `${m.name}: usage-Schlüssel`);
   }
-  assert.equal(data.freeModels.length, 10);
+  // Nicht leer, aber ohne Pin: fängt einen stillen Parser-Ausfall (Zen-Doku
+  // umgebaut → 0 Gratis-Zilen) ab, ohne eine legitime Katalogänderung zu treffen.
+  assert.ok(data.freeModels.length > 0, "freeModels darf nicht leer sein");
   for (const f of data.freeModels) {
     for (const key of ["usage", "plan", "plans", "allowances"]) {
       assert.equal(key in f, false, `${f.id}: Free-Modell darf kein ${key}-Feld haben`);
@@ -2283,4 +2290,32 @@ test("data/latest.json: 39 Modelle, usage-Schlüssel == Plan-Ids, 10 Free-Modell
     assert.equal("holidays" in rule, false, `${model}: kein holidays ohne Quellenangabe`);
   }
   assert.doesNotThrow(() => validateSnapshot(data));
+  assert.doesNotThrow(() => assertNonEmptyCatalog(data));
+});
+
+test("assertNonEmptyCatalog: leere Kataloge → ScrapeError (stiller Parser-Ausfall)", () => {
+  const full = {
+    plans: [{ id: "go" }],
+    models: [{ name: "X" }],
+    freeModels: [{ id: "big-pickle" }],
+  };
+  assert.doesNotThrow(() => assertNonEmptyCatalog(full));
+  for (const key of ["plans", "models", "freeModels"]) {
+    for (const bad of [[], null, undefined]) {
+      assert.throws(
+        () => assertNonEmptyCatalog({ ...full, [key]: bad }),
+        (err) => err instanceof ScrapeError && /Doku umgebaut/.test(err.message),
+        `${key}=${JSON.stringify(bad)} muss ScrapeError werfen`
+      );
+    }
+  }
+  // Genau ein Modell / genau ein Free-Modell ist gültig — die Invariante prüft
+  // Abdeckung, nicht eine Menge (bewusst kein Pin).
+  assert.doesNotThrow(() =>
+    assertNonEmptyCatalog({
+      plans: [{ id: "go" }],
+      models: [{ name: "X" }],
+      freeModels: [{ id: "big-pickle" }],
+    })
+  );
 });
