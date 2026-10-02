@@ -82,7 +82,41 @@ export interface Model {
   privacy: Privacy | null;
 }
 
-export type PeakHours = Record<string, [number, number][]>;
+/**
+ * Peak-/Off-Peak-Regel eines Modells (Datenform der Spezifikation §1).
+ *
+ * - `timezone` = IANA-Zone, in der der Wochentag bewertet wird (DeepSeek:
+ *   `Asia/Shanghai`). Kein Offset, kein Label.
+ * - `peak.days` / `offPeak.days` = ISO-Wochentage (1 = Montag … 7 = Sonntag),
+ *   disjunkt und zusammen {1..7}.
+ * - `peak.windowsUtc` = UTC-Stundenfenster `[start, end]` (0 ≤ start < end ≤ 24),
+ *   nicht überlappend, aufsteigend; gelten an `peak.days`.
+ * - `offPeak.allDay` ist immer `true` (ganztägig Off-Peak an `offPeak.days`).
+ * - `holidays` wird nur gesetzt, wenn die Quelle Feiertage nennt; `calendar`
+ *   ist ein Schlüssel in `holidayCalendars`.
+ * - `effectiveFrom` optional, ISO 8601 mit Offset.
+ */
+export interface PeakRule {
+  timezone: string;
+  effectiveFrom?: string;
+  peak: { days: number[]; windowsUtc: Array<[number, number]> };
+  offPeak: { days: number[]; allDay: true };
+  holidays?: { policy: "off-peak"; calendar: string };
+}
+
+/** Öffentlicher Feiertagskalender, referenziert von einer `PeakRule`. */
+export interface HolidayCalendar {
+  /** Aufsteigende ISO-Datumsstrings (lokale Kalendertage der Regel-Zone). */
+  dates: string[];
+  /** Letzter Kalendertag, den die Feiertagsquelle abdeckt (ISO-Datum). */
+  coveredThrough: string;
+}
+
+/** Modell-Normalform (Scraper/UI) → Peak-Regel. */
+export type PeakRules = Record<string, PeakRule>;
+
+/** Kalender-Schlüssel (z. B. `china`) → Feiertagskalender. */
+export type HolidayCalendars = Record<string, HolidayCalendar>;
 
 /**
  * Ein Abonnement-Plan (analog cc-price-tracker `Plan`). OpenCode Go hat zwei
@@ -105,7 +139,12 @@ export interface PriceData {
   capabilitiesSourceUrl: string;
   sourceLang: string;
   plans: Plan[];
-  peakHours: PeakHours;
+  peakRules: PeakRules;
+  /**
+   * Optional: nur befüllt, wenn die Quelle Feiertage nennt. Die OpenCode-Doku
+   * nennt keine → das Feld fehlt in `data/latest.json` (strikt quellenbindend).
+   */
+  holidayCalendars?: HolidayCalendars;
   models: Model[];
   freeModels: FreeModel[];
 }

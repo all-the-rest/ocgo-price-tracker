@@ -29,8 +29,12 @@ import {
   computeCapabilityDiff,
   enrichFreeModels,
   parseDocsUsageBonuses,
-  parsePeakHours,
+  parsePeakRules,
   parsePeakRanges,
+  parseWeekdayScope,
+  parseWeekendScope,
+  parseHolidays,
+  parseEffectiveFrom,
   parsePrivacyNotes,
   validUntilFor,
   ScrapeError,
@@ -416,12 +420,54 @@ test("parseHtml: Nutzungs-Zelle mit Doku-Bonus (del/strong/small) → aktueller 
 });
 
 // ---------------------------------------------------------------------------
-// Anfragemuster-Auflösung / Peaks
+// Peak-Regeln (datengetrieben: Wochentags-Scope, Wochenende, Feiertage)
 // ---------------------------------------------------------------------------
 
-test("parsePeakHours: ordnet den gemeinsamen Flash/Pro-Hinweis beiden Modellen zu", () => {
+test("parseWeekdayScope: deutsch (montags bis freitags / werktags / Bereich)", () => {
+  assert.deepEqual(parseWeekdayScope("Die Peak-Zeiten sind montags bis freitags von 01:00-04:00 UTC"), [1, 2, 3, 4, 5]);
+  assert.deepEqual(parseWeekdayScope("werktags 01:00-04:00 UTC"), [1, 2, 3, 4, 5]);
+  assert.deepEqual(parseWeekdayScope("montags bis samstags"), [1, 2, 3, 4, 5, 6]);
+});
+
+test("parseWeekdayScope: englisch (Monday through Friday / Mon-Fri / weekdays)", () => {
+  assert.deepEqual(parseWeekdayScope("Peak hours are 01:00-04:00 UTC, Monday through Friday"), [1, 2, 3, 4, 5]);
+  assert.deepEqual(parseWeekdayScope("Mon-Fri, 01:00-04:00 UTC"), [1, 2, 3, 4, 5]);
+  assert.deepEqual(parseWeekdayScope("weekdays 06:00-10:00 UTC"), [1, 2, 3, 4, 5]);
+});
+
+test("parseWeekdayScope: kein Scope → null (Aufrufer bricht rot ab)", () => {
+  assert.equal(parseWeekdayScope("Peak hours are 01:00-04:00 UTC; all other hours are Off-Peak."), null);
+});
+
+test("parseWeekendScope: deutsch und englisch → Sa/So", () => {
+  assert.deepEqual(parseWeekendScope("alle anderen Zeiten, einschließlich der Wochenenden, sind Off-Peak"), [6, 7]);
+  assert.deepEqual(parseWeekendScope("Saturday and Sunday are off-peak"), [6, 7]);
+  assert.deepEqual(parseWeekendScope("sa/so durchgehend Off-Peak"), [6, 7]);
+  assert.equal(parseWeekendScope("keine Wochenend-Regel"), null);
+});
+
+test("parseHolidays: chinesische Feiertage (de/en) → Kalender china", () => {
+  assert.deepEqual(parseHolidays("gilt außer an chinesischen Feiertagen"), { policy: "off-peak", calendar: "china" });
+  assert.deepEqual(parseHolidays("excluding Chinese public holidays"), { policy: "off-peak", calendar: "china" });
+  assert.equal(parseHolidays("Peak montags bis freitags 01:00-04:00 UTC"), null);
+});
+
+test("parseHolidays: Feiertags-Aussage ohne Land → ScrapeError", () => {
+  assert.throws(() => parseHolidays("excluding public holidays"), ScrapeError);
+  assert.throws(() => parseHolidays("außer an Feiertagen"), ScrapeError);
+});
+
+test("parseEffectiveFrom: englische DeepSeek-Formulierung → ISO mit Offset", () => {
+  assert.equal(
+    parseEffectiveFrom("Effective 00:00 (Beijing Time) on Sunday, August 23, 2026", "Asia/Shanghai"),
+    "2026-08-23T00:00:00+08:00"
+  );
+  assert.equal(parseEffectiveFrom("Peak montags bis freitags 01:00-04:00 UTC", "Asia/Shanghai"), undefined);
+});
+
+test("parsePeakRules: deutscher Flash/Pro-Hinweis → gemeinsame Regel (Mo–Fr, Wochenende, Peking-Zeit)", () => {
   const $ = cheerio.load(
-    "<main><p><strong>DeepSeek V4 Flash / Pro:</strong> Peak hours are 01:00-04:00 and 06:00-10:00 UTC; all other hours are Off-Peak.</p></main>"
+    "<main><p><strong>DeepSeek V4 Flash / Pro:</strong> Die Peak-Zeiten sind montags bis freitags von 01:00-04:00 und 06:00-10:00 UTC; alle anderen Zeiten, einschließlich der Wochenenden, sind Off-Peak.</p></main>"
   );
   const models = [
     { name: "DeepSeek V4 Flash", tier: "Off-Peak" },
@@ -429,71 +475,118 @@ test("parsePeakHours: ordnet den gemeinsamen Flash/Pro-Hinweis beiden Modellen z
     { name: "DeepSeek V4 Pro", tier: "Off-Peak" },
     { name: "DeepSeek V4 Pro", tier: "Peak" },
   ];
-  assert.deepEqual(parsePeakHours($, models), {
-    deepseekv4flash: [[1, 4], [6, 10]],
-    deepseekv4pro: [[1, 4], [6, 10]],
-  });
+  const expected = {
+    timezone: "Asia/Shanghai",
+    peak: { days: [1, 2, 3, 4, 5], windowsUtc: [[1, 4], [6, 10]] },
+    offPeak: { days: [6, 7], allDay: true },
+    // Kein `holidays`: die OpenCode-Doku nennt an der Peak-Notiz keine Feiertage
+    // (strikt quellenbindend, kein Override).
+  };
+  assert.deepEqual(parsePeakRules($, models), { deepseekv4flash: expected, deepseekv4pro: expected });
 });
 
-test("parsePeakHours: zwei Notizen / zwei Provider erhalten je ihr eigenes Fenster", () => {
+test("parsePeakRules: englischer Hinweis mit Feiertagen → holidays china", () => {
+  const $ = cheerio.load(
+    "<main><p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday through Friday, excluding Chinese public holidays. All other hours are off-peak, including weekends.</p></main>"
+  );
+  const rules = parsePeakRules($, [{ name: "DeepSeek V4 Flash", tier: "Peak" }]);
+  assert.deepEqual(rules.deepseekv4flash.holidays, { policy: "off-peak", calendar: "china" });
+  assert.deepEqual(rules.deepseekv4flash.peak.days, [1, 2, 3, 4, 5]);
+  assert.deepEqual(rules.deepseekv4flash.offPeak.days, [6, 7]);
+});
+
+test("parsePeakRules: zwei Notizen erhalten je ihre eigene Regel", () => {
   const $ = cheerio.load(
     "<main>" +
-      "<p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC; all other hours are Off-Peak.</p>" +
-      "<p><strong>Grok 4.7:</strong> Peak hours are 08:00-12:00 UTC; all other hours are Off-Peak.</p>" +
+      "<p><strong>DeepSeek Coder:</strong> Peak hours are 01:00-04:00 UTC, Monday through Friday.</p>" +
+      "<p><strong>DeepSeek R1:</strong> Peak hours are 08:00-12:00 UTC, Monday through Friday.</p>" +
       "</main>"
   );
   const models = [
-    { name: "DeepSeek V4 Flash", tier: "Off-Peak" },
-    { name: "DeepSeek V4 Flash", tier: "Peak" },
-    { name: "Grok 4.7", tier: "Off-Peak" },
-    { name: "Grok 4.7", tier: "Peak" },
+    { name: "DeepSeek Coder", tier: "Peak" },
+    { name: "DeepSeek R1", tier: "Peak" },
   ];
-  assert.deepEqual(parsePeakHours($, models), {
-    deepseekv4flash: [[1, 4]],
-    "grok4.7": [[8, 12]],
+  const rules = parsePeakRules($, models);
+  assert.deepEqual(rules.deepseekcoder.peak.windowsUtc, [[1, 4]]);
+  assert.deepEqual(rules.deepseekr1.peak.windowsUtc, [[8, 12]]);
+});
+
+test("parsePeakRules: Notiz ohne Wochentags-Scope → ScrapeError", () => {
+  const $ = cheerio.load(
+    "<main><p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC; all other hours are Off-Peak.</p></main>"
+  );
+  assert.throws(() => parsePeakRules($, [{ name: "DeepSeek V4 Flash", tier: "Peak" }]), (err) => {
+    assert.ok(err instanceof ScrapeError);
+    assert.match(err.message, /Wochentags-Scope/);
+    return true;
   });
 });
 
-test("parsePeakHours: Peak-Modell ohne Notiz → ScrapeError nennt das Modell", () => {
+test("parsePeakRules: Peak-Modell ohne Notiz → ScrapeError nennt das Modell", () => {
   const $ = cheerio.load(
-    "<main><p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC.</p></main>"
+    "<main><p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC, Monday through Friday.</p></main>"
   );
   const models = [
     { name: "DeepSeek V4 Flash", tier: "Peak" },
     { name: "Grok 4.7", tier: "Peak" },
   ];
-  assert.throws(() => parsePeakHours($, models), (err) => {
+  assert.throws(() => parsePeakRules($, models), (err) => {
     assert.ok(err instanceof ScrapeError);
     assert.match(err.message, /Grok 4\.7/);
     return true;
   });
 });
 
-test("parsePeakHours: Peak-/UTC-Notiz ohne Peak-Modell → ScrapeError", () => {
+test("parsePeakRules: Peak-/UTC-Notiz ohne Peak-Modell → ScrapeError", () => {
   const $ = cheerio.load(
     "<main>" +
-      "<p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC.</p>" +
+      "<p><strong>DeepSeek Coder:</strong> Peak hours are 01:00-04:00 UTC, Monday through Friday.</p>" +
       "<p><strong>Alle Peak-Preise:</strong> gelten täglich von 00:00-23:00 UTC für Neukunden.</p>" +
       "</main>"
   );
-  const models = [{ name: "DeepSeek V4 Flash", tier: "Peak" }];
-  assert.throws(() => parsePeakHours($, models), ScrapeError);
+  assert.throws(() => parsePeakRules($, [{ name: "DeepSeek Coder", tier: "Peak" }]), ScrapeError);
 });
 
-test("parsePeakHours: zwei Notizen mit widersprüchlichen Fenstern → ScrapeError", () => {
+test("parsePeakRules: Wochenend-Angabe widerspricht dem Peak-Scope → ScrapeError", () => {
+  const $ = cheerio.load(
+    "<main><p><strong>DeepSeek Coder:</strong> Peak 01:00-04:00 UTC montags bis samstags; Samstag und Sonntag sind Off-Peak.</p></main>"
+  );
+  assert.throws(
+    () => parsePeakRules($, [{ name: "DeepSeek Coder", tier: "Peak" }]),
+    (err) => {
+      assert.ok(err instanceof ScrapeError);
+      assert.match(err.message, /Wochenend-Angabe/);
+      return true;
+    }
+  );
+});
+
+test("parsePeakRules: zwei Notizen mit widersprüchlichen Regeln → ScrapeError", () => {
   const $ = cheerio.load(
     "<main>" +
-      "<p><strong>DeepSeek V4 Flash:</strong> Peak hours are 01:00-04:00 UTC.</p>" +
-      "<p><strong>DeepSeek V4 Flash:</strong> Peak hours are 06:00-10:00 UTC.</p>" +
+      "<p><strong>DeepSeek Coder:</strong> Peak hours are 01:00-04:00 UTC, Monday through Friday.</p>" +
+      "<p><strong>DeepSeek Coder:</strong> Peak hours are 06:00-10:00 UTC, Monday through Friday.</p>" +
       "</main>"
   );
-  const models = [{ name: "DeepSeek V4 Flash", tier: "Peak" }];
-  assert.throws(() => parsePeakHours($, models), (err) => {
+  assert.throws(() => parsePeakRules($, [{ name: "DeepSeek Coder", tier: "Peak" }]), (err) => {
     assert.ok(err instanceof ScrapeError);
-    assert.match(err.message, /Widersprüchliche Peak-Zeitfenster/);
-    assert.match(err.message, /DeepSeek V4 Flash/);
+    assert.match(err.message, /Widersprüchliche Peak-Regeln/);
+    assert.match(err.message, /DeepSeek Coder/);
     return true;
   });
+});
+
+test("parsePeakRules: die Quelle nennt keine Feiertage → kein holidays-Feld", () => {
+  const $ = cheerio.load(
+    "<main><p><strong>DeepSeek V4 Flash / Pro:</strong> Die Peak-Zeiten sind montags bis freitags von 01:00-04:00 und 06:00-10:00 UTC; alle anderen Zeiten, einschließlich der Wochenenden, sind Off-Peak.</p></main>"
+  );
+  const rules = parsePeakRules($, [
+    { name: "DeepSeek V4 Flash", tier: "Peak" },
+    { name: "DeepSeek V4 Pro", tier: "Peak" },
+  ]);
+  for (const rule of Object.values(rules)) {
+    assert.equal("holidays" in rule, false, "kein Feiertags-Override (strikt quellenbindend)");
+  }
 });
 
 test("parsePeakRanges: ungültiges Fenster → ScrapeError", () => {
@@ -1536,7 +1629,8 @@ test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () =
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
-    peakHours: {},
+    peakRules: {},
+    holidayCalendars: {},
     models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
     freeModels: [
       {
@@ -1563,7 +1657,8 @@ test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
-    peakHours: {},
+    peakRules: {},
+    holidayCalendars: {},
     models: [withoutPattern],
     freeModels: [],
   };
@@ -1578,7 +1673,8 @@ test("validateSnapshot: kostenlose Zeile (Preise 0, usage null) ohne Token-Stats
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
-    peakHours: {},
+    peakRules: {},
+    holidayCalendars: {},
     models: [
       {
         name: "Ox Alpha Free",
@@ -1607,7 +1703,8 @@ test("validateSnapshot: kostenloses Modell ohne privacy bricht", () => {
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
-    peakHours: {},
+    peakRules: {},
+    holidayCalendars: {},
     models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
     freeModels: [{ id: "big-pickle", fullId: "opencode/big-pickle", availableFrom: "2026-08-05", capabilities: null, contextWindow: null }],
   };
@@ -1622,7 +1719,8 @@ test("validateSnapshot: kostenloses Modell ohne fullId bricht", () => {
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
-    peakHours: {},
+    peakRules: {},
+    holidayCalendars: {},
     models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
     freeModels: [
       {
@@ -1645,7 +1743,8 @@ test("validateSnapshot: Plan-Id ist frei (kein enum) — künftige Pläne validi
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: [...SNAPSHOT_PLANS, { id: "go-ultra", name: "Go Ultra", priceMonthly: 100, creditsMonthly: 1000, sourceUrl: "https://opencode.ai/docs/de/go/" }],
-    peakHours: {},
+    peakRules: {},
+    holidayCalendars: {},
     // Ein künftiger Plan liefert für jedes Modell eine Nutzung — die
     // usage-Schlüssel müssen exakt den Plan-Ids entsprechen. Der Wert spiegelt
     // die bestehende go-Nutzung (kostenlose Zeilen bleiben null).
@@ -1663,7 +1762,8 @@ test("validateSnapshot: usage-Schlüssel müssen exakt die Plan-Ids sein", () =>
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
-    peakHours: {},
+    peakRules: {},
+    holidayCalendars: {},
     models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
     freeModels: [],
   };
@@ -1686,7 +1786,8 @@ test("validateSnapshot: Free-Modelle tragen keine Plan-Dimension (usage/plan/all
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
-    peakHours: {},
+    peakRules: {},
+    holidayCalendars: {},
     models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
     freeModels: [
       {
@@ -1704,6 +1805,77 @@ test("validateSnapshot: Free-Modelle tragen keine Plan-Dimension (usage/plan/all
   for (const key of ["usage", "plan", "plans", "allowances"]) {
     assert.throws(() => validateSnapshot(makeSnapshot({ [key]: key === "usage" ? { go: 60 } : "go" })));
   }
+});
+
+test("validateSnapshot: peakRules + holidayCalendars (Invarianten §1)", () => {
+  const base = () => ({
+    fetchedAt: "2026-08-05T00:00:00.000Z",
+    sourceUrl: "https://opencode.ai/docs/de/go/",
+    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    capabilitiesSourceUrl: "https://models.dev",
+    sourceLang: "de",
+    plans: SNAPSHOT_PLANS,
+    peakRules: {},
+    holidayCalendars: {},
+    models: parseHtml(fixture).map((m) => ({ ...m, contextWindow: null })),
+    freeModels: [],
+  });
+  const rule = () => ({
+    timezone: "Asia/Shanghai",
+    peak: { days: [1, 2, 3, 4, 5], windowsUtc: [[1, 4], [6, 10]] },
+    offPeak: { days: [6, 7], allDay: true },
+  });
+  const withRule = (mutate) => {
+    const snapshot = base();
+    const r = rule();
+    mutate(r, snapshot);
+    snapshot.peakRules = { deepseekv4flash: r };
+    return snapshot;
+  };
+  // Gültig mit und ohne Feiertags-Referenz; `holidayCalendars` ist optional und
+  // darf ganz fehlen (die Quelle nennt keine Feiertage).
+  assert.doesNotThrow(() => validateSnapshot(withRule(() => {})));
+  const noCalendars = withRule(() => {});
+  delete noCalendars.holidayCalendars;
+  assert.doesNotThrow(() => validateSnapshot(noCalendars));
+  assert.doesNotThrow(() =>
+    validateSnapshot(
+      withRule((r, s) => {
+        r.holidays = { policy: "off-peak", calendar: "china" };
+        s.holidayCalendars = { china: { dates: ["2026-01-01", "2026-10-07"], coveredThrough: "2026-12-31" } };
+      })
+    )
+  );
+  // `holidays.calendar` muss existieren.
+  assert.throws(
+    () => validateSnapshot(withRule((r) => { r.holidays = { policy: "off-peak", calendar: "china" }; })),
+    /fehlt in holidayCalendars/
+  );
+  // offPeak.days leer / Duplikate / disjunkt / Union {1..7}.
+  assert.throws(() => validateSnapshot(withRule((r) => { r.peak.days = [1, 2, 3, 4, 5, 6, 7]; r.offPeak.days = []; })));
+  assert.throws(() => validateSnapshot(withRule((r) => { r.peak.days = [1, 1, 2, 3, 4, 5]; })));
+  assert.throws(() => validateSnapshot(withRule((r) => { r.offPeak.days = [5, 6, 7]; })));
+  assert.throws(() => validateSnapshot(withRule((r) => { r.peak.days = [1, 2]; r.offPeak.days = [6, 7]; })));
+  // timezone muss ein gültiger IANA-Name sein.
+  assert.throws(() => validateSnapshot(withRule((r) => { r.timezone = "Mars/Olympus"; })));
+  // Fenster: Überlappung, Reihenfolge, start < end, nicht leer.
+  assert.throws(() => validateSnapshot(withRule((r) => { r.peak.windowsUtc = [[1, 6], [4, 10]]; })));
+  assert.throws(() => validateSnapshot(withRule((r) => { r.peak.windowsUtc = [[6, 10], [1, 4]]; })));
+  assert.throws(() => validateSnapshot(withRule((r) => { r.peak.windowsUtc = [[4, 4]]; })));
+  assert.throws(() => validateSnapshot(withRule((r) => { r.peak.windowsUtc = []; })));
+  // Feiertagskalender: streng aufsteigend, alle ≤ coveredThrough.
+  const withCal = (cal) => {
+    const s = base();
+    s.holidayCalendars = { china: cal };
+    return s;
+  };
+  assert.throws(() =>
+    validateSnapshot(withCal({ dates: ["2026-10-07", "2026-01-01"], coveredThrough: "2026-12-31" }))
+  );
+  assert.throws(() =>
+    validateSnapshot(withCal({ dates: ["2026-10-07", "2027-01-01"], coveredThrough: "2026-12-31" }))
+  );
+  assert.throws(() => validateSnapshot(withCal({ dates: [], coveredThrough: "2026-12-31" })));
 });
 
 test("buildChanges: free_added/free_removed sind plan-unabhängig (kein plan/plans)", () => {
@@ -2103,6 +2275,12 @@ test("data/latest.json: 39 Modelle, usage-Schlüssel == Plan-Ids, 10 Free-Modell
     for (const key of ["usage", "plan", "plans", "allowances"]) {
       assert.equal(key in f, false, `${f.id}: Free-Modell darf kein ${key}-Feld haben`);
     }
+  }
+  // Strikt quellenbindend: die OpenCode-Doku nennt keine Feiertage → kein
+  // Kalender, keine Regel referenziert einen.
+  assert.equal("holidayCalendars" in data, false, "data/latest.json darf holidayCalendars nicht schreiben");
+  for (const [model, rule] of Object.entries(data.peakRules)) {
+    assert.equal("holidays" in rule, false, `${model}: kein holidays ohne Quellenangabe`);
   }
   assert.doesNotThrow(() => validateSnapshot(data));
 });

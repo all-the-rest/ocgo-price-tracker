@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createSignal, For, onMount } from "solid-js";
-import type { Model, PeakHours, Plan } from "../types";
+import type { Model, PeakRules, Plan } from "../types";
 import type { CapId } from "../capabilities";
 import type { Lang } from "../i18n";
 import { HEADING_IDS } from "../headings";
@@ -26,7 +26,7 @@ interface ShareDialogProps {
   dark: boolean;
   fetchedAt: string;
   site: string;
-  peakHours?: PeakHours;
+  peakRules?: PeakRules;
   /** Page capability filter (OR-semantics, like the table): card default, always in sync. */
   caps: CapId[];
   /** Active plan — the request counts (and thus the card) are plan-dependent. */
@@ -124,7 +124,7 @@ export default function ShareDialog(props: ShareDialogProps) {
       fetchedAt: props.fetchedAt,
       site: props.site,
       planName: props.plan.name,
-      peakHours: props.peakHours,
+      peakRules: props.peakRules,
     }),
   );
 

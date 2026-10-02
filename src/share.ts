@@ -1,6 +1,6 @@
-import type { Capabilities, Model, PeakHours, Plan } from "./types";
+import type { Capabilities, Model, PeakRule, PeakRules, Plan } from "./types";
 import { formatReqPerMonth, requestsPerMonth } from "./weighted";
-import { PEAK_PRICING_RULES } from "./config/peakPricing";
+import { formatDayList, formatDayScope, normalizePeakModel, peakRuleFor, timezoneLabel } from "./config/peakPricing";
 
 export type ShareMetric = "requests";
 export type ShareSize = "og" | "twitter" | "ig" | "story";
@@ -62,11 +62,11 @@ export const shareI18n = {
     shareClose: "Schließen",
     shareDays: ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"],
     shareDaily: "täglich",
-    shareBeijingTz: "Peking-Zeit",
     shareConstraintTpl: "{tier} · {windows} UTC · {scope}",
-    shareRulesTpl: "Peak {windows} UTC · {scope} · {weekend} · Peak = 2× Off-Peak",
+    shareRulesTpl: "Peak {windows} UTC · {scope}",
     shareWeekendOffTpl: "{days} durchgehend Off-Peak",
     shareRulesNoWindows: "Keine Peak-Zeiten dokumentiert (Quellenstand)",
+    sharePeakFactor: "Peak = 2× Off-Peak",
     shareUpdatedTpl: "Stand {datetime} UTC",
   },
   en: {
@@ -87,11 +87,11 @@ export const shareI18n = {
     shareClose: "Close",
     shareDays: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
     shareDaily: "daily",
-    shareBeijingTz: "Beijing time",
     shareConstraintTpl: "{tier} · {windows} UTC · {scope}",
-    shareRulesTpl: "Peak {windows} UTC · {scope} · {weekend} · peak = 2× off-peak",
+    shareRulesTpl: "Peak {windows} UTC · {scope}",
     shareWeekendOffTpl: "{days} off-peak all day",
     shareRulesNoWindows: "No peak windows documented (source state)",
+    sharePeakFactor: "peak = 2× off-peak",
     shareUpdatedTpl: "As of {datetime} UTC",
   },
 } as const;
@@ -187,7 +187,7 @@ export interface ShareCardInput {
   site: string;
   /** Name des aktiven Plans — die Werte sind plan-abhängig, das Bild darf nicht plan-ambiguous sein. */
   planName: string;
-  peakHours?: PeakHours;
+  peakRules?: PeakRules;
 }
 
 export const isPortraitSize = (size: ShareSize): boolean => size === "ig" || size === "story";
@@ -214,13 +214,13 @@ export function shareUpdatedLine(lang: "de" | "en", fetchedAt: string): string {
   return shareI18n[lang].shareUpdatedTpl.replace("{datetime}", formatShareDateTime(fetchedAt, lang));
 }
 /** Local copy of the PeakIndicator normal form (share.ts must stay Solid-free). */
-export const normalizeShareModel = (name: string): string => name.toLowerCase().replace(/[\s-]+/g, "");
+export const normalizeShareModel = normalizePeakModel;
 
 export const isSharePeakTier = (tier: string | null): boolean =>
   /^(?:off[- ]?peak|peak)$/i.test(tier ?? "");
 
-export function peakRangesForShare(peakHours: PeakHours | undefined, name: string): [number, number][] {
-  return peakHours?.[normalizeShareModel(name)] ?? [];
+export function peakRuleForShare(peakRules: PeakRules | undefined, name: string): PeakRule | undefined {
+  return peakRuleFor(peakRules, name);
 }
 
 function formatShareWindows(ranges: [number, number][]): string {
@@ -228,43 +228,31 @@ function formatShareWindows(ranges: [number, number][]): string {
 }
 
 /**
- * Wochentags-Abdeckung der Peak-Fenster, abgeleitet aus der Quelle
- * (`PEAK_PRICING_RULES.weekendOffPeakDaysBeijing`): Komplement der
- * Off-Peak-Wochenendtage. Kein Wochenend-Off-Peak → "täglich"/"daily"
- * (immer, 24/7). Die Quelle nennt die Tage explizit — der Text folgt ihr,
- * statt sie fest zu verdrahten.
+ * Wochentags-Abdeckung der Peak-Fenster — generiert aus `rule.peak.days`
+ * (Quelle: Daten, keine hartkodierte Prosa). Kein Off-Peak-Tag → "täglich".
  */
-export function shareWeekdayScope(lang: "de" | "en"): string {
+export function shareWeekdayScope(lang: "de" | "en", rule: PeakRule | undefined): string {
   const t = shareI18n[lang];
-  const weekend = [...PEAK_PRICING_RULES.weekendOffPeakDaysBeijing].sort((a, b) => a - b);
-  if (weekend.length === 0) return t.shareDaily;
-  const days = t.shareDays;
-  const weekdays = [0, 1, 2, 3, 4, 5, 6].filter((d) => !weekend.includes(d as 0 | 6));
-  if (weekdays.length === 0) return t.shareDaily;
-  const contiguous =
-    weekdays.length > 1 && weekdays.every((d, i) => i === 0 || d === weekdays[i - 1] + 1);
-  const range = contiguous
-    ? `${days[weekdays[0] as 0]}–${days[weekdays[weekdays.length - 1] as 0]}`
-    : weekdays.map((d) => days[d as 0]).join(", ");
-  return `${range} (${t.shareBeijingTz})`;
+  if (!rule) return t.shareDaily;
+  const dayScope = formatDayScope([...rule.peak.days].sort((a, b) => a - b), lang);
+  if (dayScope === t.shareDaily) return dayScope;
+  return `${dayScope} (${timezoneLabel(rule.timezone, lang)})`;
 }
 
-/** "Sa/So" aus den Quell-Wochenendtagen (gleiche Quelle wie der Scope). */
-export function shareWeekendDays(lang: "de" | "en"): string {
-  const t = shareI18n[lang];
-  const weekend = [...PEAK_PRICING_RULES.weekendOffPeakDaysBeijing].sort((a, b) => a - b);
-  return weekend.map((d) => t.shareDays[d]).join("/");
+/** "Sa/So" aus den Off-Peak-Tagen der Regel (gleiche Quelle wie der Scope). */
+export function shareWeekendDays(lang: "de" | "en", rule: PeakRule | undefined): string {
+  return rule ? formatDayList(rule.offPeak.days, lang) : "";
 }
 
 /**
  * Single constraint line per row (portrait cards only): tier badge +
  * peak window (UTC) + weekday scope. Never a bare "OFF-PEAK".
  */
-export function shareConstraintLine(tier: string, ranges: [number, number][], lang: "de" | "en"): string {
+export function shareConstraintLine(tier: string, rule: PeakRule, lang: "de" | "en"): string {
   return shareI18n[lang].shareConstraintTpl
     .replace("{tier}", tier)
-    .replace("{windows}", formatShareWindows(ranges))
-    .replace("{scope}", shareWeekdayScope(lang));
+    .replace("{windows}", formatShareWindows(rule.peak.windowsUtc))
+    .replace("{scope}", shareWeekdayScope(lang, rule));
 }
 
 /**
@@ -272,24 +260,28 @@ export function shareConstraintLine(tier: string, ranges: [number, number][], la
  * UTC window + weekday scope. If the source documents no windows, mark the
  * line as source-state instead of guessing.
  */
-export function shareRulesLine(lang: "de" | "en", ranges: [number, number][] | null): string {
+export function shareRulesLine(lang: "de" | "en", rule: PeakRule | null): string {
   const t = shareI18n[lang];
-  if (!ranges || ranges.length === 0) return t.shareRulesNoWindows;
-  return t.shareRulesTpl
-    .replace("{windows}", formatShareWindows(ranges))
-    .replace("{scope}", shareWeekdayScope(lang))
-    .replace("{weekend}", t.shareWeekendOffTpl.replace("{days}", shareWeekendDays(lang)));
+  if (!rule) return t.shareRulesNoWindows;
+  const parts = [
+    t.shareRulesTpl
+      .replace("{windows}", formatShareWindows(rule.peak.windowsUtc))
+      .replace("{scope}", shareWeekdayScope(lang, rule)),
+    rule.offPeak.days.length > 0 ? t.shareWeekendOffTpl.replace("{days}", shareWeekendDays(lang, rule)) : "",
+    t.sharePeakFactor,
+  ].filter((part) => part !== "");
+  return parts.join(" · ");
 }
 
-/** First non-empty peak window set among the rows, else any known set (for the rules block). */
-export function shareBlockRanges(rows: RankedModel[], peakHours: PeakHours | undefined): [number, number][] | null {
+/** First rule among the peak rows, else any known rule (for the rules block). */
+export function shareBlockRule(rows: RankedModel[], peakRules: PeakRules | undefined): PeakRule | null {
   for (const r of rows) {
-    const ranges = peakRangesForShare(peakHours, r.name);
-    if (isSharePeakTier(r.tier) && ranges.length > 0) return ranges;
+    const rule = peakRuleForShare(peakRules, r.name);
+    if (isSharePeakTier(r.tier) && rule) return rule;
   }
-  for (const key of Object.keys(peakHours ?? {})) {
-    const ranges = peakHours?.[key];
-    if (ranges && ranges.length > 0) return ranges;
+  for (const key of Object.keys(peakRules ?? {})) {
+    const rule = peakRules?.[key];
+    if (rule) return rule;
   }
   return null;
 }
@@ -342,10 +334,10 @@ export function buildShareSvg(input: ShareCardInput): string {
       const name = esc(r.tier ? `${r.name} (${r.tier})` : r.name);
       const count =
         r.value === null ? "–" : !Number.isFinite(r.value) ? "∞" : formatReqPerMonth(r.value, input.lang);
-      const ranges = portrait ? peakRangesForShare(input.peakHours, r.name) : [];
+      const rule = portrait ? peakRuleForShare(input.peakRules, r.name) : undefined;
       const constraint =
-        portrait && isSharePeakTier(r.tier) && ranges.length > 0 && r.tier
-          ? shareConstraintLine(r.tier, ranges, input.lang)
+        portrait && isSharePeakTier(r.tier) && rule && r.tier
+          ? shareConstraintLine(r.tier, rule, input.lang)
           : null;
       // Max one constraint line per row: main line moves up, badge + window below.
       const mainY = constraint ? cy - 10 : cy + 7;
@@ -374,7 +366,7 @@ export function buildShareSvg(input: ShareCardInput): string {
     `<text data-footer-right="1" x="${w - pad}" y="${y}" text-anchor="end" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="20" fill="${p.muted}">${esc(updated)}</text>`;
   const block = portrait
     ? `<g data-constraints="1">` +
-      `<text x="${pad}" y="${h - 72}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="16" fill="${p.muted}">${esc(shareRulesLine(input.lang, shareBlockRanges(rows, input.peakHours)))}</text>` +
+      `<text x="${pad}" y="${h - 72}" font-family="system-ui,-apple-system,'Segoe UI',Roboto,sans-serif" font-size="16" fill="${p.muted}">${esc(shareRulesLine(input.lang, shareBlockRule(rows, input.peakRules)))}</text>` +
       footer(h - 40) +
       `</g>`
     : `<g>${footer(h - 28)}</g>`;

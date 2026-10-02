@@ -277,7 +277,7 @@ export default function App(props: AppProps = {}) {
           dark={dark()}
           fetchedAt={BUILD_TIME_ISO}
           site="ocgo-pricing.all-the.rest"
-          peakHours={data.peakHours}
+          peakRules={data.peakRules}
           caps={caps()}
           plan={plan()}
         />
@@ -294,7 +294,8 @@ export default function App(props: AppProps = {}) {
           showTraining={showTraining()}
           setShowTraining={setShowTraining}
           plan={plan()}
-          peakHours={data.peakHours}
+          peakRules={data.peakRules}
+          holidayCalendars={data.holidayCalendars}
         />
         <FreeModelsTable
           freeModels={data.freeModels}

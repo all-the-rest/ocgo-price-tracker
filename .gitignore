@@ -3,6 +3,7 @@ dist/
 .DS_Store
 *.log
 tests/.ssr/
+tests/.ssr-peak/
 .ssr-build/
 test-results/
 playwright-report/

@@ -1,5 +1,112 @@
 # AGENTS.todo.md — ocgo-price-tracker
 
+## Entscheidungen 2026-09-30 — datengetriebene Peak-Regeln (peakHours → peakRules)
+Anlass: Der Wochentags-Scope der Peak-Regeln stand wörtlich in der Doku („montags bis
+freitags … einschließlich der Wochenenden sind Off-Peak"), wurde aber verworfen; stattdessen
+war Sa/So hartkodiert (`weekendOffPeakDaysBeijing`, `isBeijingWeekend`, `effectiveFromMs`).
+Verbindliche Spezifikation: `peak-spec.md` (§1 Datenform, §2 Auswertung, §3 Scraper).
+**Nachtrag (bindend, s. u.):** §3 („Feiertage nur, wenn die Quelle sie nennt") und die
+Quellenbindung schlagen §7a — die OpenCode-Doku nennt keine Feiertage, deshalb gibt es
+weder `holidayCalendars` noch eine Footer-Feiertagszeile.
+
+- [x] **`peakHours` entfernt, neue Form `peakRules` + `holidayCalendars`** (Top-Level). Feldnamen
+  exakt nach §1: `timezone`, `effectiveFrom?`, `peak.days`/`peak.windowsUtc`,
+  `offPeak.days`/`offPeak.allDay`, `holidays.policy`/`holidays.calendar`,
+  `dates`/`coveredThrough`. ISO-Wochentage 1=Mo…7=So. `src/types.ts` entsprechend.
+- [x] **Scraper** (`scripts/scrape.mjs`): `parsePeakHours` → `parsePeakRules` (Namenskonvention
+  `parseX`; der Output ist keine „Hours"-Map mehr). Neue Helfer `parseWeekdayScope` (de+en),
+  `parseWeekendScope`, `parseHolidays`, `parseEffectiveFrom`, `peakTimezoneFor`. `parsePeakRanges`
+  bleibt unverändert.
+- [x] **`offPeak.days` = Komplement von `peak.days`**, nicht separat aus dem Wochenend-Satz
+  gebildet: die Invariante §1 (disjunkt, Union {1..7}) erzwingt das Komplement, und ein Tag ohne
+  Peak-Fenster ist per Definition ganztägig Off-Peak. Eine **explizit** genannte Wochenend-Angabe
+  wird gelesen und als Konsistenz-Check verwendet (Widerspruch → `ScrapeError`). `offPeak.days`
+  ist nach §1 nicht leer (bei DeepSeek `[6,7]`); „täglich"/`peak.days=[1..7]` wäre damit nicht
+  darstellbar — in diesem Repo irrelevant (nur DeepSeek-Mo–Fr), bewusst nach §1 umgesetzt.
+- [x] **Pflicht-`ScrapeError`**: fehlender Wochentags-Scope, nicht auflösbarer Bereich,
+  Feiertags-Aussage ohne bestimmbares Land (nur „chinesische …"/„chinese …" ist bestimmbar),
+  Wochenend-Angabe widerspricht dem Scope, widersprüchliche Regeln, Peak-Modell ohne Regel,
+  unbekannte Peak-Familie (keine geratene Zone), Feiertagskalender mit 0 Terminen.
+- [x] **`timezone`** kommt aus `PEAK_TIMEZONE_BY_FAMILY` (DeepSeek → `Asia/Shanghai`). Die
+  OpenCode-Doku nennt die Zone nicht; DeepSeek formuliert seine Wochentagsregel in Peking-Zeit
+  (§1). Unbekannte Familien → rot statt geraten.
+- [x] **`effectiveFrom`** (`parseEffectiveFrom`) nur, wenn die Notiz ein effektives Datum nennt.
+  Die aktuelle Doku nennt keins → Feld fehlt im Datensatz (die frühere Konstante `effectiveFromMs`
+  stammte aus dem DeepSeek-Original, nicht aus der OpenCode-Doku). Die Auswertung unterstützt es
+  (vor `effectiveFrom` kein Peak) und ist per Test abgedeckt.
+- [x] **Keine Feiertagsdaten (strikt quellenbindend).** Live verifiziert: die Peak-Notiz auf
+  `https://opencode.ai/docs/de/go/` nennt **keine** Feiertage (de **und** en). „excluding Chinese
+  public holidays" steht nur in der DeepSeek-Originaldoku, also außerhalb der Tracker-Quelle →
+  `peakRules[].holidays` und `holidayCalendars` bleiben in `data/latest.json` **leer/fehlend**.
+  `parseHolidays` bleibt als Parser (spec §3: nur setzen, wenn die Quelle sie nennt; Aussage ohne
+  Land → rot) — der Beweis, dass die Quelle sauber geprüft wurde.
+- [x] **`holidayCalendars` optional im Typ/zod**, wird **nicht** geschrieben (kein `chinese-days`
+  o. Ä. im Scrape-Pfad). Das Feld bleibt im Schema, damit die Datenform die Quelle nicht verengt
+  und der Consumer (`ai-10-usd`) tolerant bleibt; `src/config/peakPricing.ts` liest es weiterhin
+  optional (Kommentar `// optional: nur aktiv, wenn die Quelle Feiertage nennt`).
+- [x] **Einmalige stille Migration** `peakHours` → `peakRules`: neuer stiller Write-Trigger
+  `peakRulesChanged` (wie `privacySilentUpdate`); **kein** Changelog-Event, **kein** Release
+  (die Quelle hat sich nicht geändert, nur die Repräsentation).
+- [x] **Auswertung in einer Quelle** (`src/config/peakPricing.ts`: `isPeakAt`, `nextTransition`,
+  `isBeforeEffectiveFrom`, `localIsoDate`, `isoWeekday`), Header/Countdown/`nextTransition` mit
+  `effectiveFrom` und **optionaler** Feiertagslogik (bei uns inert); Wochentag/Feiertagsdatum
+  **immer in `rule.timezone`** (Intl), kein 调休/`isWorkday`. `PeakIndicator`/`PriceTable`/
+  `ShareDialog`/`App` reichen `peakRules` (+ optional `holidayCalendars`) durch;
+  `weekendOffPeakDaysBeijing`/`isBeijingWeekend`/`effectiveFromMs`/`PEAK_WINDOWS_UTC` sind **entfernt**.
+- [x] **i18n de+en generiert**: `peakTooltip` mit `{scope}` (aus `peak.days`), `peakWeekendNote`
+  mit `{days}`/`{tz}`, neue `peakHolidayNote`/`peakPreEffective`; `share.ts` (Solid-frei) leitet
+  Scope/Wochenendtage ebenfalls aus den Daten ab; hartkodierte Prosa entfernt. **Keine**
+  Footer-Feiertagszeile (`holidayCalendarLine`/`holidayCoverageEnded` wurden wieder entfernt);
+  der bestehende `Stand`-Hinweis bleibt unverändert.
+- [x] **Tests**: `tests/scrape.test.mjs` (Scope de+en, Wochenende, `parseHolidays` als Parser-Beweis,
+  alle `ScrapeError`-Fälle, alle zod-Invarianten §1 inkl. „`holidayCalendars` fehlt/leer ist gültig"),
+  neues `tests/peak.test.mjs` (Auswertung: Werktag im/außerhalb Fenster, Wochenende, **01.10.2026
+  verhält sich wie ein normaler Donnerstag** bzw. mit synthetischem Kalender Off-Peak — die
+  optionale Logik lebt, ist aber inert; vor `effectiveFrom`, Zonenrand 16:30 UTC = 00:30 Shanghai,
+  `nextTransition`, `formatDayScope`, Footer **ohne** Feiertagszeile), `tests/share.test.mjs`/
+  `tests/sorting.test.mjs` unverändert grün, Share-Card-Screenshot-Test auf die neue
+  `shareWeekdayScope(lang, rule)`-Signatur angepasst.
+- [x] **`ai-10-usd`-Legacy-Pfad bleibt** (anderes Repo, dort in Arbeit): der Consumer führt
+  `peakHours` (Legacy) **und** `peakRules`/`holidayCalendars` (`?? null`, optional) weiter und
+  aktiviert den neuen Pfad nur, wenn die Felder ankommen — **keine** Umrechnung von Alt-Fenstern
+  auf Wochentage. Dieses Repo liefert ab jetzt nur noch `peakRules`.
+- [x] Verifikation (final, nach dem Nachtrag): `pnpm test`, `pnpm scrape` (exit 0, zweiter Lauf
+  idempotent, 0 Changelog-Events), `pnpm typecheck`, `pnpm build`, `pnpm smoke`,
+  `pnpm test:screenshots` (betroffene Suites) und `pnpm test:contrast` — grün.
+
+### Nachtrag 2026-09-30 (bindende Nutzerentscheidung, strikt quellenbindend)
+- **`PEAK_HOLIDAY_OVERRIDES` und `chinese-days` wurden wieder entfernt.** Begründung: Die
+  OpenCode-Doku nennt an der Peak-Notiz keine Feiertage (de **und** en, live verifiziert); die
+  Angabe steht nur in der DeepSeek-Originaldoku
+  (`https://api-docs.deepseek.com/quick_start/pricing/`, aus der Go-Doku verlinkt) — also
+  außerhalb der Quelle dieses Trackers. Ein Override wäre genau die Art versteckter Annahme, die
+  der Umbau beseitigen soll.
+- `chinese-days` ist aus `package.json`/`pnpm-lock.yaml`/`node_modules` entfernt; `holidayCalendars`
+  wird nicht mehr geschrieben (optional im Schema); die Footer-Feiertagszeile (de+en) entfällt
+  ersatzlos. Details siehe AGENTS.md.
+
+### Verworfen (nicht implementieren)
+- ~~`PEAK_HOLIDAY_OVERRIDES` / chinesische Feiertage in den Tracker-Daten~~ — die Quelle
+  (OpenCode-Doku) nennt sie nicht; ein Override aus der verlinkten DeepSeek-Originaldoku wäre
+  eine versteckte Annahme. Wo die Information tatsächlich steht:
+  `https://api-docs.deepseek.com/quick_start/pricing/` (DeepSeek-Original). Kein Tracker-Datum,
+  kein Footer-Hinweis, keine `chinese-days`-Abhängigkeit.
+- ~~Lib-Frische-Guard für `chinese-days`~~ — entfällt mit der Abhängigkeit; die Peak-Regeln
+  brauchen keine Fremd-Lib mehr (Fenster und Wochentage kommen aus der Quelle).
+- ~~`peakHours` als Legacy-Feld neben `peakRules` behalten~~ — der Scraper schreibt nur noch die
+  neue Form; die Dual-Toleranz lebt ausschließlich im Consumer (`ai-10-usd`), nicht in den Daten.
+- ~~Hartkodierte Wochenend-Konstanten (`weekendOffPeakDaysBeijing`, `isBeijingWeekend`) behalten
+  und nur den Wochentags-Scope ergänzen~~ — genau die Hartkodierung ist der Anlass des Umbaus.
+- ~~Funktionsnamen `parsePeakHours` beibehalten~~ — der Rückgabewert ist keine Stunden-Map mehr.
+- ~~Feiertags-Aussage ohne Land auf einen Default-Kalender abbilden~~ — §3 verlangt rot.
+
+### Abweichungen von der Spezifikation (bewusst, dokumentiert)
+- **Kein `holidayCalendars` / keine Feiertage** (Spez. §3 erlaubt es, §7a-Footer entfällt):
+  Quellenbindung schlägt das §7a-Beispiel. Der §7a-Footer ist damit nicht implementiert —
+  Begründung s. o.
+- **`offPeak.days` nicht leer** (§1.2) macht ein rein „tägliches" Peak-Muster unausdrückbar —
+  in diesem Repo irrelevant; `provider-plans` (MiMo `offPeak.days: []`) führt ein eigenes Schema.
+
 ## Entscheidungen 2026-09-28 — zwei OpenCode-Go-Pläne (Go $10 / Go Plus $40)
 Anlass: die Doku hat die Preistabellen auf Deutsch umgestellt **und** erstmals zwei Abonnemente
 eingeführt; der Scraper lief dadurch rot. Vollständige Regeln stehen in `AGENTS.md` (Datenmodell,

@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-28T13:28:43.256Z",
+  "fetchedAt": "2026-09-30T17:22:13.840Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -20,47 +20,123 @@
       "sourceUrl": "https://opencode.ai/docs/de/go/"
     }
   ],
-  "peakHours": {
-    "deepseekv4.1flash": [
-      [
-        1,
-        4
-      ],
-      [
-        6,
-        10
-      ]
-    ],
-    "deepseekv4pro": [
-      [
-        1,
-        4
-      ],
-      [
-        6,
-        10
-      ]
-    ],
-    "deepseekv4flash": [
-      [
-        1,
-        4
-      ],
-      [
-        6,
-        10
-      ]
-    ],
-    "deepseekv4flashvisionexp": [
-      [
-        1,
-        4
-      ],
-      [
-        6,
-        10
-      ]
-    ]
+  "peakRules": {
+    "deepseekv4.1flash": {
+      "timezone": "Asia/Shanghai",
+      "peak": {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "windowsUtc": [
+          [
+            1,
+            4
+          ],
+          [
+            6,
+            10
+          ]
+        ]
+      },
+      "offPeak": {
+        "days": [
+          6,
+          7
+        ],
+        "allDay": true
+      }
+    },
+    "deepseekv4pro": {
+      "timezone": "Asia/Shanghai",
+      "peak": {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "windowsUtc": [
+          [
+            1,
+            4
+          ],
+          [
+            6,
+            10
+          ]
+        ]
+      },
+      "offPeak": {
+        "days": [
+          6,
+          7
+        ],
+        "allDay": true
+      }
+    },
+    "deepseekv4flash": {
+      "timezone": "Asia/Shanghai",
+      "peak": {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "windowsUtc": [
+          [
+            1,
+            4
+          ],
+          [
+            6,
+            10
+          ]
+        ]
+      },
+      "offPeak": {
+        "days": [
+          6,
+          7
+        ],
+        "allDay": true
+      }
+    },
+    "deepseekv4flashvisionexp": {
+      "timezone": "Asia/Shanghai",
+      "peak": {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "windowsUtc": [
+          [
+            1,
+            4
+          ],
+          [
+            6,
+            10
+          ]
+        ]
+      },
+      "offPeak": {
+        "days": [
+          6,
+          7
+        ],
+        "allDay": true
+      }
+    }
   },
   "models": [
     {

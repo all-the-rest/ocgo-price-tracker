@@ -2,12 +2,24 @@ import { renderToString } from "solid-js/web";
 import PriceTable from "../src/components/PriceTable";
 import PrivacyTable from "../src/components/PrivacyTable";
 import Changelog from "../src/components/Changelog";
-import type { Basis, Model, FreeModel, ChangelogEntry, Plan, PlanId } from "../src/types";
+import Footer from "../src/components/Footer";
+import type { Basis, Model, FreeModel, ChangelogEntry, Plan, PlanId, PriceData } from "../src/types";
 import type { SortField, PrivacySortState } from "../src/sort";
 import { i18n, type Lang } from "../src/i18n";
 
 export { fieldPrice, formatReqPerMonth, formatTokens, requestCost, requestsPerMonth } from "../src/weighted";
 export { shareRequests, topModels } from "../src/share";
+export {
+  isPeakAt,
+  isBeforeEffectiveFrom,
+  nextTransition,
+  localIsoDate,
+  isoWeekday,
+  formatDayScope,
+  formatDayList,
+  peakRuleFor,
+  calendarFor,
+} from "../src/config/peakPricing";
 
 export interface RenderOptions {
   basis: Basis;
@@ -43,8 +55,12 @@ export function renderPriceTable(models: Model[], opts: RenderOptions): string {
   ));
 }
 
-/** Rendert die echte Changelog-Komponente serverseitig (für Zeit/Anker-Tests). */
-export function renderChangelog(
+/** Rendert den echten Footer serverseitig (Feiertagskalender-Zeile, §7a). */
+export function renderFooter(data: PriceData, lang: Lang): string {
+  return renderToString(() => <Footer t={i18n[lang]} data={data} lang={lang} />);
+}
+
+/** Rendert die echte Changelog-Komponente serverseitig (für Zeit/Anker-Tests). */export function renderChangelog(
   entries: ChangelogEntry[],
   plans: Plan[],
   lang: Lang = "en",

@@ -1006,19 +1006,190 @@ function sharedModelPrefix(a, b) {
 }
 
 /**
- * Parst die UTC-Peak-Zeitfenster aus den Hinweisen unter der Preistabelle.
- *
- * Es werden **alle** Notizen gesammelt (`main p, main li`, DOM-Reihenfolge),
- * die `peak`/`spitzenzeiten`/`stoßzeiten` UND `UTC` nennen — nicht nur die
- * erste: eine zweite Notiz für einen weiteren Anbieter darf nicht still
- * verloren gehen. Die Modellnamen kommen aus den Peak-/Off-Peak-Zeilen, damit
- * ein Hinweis wie "DeepSeek V4 Flash / Pro" beide Modell-IDs zuverlässig
- * abdeckt. Jede Notiz muss mindestens ein Peak-Modell treffen, und **jedes**
- * Peak-Modell braucht ein Zeitfenster — sonst `ScrapeError` (lieber CI rot als
- * ein Modell ohne Fenster, das stillschweigend als „immer Off-Peak" angezeigt
- * würde). Widersprüchliche Fenster für dasselbe Modell brechen ebenfalls ab.
+ * Wochentags-Namen (deutsch + englisch, Lang- und Kurzform) → ISO-Wochentag
+ * (1 = Montag … 7 = Sonntag). Nur auf `main p/li`-Notizen angewandt, daher
+ * unkritisch gegenüber englischen Allerweltswörtern (Kurzformen matchen nur im
+ * `X bis Y`-Bereich, nie allein).
  */
-export function parsePeakHours($, models = []) {
+const WEEKDAY_LOOKUP = new Map(
+  Object.entries({
+    montag: 1, montags: 1, monday: 1, mondays: 1, mo: 1, mon: 1,
+    dienstag: 2, dienstags: 2, tuesday: 2, tuesdays: 2, di: 2, tue: 2, tues: 2,
+    mittwoch: 3, mittwochs: 3, wednesday: 3, wednesdays: 3, mi: 3, wed: 3,
+    donnerstag: 4, donnerstags: 4, thursday: 4, thursdays: 4, do: 4, thu: 4, thur: 4,
+    freitag: 5, freitags: 5, friday: 5, fridays: 5, fr: 5, fri: 5,
+    samstag: 6, samstags: 6, saturday: 6, saturdays: 6, sa: 6, sat: 6,
+    sonntag: 7, sonntags: 7, sunday: 7, sundays: 7, so: 7, sun: 7,
+  })
+);
+
+const MONTH_LOOKUP = {
+  january: 1, february: 2, march: 3, april: 4, may: 5, june: 6, july: 7,
+  august: 8, september: 9, october: 10, november: 11, december: 12,
+  januar: 1, februar: 2, märz: 3, maerz: 3, mai: 5, juni: 6, juli: 7,
+  oktober: 10, dezember: 12,
+};
+
+/**
+ * Wochentags-Scope der Peak-Regel (Spezifikation §3). Liefert die ISO-Tage
+ * (1..7) oder `null`, wenn die Notiz keinen Scope nennt — der Aufrufer bricht
+ * dann rot ab (kein stiller Fallback).
+ */
+export function parseWeekdayScope(text) {
+  // Zuerst die bündigen Begriffe: sie sind eindeutiger als ein Bereich.
+  if (/\bwerktags\b|\bwochentags\b|\bweekdays?\b|\bbusiness days?\b/.test(text)) return [1, 2, 3, 4, 5];
+  if (/\btäglich\b|\bdaily\b|\bevery day\b/.test(text)) return [1, 2, 3, 4, 5, 6, 7];
+  const t = text.toLowerCase().replace(/[–—]/g, "-").replace(/\s+/g, " ");
+  const rangePattern = /([a-zäöü]+)\s*(?:bis|to|through|thru|-|\/)\s*([a-zäöü]+)/g;
+  for (const match of t.matchAll(rangePattern)) {
+    const start = WEEKDAY_LOOKUP.get(match[1]);
+    const end = WEEKDAY_LOOKUP.get(match[2]);
+    if (start && end && start <= end) {
+      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    }
+  }
+  return null;
+}
+
+/**
+ * Wochenend-Auszug (ganztägig Off-Peak) aus der Notiz → ISO-Tage oder `null`.
+ * Die Tage sind eine Teilmenge des Off-Peak-Komplements von `peak.days`; der
+ * Aufrufer prüft den Widerspruch.
+ */
+export function parseWeekendScope(text) {
+  const t = text.toLowerCase().replace(/[–—]/g, "-").replace(/\s+/g, " ");
+  if (/\bwochenenden?\b|\bweekends?\b/.test(t)) return [6, 7];
+  if (/\bsa\s*(?:-|\/|und|and|,)\s*so\b/.test(t)) return [6, 7];
+  if (/\bsat\s*(?:-|\/|and|,)\s*sun\b/.test(t)) return [6, 7];
+  if (/samstag\s*(?:und|and|,|-|\/)\s*sonntag/.test(t)) return [6, 7];
+  if (/saturday\s*(?:and|,|-|\/)\s*sunday/.test(t)) return [6, 7];
+  return null;
+}
+
+/**
+ * Feiertags-Auszug aus der Notiz. Nennt die Quelle ein bestimmbares Land
+ * (chinesische Feiertage) → `{ policy: "off-peak", calendar: "china" }`.
+ * Eine allgemeine Feiertags-Aussage ohne Land → `ScrapeError` (nicht raten).
+ * Keine Feiertags-Aussage → `null` (Feld wird weggelassen, §3).
+ */
+export function parseHolidays(text) {
+  const t = text.toLowerCase();
+  if (/chinesische[n]?\s+feiertag|chinese\s+(?:public\s+)?holiday/.test(t)) {
+    return { policy: "off-peak", calendar: "china" };
+  }
+  if (/\bfeiertag|public\s+holiday|\bholiday/.test(t)) {
+    throw new ScrapeError(`Feiertags-Aussage ohne bestimmbares Land: "${text}"`);
+  }
+  return null;
+}
+
+/** Offset (Minuten) der Zone `timeZone` zum Zeitpunkt `ts`. */
+function zoneOffsetMinutes(ts, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const map = {};
+  for (const part of formatter.formatToParts(new Date(ts))) map[part.type] = part.value;
+  const asUtc = Date.UTC(
+    Number(map.year),
+    Number(map.month) - 1,
+    Number(map.day),
+    Number(map.hour) % 24,
+    Number(map.minute),
+    Number(map.second)
+  );
+  return Math.round((asUtc - ts) / 60_000);
+}
+
+/** ISO-8601 (mit Offset) für lokale Datum-/Zeitangaben in `timeZone`. */
+function zonedDateTimeIso(year, month, day, hour, minute, timeZone) {
+  const guess = Date.UTC(year, month - 1, day, hour, minute);
+  const offset = zoneOffsetMinutes(guess - zoneOffsetMinutes(guess, timeZone) * 60_000, timeZone);
+  const sign = offset >= 0 ? "+" : "-";
+  const abs = Math.abs(offset);
+  const p2 = (n) => String(n).padStart(2, "0");
+  const p4 = (n) => String(n).padStart(4, "0");
+  return `${p4(year)}-${p2(month)}-${p2(day)}T${p2(hour)}:${p2(minute)}:00${sign}${p2(Math.floor(abs / 60))}:${p2(abs % 60)}`;
+}
+
+/**
+ * Optionales `effectiveFrom` aus der Notiz (Spezifikation §1). Nur wenn die
+ * Quelle ein effektives Datum nennt — sonst wird das Feld weggelassen (nicht
+ * erfunden). Unterstützt die englische DeepSeek-Formulierung
+ * („Effective 00:00 (Beijing Time) on Sunday, August 23, 2026") und eine
+ * deutsche Entsprechung.
+ */
+export function parseEffectiveFrom(text, timeZone) {
+  const en = /effective\s+(?:at\s+)?(\d{1,2}):(\d{2})\s*(?:\(([^)]+)\))?\s*on\s+(?:[A-Za-z]+,\s*)?([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/i.exec(text);
+  if (en) {
+    const month = MONTH_LOOKUP[en[4].toLowerCase()];
+    if (month) return zonedDateTimeIso(Number(en[6]), month, Number(en[5]), Number(en[1]), Number(en[2]), timeZone);
+  }
+  const de = /(\d{1,2}):(\d{2})\s*(?:Uhr\s*)?(?:\([^)]*\)\s*)?(?:ab dem|gültig ab(?: dem)?)\s+(\d{1,2})\.\s*([A-Za-zä]+)\s+(\d{4})/i.exec(text);
+  if (de) {
+    const month = MONTH_LOOKUP[de[5].toLowerCase()];
+    if (month) return zonedDateTimeIso(Number(de[6]), month, Number(de[4]), Number(de[1]), Number(de[2]), timeZone);
+  }
+  return undefined;
+}
+
+/**
+ * Wochentags-Zeitraum (IANA-Zone), in der ein Peak-Modell seine Regel
+ * formuliert. Die OpenCode-Doku nennt die Zone nicht; DeepSeek formuliert sie
+ * in Peking-Zeit (Spezifikation §1). Unbekannte Familien → `ScrapeError`
+ * (lieber rot als eine geratene Zone).
+ */
+const PEAK_TIMEZONE_BY_FAMILY = { deepseek: "Asia/Shanghai" };
+
+export function peakTimezoneFor(name) {
+  const norm = normalizeName(name);
+  for (const [family, timeZone] of Object.entries(PEAK_TIMEZONE_BY_FAMILY)) {
+    if (norm.includes(family)) return timeZone;
+  }
+  throw new ScrapeError(`Kein Wochentags-Zeitraum (timezone) für Peak-Modell "${name}" bekannt`);
+}
+
+/**
+ * Baut aus einer Peak-Notiz die komplette Regel (`peakRules`-Wert).
+ * Pflicht-`ScrapeError`: fehlender Wochentags-Scope, widersprüchliche
+ * Wochenend-Angabe, Feiertags-Aussage ohne Land, unparsebares Fenster.
+ */
+export function peakRuleFromNote(note, timeZone) {
+  const windowsUtc = parsePeakRanges(note);
+  const peakDays = parseWeekdayScope(note);
+  if (!peakDays) throw new ScrapeError(`Peak-Notiz ohne Wochentags-Scope: "${note}"`);
+  const offPeakDays = [1, 2, 3, 4, 5, 6, 7].filter((day) => !peakDays.includes(day));
+  const weekendDays = parseWeekendScope(note);
+  if (weekendDays && !weekendDays.every((day) => offPeakDays.includes(day))) {
+    throw new ScrapeError(`Wochenend-Angabe widerspricht dem Peak-Wochentags-Scope: "${note}"`);
+  }
+  const rule = {
+    timezone: timeZone,
+    peak: { days: peakDays, windowsUtc },
+    offPeak: { days: offPeakDays, allDay: true },
+  };
+  const effectiveFrom = parseEffectiveFrom(note, timeZone);
+  if (effectiveFrom) rule.effectiveFrom = effectiveFrom;
+  const holidays = parseHolidays(note);
+  if (holidays) rule.holidays = holidays;
+  return rule;
+}
+
+/**
+ * Parst die datengetriebenen Peak-Regeln (`peakRules`) aus den Hinweisen unter
+ * der Preistabelle. Es werden **alle** `main p`/`main li`-Notizen gesammelt, die
+ * `peak`/`spitzenzeiten`/`stoßzeiten` UND `UTC` nennen. Jede Notiz muss einen
+ * Wochentags-Scope nennen und mindestens ein Peak-Modell treffen; **jedes**
+ * Peak-Modell braucht eine Regel — sonst `ScrapeError`.
+ */
+export function parsePeakRules($, models = []) {
   const peakModels = [...new Set(models.filter((m) => isPeakTier(m.tier)).map((m) => m.name))];
   if (peakModels.length === 0) return {};
 
@@ -1030,9 +1201,8 @@ export function parsePeakHours($, models = []) {
     throw new ScrapeError("Peak-/Off-Peak-Modelle gefunden, aber kein UTC-Zeitfenster im Dokument");
   }
 
-  const windows = new Map();
+  const rules = new Map();
   for (const note of peakNotes) {
-    const ranges = parsePeakRanges(note);
     const subject = normalizeName(note.split(":", 1)[0]);
     // Zuordnung bewusst konservativ: exakter Name im Subject ODER gemeinsamer
     // Modell-Präfix (z. B. "DeepSeek V4 Flash / Pro" → beide DeepSeek-Modelle).
@@ -1048,25 +1218,28 @@ export function parsePeakHours($, models = []) {
     if (matched.length === 0) {
       throw new ScrapeError(`Peak-Zeitfenster konnte keinem Modell zugeordnet werden: "${note}"`);
     }
+    const timezones = new Set(matched.map((name) => peakTimezoneFor(name)));
+    if (timezones.size > 1) {
+      throw new ScrapeError(`Peak-Notiz betrifft mehrere Wochentags-Zeiträume: "${note}"`);
+    }
+    const rule = peakRuleFromNote(note, [...timezones][0]);
     for (const name of matched) {
       const norm = normalizeName(name);
-      const existing = windows.get(norm);
-      if (existing && !sameRanges(existing, ranges)) {
-        throw new ScrapeError(
-          `Widersprüchliche Peak-Zeitfenster für "${name}": ${formatPeakRanges(existing)} vs. ${formatPeakRanges(ranges)}`
-        );
+      const existing = rules.get(norm);
+      if (existing && JSON.stringify(existing) !== JSON.stringify(rule)) {
+        throw new ScrapeError(`Widersprüchliche Peak-Regeln für "${name}"`);
       }
-      windows.set(norm, ranges);
+      rules.set(norm, rule);
     }
   }
 
-  // Kern-Guard: kein Peak-Modell darf ohne dokumentiertes Fenster durchrutschen
+  // Kern-Guard: kein Peak-Modell darf ohne dokumentierte Regel durchrutschen
   // (sonst würde es still als „immer Off-Peak" ohne Countdown angezeigt).
-  const missing = peakModels.filter((name) => !windows.has(normalizeName(name)));
+  const missing = peakModels.filter((name) => !rules.has(normalizeName(name)));
   if (missing.length > 0) {
     throw new ScrapeError(`Peak-Modelle ohne UTC-Zeitfenster: ${missing.join(", ")}`);
   }
-  return Object.fromEntries(windows);
+  return Object.fromEntries(rules);
 }
 
 /**
@@ -1098,16 +1271,6 @@ export function parsePeakRanges(text) {
     throw new ScrapeError(`Keine gültigen UTC-Peak-Zeitfenster gefunden: "${text}"`);
   }
   return ranges;
-}
-
-function sameRanges(a, b) {
-  return a.length === b.length && a.every((r, i) => r[0] === b[i][0] && r[1] === b[i][1]);
-}
-
-function formatPeakRanges(ranges) {
-  return ranges
-    .map(([start, end]) => `${String(start).padStart(2, "0")}:00-${String(end).padStart(2, "0")}:00`)
-    .join(", ");
 }
 
 /**
@@ -2014,6 +2177,91 @@ const PlanSchema = z.object({
   sourceUrl: z.string().url(),
 });
 
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const IANA_TIMEZONES = new Set(
+  typeof Intl.supportedValuesOf === "function" ? Intl.supportedValuesOf("timeZone") : []
+);
+
+// ISO-Wochentage (1 = Montag … 7 = Sonntag), nicht leer.
+const WeekdayListSchema = z.array(z.number().int().min(1).max(7)).min(1);
+
+// UTC-Fenster: 0 ≤ start < end ≤ 24, aufsteigend, nicht überlappend, ≥ 1.
+const PeakWindowsSchema = z
+  .array(
+    z
+      .tuple([z.number().int().min(0).max(23), z.number().int().min(1).max(24)])
+      .refine(([start, end]) => start < end, "windowsUtc: start < end verletzt")
+  )
+  .min(1)
+  .superRefine((windows, ctx) => {
+    for (let i = 1; i < windows.length; i++) {
+      if (windows[i][0] < windows[i - 1][1]) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "windowsUtc: nicht aufsteigend oder überlappend",
+        });
+      }
+    }
+  });
+
+/**
+ * Peak-Regel (Spezifikation §1). Invarianten: `peak.days`/`offPeak.days`
+ * nicht leer, keine Duplikate, disjunkt, zusammen {1..7}; `timezone` ein
+ * gültiger IANA-Name. Die Kalender-Existenz (`holidays.calendar`) prüft der
+ * Snapshot (er kennt `holidayCalendars`).
+ */
+const PeakRuleSchema = z
+  .object({
+    timezone: z
+      .string()
+      .min(1)
+      .refine((tz) => IANA_TIMEZONES.has(tz) || tz === "UTC", "kein gültiger IANA-Zeitzonenname"),
+    effectiveFrom: z
+      .string()
+      .refine((value) => !Number.isNaN(Date.parse(value)), "effectiveFrom ist kein gültiges ISO-Datum")
+      .optional(),
+    peak: z.object({ days: WeekdayListSchema, windowsUtc: PeakWindowsSchema }),
+    offPeak: z.object({ days: WeekdayListSchema, allDay: z.literal(true) }),
+    holidays: z.object({ policy: z.literal("off-peak"), calendar: z.string().min(1) }).optional(),
+  })
+  .superRefine((rule, ctx) => {
+    const peakDays = rule.peak.days;
+    const offDays = rule.offPeak.days;
+    if (new Set(peakDays).size !== peakDays.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["peak", "days"], message: "peak.days enthält Duplikate" });
+    }
+    if (new Set(offDays).size !== offDays.length) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["offPeak", "days"], message: "offPeak.days enthält Duplikate" });
+    }
+    if (new Set([...peakDays, ...offDays]).size !== 7) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["offPeak", "days"],
+        message: "peak.days ∪ offPeak.days ≠ {1..7}",
+      });
+    }
+    if (peakDays.some((day) => offDays.includes(day))) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["offPeak", "days"], message: "peak.days ∩ offPeak.days ≠ ∅" });
+    }
+  });
+
+// Feiertagskalender: streng aufsteigende ISO-Daten, alle ≤ coveredThrough.
+const HolidayCalendarSchema = z
+  .object({
+    dates: z.array(z.string().regex(ISO_DATE_RE)).min(1),
+    coveredThrough: z.string().regex(ISO_DATE_RE),
+  })
+  .superRefine((cal, ctx) => {
+    for (let i = 0; i < cal.dates.length; i++) {
+      if (i > 0 && cal.dates[i] <= cal.dates[i - 1]) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dates", i], message: "dates muss streng aufsteigend sein" });
+      }
+      if (cal.dates[i] > cal.coveredThrough) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["dates", i], message: "date liegt nach coveredThrough" });
+      }
+    }
+  });
+
 const SnapshotSchema = z
   .object({
     fetchedAt: z.string(),
@@ -2022,17 +2270,12 @@ const SnapshotSchema = z
     capabilitiesSourceUrl: z.string().url(),
     sourceLang: z.string(),
     plans: z.array(PlanSchema).min(1),
-    peakHours: z.record(
-      z.string().min(1),
-      z.array(
-        z
-          .tuple([
-            z.number().int().min(0).max(23),
-            z.number().int().min(1).max(24),
-          ])
-          .refine(([start, end]) => start < end)
-      ).min(1)
-    ),
+    peakRules: z.record(z.string().min(1), PeakRuleSchema),
+    // Optional: die OpenCode-Doku nennt keine Feiertage, deshalb wird der
+    // Kalender bewusst NICHT befüllt (kein `chinese-days` im Datenpfad). Das
+    // Feld bleibt im Schema, damit die Datenform die Quelle nicht verengt und
+    // der Consumer tolerant bleibt.
+    holidayCalendars: z.record(z.string().min(1), HolidayCalendarSchema).optional(),
     models: z.array(ModelSchema).min(1),
     freeModels: z.array(FreeModelSchema),
   })
@@ -2054,6 +2297,17 @@ const SnapshotSchema = z
         });
       }
     });
+    // Invariante: holidays.calendar jeder Regel MUSS in holidayCalendars stehen.
+    const calendarKeys = new Set(Object.keys(snapshot.holidayCalendars ?? {}));
+    for (const [model, rule] of Object.entries(snapshot.peakRules)) {
+      if (rule.holidays && !calendarKeys.has(rule.holidays.calendar)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["peakRules", model, "holidays", "calendar"],
+          message: `Kalender "${rule.holidays.calendar}" fehlt in holidayCalendars`,
+        });
+      }
+    }
   });
 
 const PricingTypeSchema = z.object({
@@ -2180,7 +2434,7 @@ async function main() {
     const docs$ = cheerio.load(html);
     // Pläne + Modelle: Tokenpreise aus dem ersten Plan, Nutzung je Plan als Map.
     const { plans, models } = parsePageData(docs$);
-    const peakHours = parsePeakHours(docs$, models);
+    const peakRules = parsePeakRules(docs$, models);
     const docsBonuses = parseDocsUsageBonuses(docs$);
     const bonusLabels = [...docsBonuses.entries()].map(([n, f]) => `${n}×${f}`).join(", ");
 
@@ -2194,6 +2448,8 @@ async function main() {
 
     const fetchedAt = new Date().toISOString();
     const date = fetchedAt.slice(0, 10);
+    // Kein Feiertagskalender: die OpenCode-Doku nennt keine Feiertage, und wir
+    // erfinden keine (strikt quellenbindend) → `holidayCalendars` bleibt leer.
     // git-tag-sicheres `id` (kein `:`), z.B. 2026-08-19T06-00-00Z
     const runId = fetchedAt.replace(/:/g, "-").replace(/\.\d{3}Z$/, "Z");
 
@@ -2249,7 +2505,7 @@ async function main() {
       capabilitiesSourceUrl: MODELS_DEV_URL,
       sourceLang: SOURCE_LANG,
       plans,
-      peakHours,
+      peakRules,
       models,
       freeModels,
     };
@@ -2290,6 +2546,17 @@ async function main() {
     // Daten-Dateien schreiben, aber KEINE Changelog-Events — die Pläne sind die
     // globale Preisbasis (kein Modell-Event), die UI liest sie aus latest.json.
     const plansChanged = prev !== null && JSON.stringify(prev.plans ?? null) !== JSON.stringify(plans);
+
+    // Peak-Regeln haben sich geändert (inkl. der einmaligen Schema-Migration
+    // peakHours → peakRules): Daten-Dateien schreiben, aber KEINE
+    // Changelog-Events/Releases — die Quelle (OpenCode-Doku) hat sich nicht
+    // geändert, nur unsere Repräsentation.
+    const peakRulesChanged =
+      prev !== null &&
+      (JSON.stringify(prev.peakRules ?? null) !== JSON.stringify(peakRules) ||
+        // Wir schreiben keinen Feiertagskalender mehr; ein früherer Stand mit
+        // `holidayCalendars` stößt die Bereinigung an.
+        JSON.stringify(prev.holidayCalendars ?? null) !== "null");
 
     // Modell-IDs befüllt/geändert (`opencode(-go)/<id>` für die UI):
     // Daten-Dateien schreiben, aber KEINE Changelog-Events — reine Anreicherung.
@@ -2354,7 +2621,7 @@ async function main() {
     mkdirSync(join(ROOT, "src", "data"), { recursive: true });
     writeFileSync(join(ROOT, "src", "data", "changelog.json"), changelogJson);
 
-    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || plansChanged || modelIdsPopulated || contextWindowPopulated || providerPopulated || fullIdsPopulated) {
+    if (changes.length > 0 || privacyPopulated || privacySilentUpdate || plansChanged || peakRulesChanged || modelIdsPopulated || contextWindowPopulated || providerPopulated || fullIdsPopulated) {
       history.snapshots.push(latest);
       writeFileSync(historyPath, JSON.stringify(history, null, 2) + "\n");
       writeFileSync(prevPath, JSON.stringify(latest, null, 2) + "\n");
@@ -2364,7 +2631,7 @@ async function main() {
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
     const privacyCovered = models.filter((m) => m.privacy !== null).length;
     const planLabel = plans.map((p) => `${p.name} $${p.priceMonthly}/${p.creditsMonthly}`).join(", ");
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Pläne: ${planLabel}${plansChanged ? " (still aktualisiert)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}${contextWindowPopulated ? " (Kontextfenster still befüllt, keine Events)" : ""}${providerPopulated ? " (Hersteller still befüllt, keine Events)" : ""}${fullIdsPopulated ? " (Full-IDs still befüllt, keine Events)" : ""}.`);
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Pläne: ${planLabel}${plansChanged ? " (still aktualisiert)" : ""}${peakRulesChanged ? " (Peak-Regeln still, keine Events)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}${contextWindowPopulated ? " (Kontextfenster still befüllt, keine Events)" : ""}${providerPopulated ? " (Hersteller still befüllt, keine Events)" : ""}${fullIdsPopulated ? " (Full-IDs still befüllt, keine Events)" : ""}.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

@@ -381,14 +381,20 @@ test.describe("share card sizes", { tag: ["@screenshot"] }, () => {
         capabilities: { input: ["text", "video"], output: ["text"], reasoning: false, toolCall: false },
       };
       const filtered = share.topModels([paid, withCaps], 5, plan, ["video"]);
+      // DeepSeek-Regel (datengetrieben): Wochentags-Scope kommt aus peak.days.
+      const rule = {
+        timezone: "Asia/Shanghai",
+        peak: { days: [1, 2, 3, 4, 5], windowsUtc: [[1, 4], [6, 10]] },
+        offPeak: { days: [6, 7], allDay: true },
+      };
       return {
         freeValue: freeValue === Infinity ? "Infinity" : String(freeValue),
         first: rows[0]?.name ?? null,
         filteredNames: filtered.map((r) => r.name),
         noWindowsDe: share.shareRulesLine("de", null),
         noWindowsEn: share.shareRulesLine("en", null),
-        scopeDe: share.shareWeekdayScope("de"),
-        scopeEn: share.shareWeekdayScope("en"),
+        scopeDe: share.shareWeekdayScope("de", rule),
+        scopeEn: share.shareWeekdayScope("en", rule),
       };
     });
     // Free/unlimited ranks top (Infinity), displayed as ∞ — no card-side special path.
@@ -399,8 +405,8 @@ test.describe("share card sizes", { tag: ["@screenshot"] }, () => {
     // Undocumented windows are marked as source-state, never guessed.
     expect(parity.noWindowsDe, "de fallback marks source state").toMatch(/Quellenstand/);
     expect(parity.noWindowsEn, "en fallback marks source state").toMatch(/source state/);
-    expect(parity.scopeDe, "de scope from source weekend rule").toMatch(/Mo–Fr/);
-    expect(parity.scopeEn, "en scope from source weekend rule").toMatch(/Mon–Fri/);
+    expect(parity.scopeDe, "de scope from peak.days").toMatch(/Mo–Fr/);
+    expect(parity.scopeEn, "en scope from peak.days").toMatch(/Mon–Fri/);
   });
 
   test("card order matches the list-basis table requests-desc order (basis ignored)", async ({
