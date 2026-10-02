@@ -230,12 +230,15 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 
 ## Verifikation
 
-Nach jeder Umsetzung prüft ein **unabhängiger Agent**:
-`pnpm scrape` (exit 0, korrekte Daten — **vor Commit/Push verpflichtend**), `pnpm test` grün, `pnpm build` grün,
-`dist/` enthält `data/latest.json` + `CNAME`, Workflow-YAML valide,
-`pnpm preview` liefert 200 und der JSON-Endpunkt `/data/latest.json` antwortet (alle Modelle mit `privacy`).
-Außerdem wird geprüft, dass **aktuelle Tool-Versionen** verwendet werden
-(`pnpm outdated` ohne ungewollte Abweichungen, Node ≥22, pnpm aus `packageManager`). Nach Push wird die CI bis zum grünen Lauf beobachtet.
+Der Build-/Verify-/Commit-/Push-Flow — Rollentrennung, `nach-verify`-Flag, Commit-Footer,
+Amend, CI-Beobachtung — steht im Skill `build-verify` (`agents-skills`; Always-on-Kernel
+`.agents/rules/build-verify.md`) und wird hier **nicht wiederholt**. Der unabhängige
+Verifikator prüft in diesem Repo:
+
+- `pnpm scrape` (exit 0, korrekte Daten — **vor Commit verpflichtend**), `pnpm test` grün, `pnpm build` grün,
+  `dist/` enthält `data/latest.json` + `CNAME`, Workflow-YAML valide,
+  `pnpm preview` liefert 200 und der JSON-Endpunkt `/data/latest.json` antwortet (alle Modelle mit `privacy`).
+- **aktuelle Tool-Versionen**: `pnpm outdated` ohne ungewollte Abweichungen, Node ≥22, pnpm aus `packageManager`.
 
 **Visuelle Verifikation (Pflicht bei UI-Änderungen, Skill `ui-review`):**
 `pnpm test:screenshots` (eigene Config auf Port 5177, gateet nie CI) → PNGs unter
@@ -256,15 +259,11 @@ funktionieren) und **vor** Commit/Push abnehmen lassen. Kein Push ohne Abnahme.
 
 ## Delegation & Parallelisierung (Subagenten)
 
-- Wo möglich arbeitet OpenCode mit Subagenten statt alles selbst zu tun: `explore` für Recherche, `general` für
-  Implementierung, `vision` für Screenshot-Analyse.
-- **Implementierung und Verifikation laufen in getrennten Subagenten**: ein Implementierungs-Agent baut, ein
-  **unabhängiger Verifikations-Agent** prüft (siehe „Verifikation"). Bei unabhängigen Teilaufgaben (z. B. zwei
-  Projekten, unabhängigen Routen/Batches) werden beide Agenten **parallel** gestartet.
-- Jeder Subagent bekommt eine in sich geschlossene Aufgabenbeschreibung (frischer Kontext) inkl. Pfaden, Befehlen
-  und Akzeptanzkriterien — keine Annahmen über bereits Gesehenes.
-- **Kleine Änderungen** (einzelne Edits, offensichtliche Fixes, Versions-/Befehlskosmetik) macht OpenCode weiter
-  **direkt selbst** — Subagenten sind für größere, unabhängige Arbeitspakete gedacht.
+Rollen, Delegation und Verify-Läufe regelt der Skill `build-verify` (`agents-skills`; Always-on-Kernel
+`.agents/rules/build-verify.md`): Orchestrator delegiert, Implementierung und Verifikation laufen in
+**getrennten** Subagenten, jeder Subagent bekommt eine in sich geschlossene Aufgabenbeschreibung,
+kleine Edits macht der Orchestrator direkt. Details stehen dort, nicht hier.
+
 - **Entscheidungen werden IMMER als interaktive Frage gestellt** (Tool `question`), nie als Frage im Fließtext:
   echte Wahlmöglichkeiten (Alternative ja/nein, Datenmodell, Event-Form, Abbruch-vs-weiter) mit einer Empfehlung
   als erster Option, Varianten in einem Satz begründet. Begründung: eine Entscheidung, die im Chat-Text „irgendwo"
