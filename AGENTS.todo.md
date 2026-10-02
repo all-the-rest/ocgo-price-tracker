@@ -220,6 +220,31 @@ Scraper-Regeln, UI-Regeln) — hier nur die getroffenen Entscheidungen samt Begr
 - [x] Footer: LINKS Domain, RECHTS lokalisiertes Datum + Uhrzeit (fetchedAt, UTC).
 - [x] Dialog-Layout: Sprache zuerst (links neben Stil), 3er-Grid Desktop / Stack Mobile, X-Button.
 
+## Zahlen-Pins auf generierte Daten (CI-Stopp 2026-10-02)
+- [x] Harte Zahlen-Assertions gegen generierte Live-Daten entfernen. Auslöser: der 18:07Z-Scrape
+  übernahm korrekt `ling-3.1-flash-free` (freeModels 10 → 11, mit `free_added`-Event), der nächste
+  Push lief 28 s später rot — `assert.equal(data.freeModels.length, 10)` in `tests/scrape.test.mjs`,
+  also **bevor** der Scrape überhaupt laufen konnte. Ein Pin auf generierte Daten ist strukturell
+  falsch: er ist flüchtig, und die nächste echte Quelländerung bricht ihn wieder.
+- [x] Absicherung wandert in den Scrape: `assertNonEmptyCatalog()` prüft, dass `plans`/`models`/
+  `freeModels` befüllt sind, sonst `ScrapeError`. Das ist der Fehlerfall, den der Zahlen-Pin nebenbei
+  mitabfing: eine umgebaute Doku liefert 0 Zeilen, und ohne die Prüfung hätte der Lauf einen leeren,
+  schema-validen Snapshot committet und die Seite leer gerendert.
+- [x] Struktur-Invarianten im Test bleiben erhalten (usage-Schlüssel == Plan-Ids, Free-Modelle ohne
+  Plan-Feld, kein `holidayCalendars`, `validateSnapshot`) — nur ohne Zahlen.
+- [x] Fixture-Counts bewusst **nicht** angefasst (`parseHtml: extrahiert 39 Modelle aus dem
+  HTML-Dump`, `tests/fixtures/*.html`): deterministisch und korrekt. Ebenso Changelog-EVENT-Zählungen
+  (`assert.equal(result.entries.length, 1)`), wo der Test die Eingabe selbst baut.
+- [x] Schwester-Repos (`ai-10-usd`, `cc-price-tracker`, `provider-plans`) auf dieselbe Pin-Klasse
+  geprüft.
+
+### Verworfen
+- **Zahl auf 11 hochzählen** (Symptomkur): hätte den Test gerettet und beim nächsten echten
+  Katalog-Wechsel erneut rot werden lassen. Genau der Fehler, den die Regel oben beseitigt.
+- **Den Testlocker als nicht-blockierend markieren / Test-Step nach den Commit verschieben**: der Test
+  war nicht die Fehlerquelle, die Pipeline-Reihenfolge war es auch nicht — der Pin war es. Ein
+  grüner Durchlauf mit leerem Katalog wäre schlimmer als ein roter.
+
 ## Browser-Konsolen-Test (Playwright, Follow-up zum Smoke-Test)
 - [ ] Playwright-Test, der die Seite im echten Browser lädt und Konsolen-Fehler/pageerrors
   als Fehler wertet (fängt JS-Laufzeitfehler, die Build + `pnpm smoke` nicht sehen).
