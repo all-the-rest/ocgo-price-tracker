@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-02T18:08:21.109Z",
+  "fetchedAt": "2026-10-03T12:10:20.329Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1571,6 +1571,29 @@
       "provider": "OpenCode Stealth",
       "fullId": "opencode/big-pickle",
       "name": "Big Pickle",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "fledge-alpha-free",
+      "availableFrom": "2026-10-03",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": null,
+      "fullId": "opencode/fledge-alpha-free",
+      "name": "Fledge Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
