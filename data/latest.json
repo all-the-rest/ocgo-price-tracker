@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-06T06:05:31.119Z",
+  "fetchedAt": "2026-10-06T23:58:10.568Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1575,6 +1575,29 @@
       "provider": "OpenCode Stealth",
       "fullId": "opencode/big-pickle",
       "name": "Big Pickle",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "exo-free",
+      "availableFrom": "2026-10-06",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": null,
+      "fullId": "opencode/exo-free",
+      "name": "Exo Free",
       "privacy": {
         "training": true,
         "validUntil": null
