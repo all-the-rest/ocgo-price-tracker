@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-03T12:10:20.329Z",
+  "fetchedAt": "2026-10-06T06:05:31.119Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1226,17 +1226,21 @@
       "provider": "Tencent"
     },
     {
-      "name": "Space Bunny Free",
+      "name": "Space Bunny",
       "tier": null,
-      "input": 0,
-      "output": 0,
-      "cachedRead": 0,
-      "cachedWrite": 0,
+      "input": 0.15,
+      "output": 0.6,
+      "cachedRead": 0.03,
+      "cachedWrite": null,
       "usage": {
-        "go": null,
-        "go-plus": null
+        "go": 30,
+        "go-plus": 120
       },
-      "pattern": null,
+      "pattern": {
+        "input": 1000,
+        "cachedRead": 55000,
+        "output": 200
+      },
       "capabilities": {
         "input": [
           "text",
@@ -1255,8 +1259,8 @@
         "validUntil": null
       },
       "contextWindow": 1048576,
-      "id": "opencode-go/space-bunny-free",
-      "provider": "OpenCode Stealth"
+      "id": "opencode-go/space-bunny",
+      "provider": null
     },
     {
       "name": "Grok 4.7",
