@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-06T23:58:10.568Z",
+  "fetchedAt": "2026-10-07T20:16:43.876Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1555,6 +1555,80 @@
       "contextWindow": 1050000,
       "id": "opencode-go/gpt-5.6-luna",
       "provider": "OpenAI"
+    },
+    {
+      "name": "Claude Haiku 5.5",
+      "tier": "≤ 100K tokens",
+      "input": 0.1,
+      "output": 0.5,
+      "cachedRead": 0.01,
+      "cachedWrite": 0.125,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
+      "pattern": {
+        "input": 1100,
+        "cachedRead": 55000,
+        "output": 240
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "id": "opencode-go/claude-haiku-5-5",
+      "provider": "Claude Haiku"
+    },
+    {
+      "name": "Claude Haiku 5.5",
+      "tier": "> 100K tokens",
+      "input": 0.5,
+      "output": 2.5,
+      "cachedRead": 0.05,
+      "cachedWrite": 0.625,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
+      "pattern": {
+        "input": 1100,
+        "cachedRead": 55000,
+        "output": 240
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "id": "opencode-go/claude-haiku-5-5",
+      "provider": "Claude Haiku"
     }
   ],
   "freeModels": [
