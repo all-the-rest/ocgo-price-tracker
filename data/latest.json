@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-08T16:04:57.441Z",
+  "fetchedAt": "2026-10-08T18:01:08.898Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1705,29 +1705,6 @@
       "provider": null,
       "fullId": "opencode/exo-free",
       "name": "Exo Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "fledge-alpha-free",
-      "availableFrom": "2026-10-03",
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1048576,
-      "provider": null,
-      "fullId": "opencode/fledge-alpha-free",
-      "name": "Fledge Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
