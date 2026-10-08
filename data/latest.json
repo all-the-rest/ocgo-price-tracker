@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-07T20:16:43.876Z",
+  "fetchedAt": "2026-10-08T14:09:29.358Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -424,6 +424,28 @@
       "contextWindow": 1000000,
       "id": "opencode-go/longcat-2.5-preview-free",
       "provider": "Meituan"
+    },
+    {
+      "name": "Step 5 Preview Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": {
+        "go": null,
+        "go-plus": null
+      },
+      "pattern": null,
+      "capabilities": null,
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": null,
+      "id": null,
+      "provider": null
     },
     {
       "name": "MiMo V2.6 Flash",
@@ -1919,6 +1941,19 @@
       "provider": "OpenCode Stealth",
       "fullId": "opencode-go/space-bunny-free",
       "name": "Space Bunny Free",
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "step-5-preview-free",
+      "availableFrom": "2026-10-08",
+      "capabilities": null,
+      "contextWindow": null,
+      "provider": null,
+      "fullId": "opencode/step-5-preview-free",
       "privacy": {
         "training": false,
         "retentionDays": true,
