@@ -1,0 +1,1572 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Curated coding models, pay-as-you-go pricing, and API access through OpenCode Console."><meta name="theme-color" content="#000000"><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="swap"><script type="module" src="/v2/_astro/ClientRouter.astro_astro_type_script_index_0_lang.QXqYV-0P.js"></script><link rel="canonical" href="https://opencode.ai/v2/docs/console/models/"><link rel="icon" type="image/svg+xml" href="/v2/favicon.svg"><title>Models | OpenCode</title><link rel="stylesheet" href="/v2/_astro/_..CwgjG4PU.css"></head><body><a class="skip-link" href="#docs-content">Skip to content</a><header class="site-header"><div class="header-inner"><a class="brand" href="/v2/" aria-label="OpenCode home"><img src="/v2/assets/logo-dark.svg" alt="OpenCode"></a><nav aria-label="Documentation sections"><a href="/v2/docs/">Docs</a><a href="/v2/docs/cli/">CLI</a><a href="/v2/docs/build/">Build</a><a href="/v2/docs/api/">API</a><a href="/v2/docs/console/" aria-current="page">Console</a><a href="/docs">V1</a></nav><div class="header-spacer"></div><button class="search-trigger" type="button" data-search-open aria-label="Search documentation"><span>Search</span><kbd>⌘K</kbd></button><a class="github-link" href="https://github.com/anomalyco/opencode" aria-label="OpenCode on GitHub">GitHub</a></div></header><dialog class="search-dialog" data-search-dialog data-pagefind-path="/v2/docs/pagefind/pagefind.js" data-base-url="/v2/docs/" aria-label="Search documentation"><form method="dialog" class="search-bar"><span aria-hidden="true">&gt;</span><input data-search-input type="search" placeholder="Search docs" autocomplete="off"><button type="submit" aria-label="Close search">Esc</button></form><div class="search-results" data-search-results><p>Start typing to search the documentation.</p></div></dialog><script>
+  let pagefind
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault()
+      const dialog = document.querySelector("[data-search-dialog]")
+      dialog?.showModal()
+      dialog?.querySelector("[data-search-input]")?.focus()
+    }
+  })
+
+  const setupSearch = () => {
+    const dialog = document.querySelector("[data-search-dialog]")
+    const input = document.querySelector("[data-search-input]")
+    const results = document.querySelector("[data-search-results]")
+    const trigger = document.querySelector("[data-search-open]")
+    if (trigger && !trigger.dataset.searchReady) {
+      trigger.dataset.searchReady = "true"
+      trigger.addEventListener("click", () => {
+        dialog?.showModal()
+        input?.focus()
+      })
+    }
+
+    if (input && results && !input.dataset.searchReady) input.addEventListener("input", async () => {
+      input.dataset.searchReady = "true"
+      const query = input.value.trim()
+      if (!query) {
+        results.innerHTML = "<p>Start typing to search the documentation.</p>"
+        return
+      }
+
+      const pagefindPath = dialog?.dataset.pagefindPath
+      if (!pagefindPath) return
+      const api = pagefind ?? (pagefind = await import(pagefindPath))
+      const search = await api.search(query)
+      const pages = await Promise.all(search.results.slice(0, 8).map((result) => result.data()))
+      results.replaceChildren(
+        ...pages.map((page) => {
+          const link = document.createElement("a")
+          const base = dialog.dataset.baseUrl ?? "/"
+          link.href = page.url.startsWith(base)
+            ? page.url
+            : `${dialog.dataset.baseUrl?.replace(/\/$/, "")}${page.url}`
+          const title = document.createElement("strong")
+          title.textContent = page.meta.title
+          const excerpt = document.createElement("span")
+          excerpt.innerHTML = page.excerpt
+          link.append(title, excerpt)
+          return link
+        }),
+      )
+      if (!pages.length) results.innerHTML = "<p>No results found.</p>"
+    })
+  }
+
+  setupSearch()
+  document.addEventListener("astro:page-load", setupSearch)
+</script><details class="mobile-navigation"><summary>Console navigation</summary><nav class="docs-sidebar" aria-label="Documentation"><section><ul><li><a href="/v2/docs/console/">Intro</a></li><li><a href="/v2/docs/console/models/" aria-current="page">Models</a></li><li><a href="/v2/docs/console/providers/">Providers</a></li><li><a href="/v2/docs/console/websearch/">Web Search</a></li><li><a href="/v2/docs/console/go/">Go</a></li></ul></section><section><h2>Workspace</h2><ul><li><a href="/v2/docs/console/workspaces/">Basics</a></li><li><a href="/v2/docs/console/members/">Members</a></li><li><a href="/v2/docs/console/sso/">SSO</a></li><li><a href="/v2/docs/console/scim/">SCIM</a></li><li><a href="/v2/docs/console/budgets/">Budgets</a></li><li><a href="/v2/docs/console/billing/">Billing</a></li></ul></section><section><h2>API</h2><ul><li><a href="/v2/docs/console/api/">Overview</a></li><li><a href="/v2/docs/console/api/inference/">Inference</a></li><li><a href="/v2/docs/console/api/providers/">Providers</a></li><li><a href="/v2/docs/console/api/budgets/">Budgets</a></li></ul></section></nav></details><div class="docs-frame"><aside class="sidebar-column"><nav class="docs-sidebar" aria-label="Documentation"><section><ul><li><a href="/v2/docs/console/">Intro</a></li><li><a href="/v2/docs/console/models/" aria-current="page">Models</a></li><li><a href="/v2/docs/console/providers/">Providers</a></li><li><a href="/v2/docs/console/websearch/">Web Search</a></li><li><a href="/v2/docs/console/go/">Go</a></li></ul></section><section><h2>Workspace</h2><ul><li><a href="/v2/docs/console/workspaces/">Basics</a></li><li><a href="/v2/docs/console/members/">Members</a></li><li><a href="/v2/docs/console/sso/">SSO</a></li><li><a href="/v2/docs/console/scim/">SCIM</a></li><li><a href="/v2/docs/console/budgets/">Budgets</a></li><li><a href="/v2/docs/console/billing/">Billing</a></li></ul></section><section><h2>API</h2><ul><li><a href="/v2/docs/console/api/">Overview</a></li><li><a href="/v2/docs/console/api/inference/">Inference</a></li><li><a href="/v2/docs/console/api/providers/">Providers</a></li><li><a href="/v2/docs/console/api/budgets/">Budgets</a></li></ul></section></nav></aside><main id="docs-content"><article class="prose" data-pagefind-body data-pagefind-meta="title:Models"><h1>Models<button type="button" aria-label="Copy page as Markdown" data-copy-markdown data-pagefind-ignore><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="2"></rect><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path></svg><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg></button></h1><p>OpenCode Console provides a list of models tested and verified by the OpenCode team. Sign in, add credits, and get an
+API key to use them with OpenCode or another coding agent.</p>
+<p>Console works like any other provider in OpenCode. It’s <strong>completely optional</strong>, and you can use any other provider
+instead. For a subscription with included usage, see <a href="/v2/docs/console/go">OpenCode Go</a>.</p>
+<h2 id="how-it-works">How it works</h2>
+<ol>
+<li>
+<p>Sign in to the <a href="https://opencode.ai/console">console</a>, add your billing details and credits, and copy your API key.</p>
+</li>
+<li>
+<p>Run <code>/connect</code> in the TUI, choose the OpenCode pay-as-you-go provider, and paste your API key.</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="text"><code><span class="line"><span>/connect</span></span></code></pre>
+</li>
+<li>
+<p>Run <code>/models</code> to see the available models and select one.</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="text"><code><span class="line"><span>/models</span></span></code></pre>
+</li>
+</ol>
+<p>You are charged per request and can add credits to your account.</p>
+<h2 id="endpoints">Endpoints</h2>
+<p>You can also access the models directly through the following API endpoints.</p>
+<div class="docs-table-scroll" role="region" aria-label="Console model endpoints" tabIndex="0">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Model</th><th>Model ID</th><th>Endpoint</th><th>AI SDK Package</th></tr></thead><tbody><tr><td>GPT 6 Astra</td><td>gpt-6-astra</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 6 Sol</td><td>gpt-6-sol</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 6.1 Sol</td><td>gpt-6.1-sol</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 6 Luna</td><td>gpt-6-luna</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.6 Sol</td><td>gpt-5.6-sol</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.6 Terra</td><td>gpt-5.6-terra</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.6 Luna</td><td>gpt-5.6-luna</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.5</td><td>gpt-5.5</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.5 Pro</td><td>gpt-5.5-pro</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.4</td><td>gpt-5.4</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.4 Pro</td><td>gpt-5.4-pro</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.4 Mini</td><td>gpt-5.4-mini</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.4 Nano</td><td>gpt-5.4-nano</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.3 Codex</td><td>gpt-5.3-codex</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.3 Codex Spark</td><td>gpt-5.3-codex-spark</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.2</td><td>gpt-5.2</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.2 Codex</td><td>gpt-5.2-codex</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.1</td><td>gpt-5.1</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.1 Codex</td><td>gpt-5.1-codex</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.1 Codex Max</td><td>gpt-5.1-codex-max</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.1 Codex Mini</td><td>gpt-5.1-codex-mini</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5</td><td>gpt-5</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5 Codex</td><td>gpt-5-codex</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5 Nano</td><td>gpt-5-nano</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Claude Fable 5.1</td><td>claude-fable-5-1</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Fable 5</td><td>claude-fable-5</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Opus 5.5</td><td>claude-opus-5-5</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Opus 5</td><td>claude-opus-5</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Opus 4.8</td><td>claude-opus-4-8</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Opus 4.7</td><td>claude-opus-4-7</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Opus 4.6</td><td>claude-opus-4-6</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Opus 4.5</td><td>claude-opus-4-5</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Sonnet 5.5</td><td>claude-sonnet-5-5</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Sonnet 5</td><td>claude-sonnet-5</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Sonnet 4.6</td><td>claude-sonnet-4-6</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Sonnet 4.5</td><td>claude-sonnet-4-5</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Haiku 5.5</td><td>claude-haiku-5-5</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Claude Haiku 4.5</td><td>claude-haiku-4-5</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Gemini 3.8 Flash</td><td>gemini-3.8-flash</td><td><code>https://opencode.ai/inference/v1/models/gemini-3.8-flash</code></td><td><code>@ai-sdk/google</code></td></tr><tr><td>Gemini 3.7 Flash</td><td>gemini-3.7-flash</td><td><code>https://opencode.ai/inference/v1/models/gemini-3.7-flash</code></td><td><code>@ai-sdk/google</code></td></tr><tr><td>Gemini 3.6 Flash</td><td>gemini-3.6-flash</td><td><code>https://opencode.ai/inference/v1/models/gemini-3.6-flash</code></td><td><code>@ai-sdk/google</code></td></tr><tr><td>Gemini 3.5 Flash</td><td>gemini-3.5-flash</td><td><code>https://opencode.ai/inference/v1/models/gemini-3.5-flash</code></td><td><code>@ai-sdk/google</code></td></tr><tr><td>Gemini 3.5 Flash Lite</td><td>gemini-3.5-flash-lite</td><td><code>https://opencode.ai/inference/v1/models/gemini-3.5-flash-lite</code></td><td><code>@ai-sdk/google</code></td></tr><tr><td>Gemini 3.1 Pro</td><td>gemini-3.1-pro</td><td><code>https://opencode.ai/inference/v1/models/gemini-3.1-pro</code></td><td><code>@ai-sdk/google</code></td></tr><tr><td>Gemini 3 Flash</td><td>gemini-3-flash</td><td><code>https://opencode.ai/inference/v1/models/gemini-3-flash</code></td><td><code>@ai-sdk/google</code></td></tr><tr><td>Grok 4.7</td><td>grok-4.7</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Grok 4.6</td><td>grok-4.6</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Grok 4.5</td><td>grok-4.5</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Grok Build 0.1</td><td>grok-build-0.1</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Muse Spark 1.3</td><td>muse-spark-1.3</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Muse Spark 1.2</td><td>muse-spark-1.2</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Qwen3.8 Max</td><td>qwen3.8-max</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Qwen3.8 Flash</td><td>qwen3.8-flash</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Qwen3.7 Max</td><td>qwen3.7-max</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Qwen3.7 Plus</td><td>qwen3.7-plus</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Qwen3.6 Plus</td><td>qwen3.6-plus</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Qwen3.5 Plus</td><td>qwen3.5-plus</td><td><code>https://opencode.ai/inference/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>DeepSeek V4.1 Flash</td><td>deepseek-v4.1-flash</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>DeepSeek V4 Pro</td><td>deepseek-v4-pro</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>DeepSeek V4 Flash</td><td>deepseek-v4-flash</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>DeepSeek V4 Flash Vision Exp</td><td>deepseek-v4-flash-vision-exp</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiniMax M3</td><td>minimax-m3</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiniMax M2.7</td><td>minimax-m2.7</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiniMax M2.5</td><td>minimax-m2.5</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>GLM 5.3 Flash</td><td>glm-5.3-flash</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>GLM 5.3</td><td>glm-5.3</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>GLM 5.2</td><td>glm-5.2</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>GLM 5.1</td><td>glm-5.1</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>GLM 5</td><td>glm-5</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Kimi K2.5</td><td>kimi-k2.5</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Kimi K2.6</td><td>kimi-k2.6</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Kimi K2.7 Code</td><td>kimi-k2.7-code</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Kimi K3</td><td>kimi-k3</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Mistral Large 4</td><td>mistral-large-4</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Jev 1.13</td><td>jev-1.13</td><td><code>https://opencode.ai/inference/v1/systemone</code></td><td>-</td></tr><tr><td>Jev 1.13 Free</td><td>jev-1.13-free</td><td><code>https://opencode.ai/inference/v1/systemone</code></td><td>-</td></tr><tr><td>Big Pickle</td><td>big-pickle</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Space Bunny Free</td><td>space-bunny-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>LongCat 2.5 Preview Free</td><td>longcat-2.5-preview-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Step 5 Preview Free</td><td>step-5-preview-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Exo Free</td><td>exo-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiMo-V2.6-Flash Free</td><td>mimo-v2.6-flash-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiMo-V2.5 Free</td><td>mimo-v2.5-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Ling 3.1 Flash Free</td><td>ling-3.1-flash-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Ling 3.0 Flash Fin Free</td><td>ling-3.0-flash-fin-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Nemotron 3 Ultra Free</td><td>nemotron-3-ultra-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Nemotron 3.5 Lightning Free</td><td>nemotron-3.5-lightning-free</td><td><code>https://opencode.ai/inference/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Muse Spark 1.3 Contributor Free</td><td>muse-spark-1.3-contributor-free</td><td><code>https://opencode.ai/inference/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr></tbody></table></div>
+<p>These AI SDK packages are for applications calling the endpoints directly. To select a <a href="/v2/docs/models">model</a> in OpenCode,
+use the format <code>opencode/&lt;model-id&gt;</code>:</p>
+<figure class="astro-code-figure"><figcaption class="astro-code-title">opencode.jsonc</figcaption><pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="jsonc"><code><span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  &quot;$schema&quot;</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">&quot;https://opencode.ai/config.json&quot;</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  &quot;model&quot;</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">&quot;opencode/gpt-5.5&quot;</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre></figure>
+<h3 id="model-list">Model list</h3>
+<p>Fetch the full list of available models and their metadata from the models endpoint:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">curl</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> https://opencode.ai/inference/v1/models</span></span></code></pre>
+<h3 id="jev">Jev</h3>
+<p>Jev is a System One model from TypeSafe AI for fast, structured decisions. Instead of generating text, it evaluates a <code>state</code> against typed questions and returns values and probabilities that your code can use directly. It supports yes/no (<code>noul</code>), multiple-choice (<code>choice</code>), and rubric-based (<code>score</code>) questions.</p>
+<p>Use your OpenCode Console API key with the <code>https://opencode.ai/inference/v1/systemone</code> endpoint. This example checks whether a support request is urgent:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">curl</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> https://opencode.ai/inference/v1/systemone</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  -H</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> &quot;Authorization: Bearer </span><span style="color:#24292E;--shiki-dark:#E1E4E8">$OPENCODE_API_KEY</span><span style="color:#032F62;--shiki-dark:#9ECBFF">&quot;</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  -H</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> &quot;Content-Type: application/json&quot;</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  -d</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> &#39;{</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    &quot;model&quot;: &quot;jev-1.13&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    &quot;state&quot;: &quot;My payments have failed for three days and I am losing sales. Please help now.&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    &quot;questions&quot;: {</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">      &quot;is_urgent&quot;: {</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">        &quot;type&quot;: &quot;noul&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">        &quot;instructions&quot;: &quot;Does this request require urgent attention?&quot;</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">      }</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    }</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">  }&#39;</span></span></code></pre>
+<p>You can ask multiple questions in one request. Jev evaluates them in parallel and returns each answer under the matching question ID:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">curl</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> https://opencode.ai/inference/v1/systemone</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  -H</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> &quot;Authorization: Bearer </span><span style="color:#24292E;--shiki-dark:#E1E4E8">$OPENCODE_API_KEY</span><span style="color:#032F62;--shiki-dark:#9ECBFF">&quot;</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  -H</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> &quot;Content-Type: application/json&quot;</span><span style="color:#005CC5;--shiki-dark:#79B8FF"> \</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  -d</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> &#39;{</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    &quot;model&quot;: &quot;jev-1.13&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    &quot;state&quot;: &quot;My order arrived late and the item is damaged. I want a refund.&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    &quot;questions&quot;: {</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">      &quot;department&quot;: {</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">        &quot;type&quot;: &quot;choice&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">        &quot;instructions&quot;: &quot;Which team should handle this request?&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">        &quot;criteria&quot;: {</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">          &quot;returns&quot;: &quot;Refunds, exchanges, or damaged items&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">          &quot;shipping&quot;: &quot;Delivery delays or lost packages&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">          &quot;billing&quot;: &quot;Charges, invoices, or payment problems&quot;</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">        }</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">      },</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">      &quot;frustration&quot;: {</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">        &quot;type&quot;: &quot;score&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">        &quot;instructions&quot;: &quot;How frustrated is the customer?&quot;,</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">        &quot;criteria&quot;: [&quot;Calm&quot;, &quot;Frustrated&quot;, &quot;Very angry&quot;]</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">      }</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">    }</span></span>
+<span class="line"><span style="color:#032F62;--shiki-dark:#9ECBFF">  }&#39;</span></span></code></pre>
+<p>Use <code>jev-1.13-free</code> instead of <code>jev-1.13</code> to use the limited-time free model. See the <a href="https://docs.typesafe.ai/">TypeSafe AI documentation</a> for details about question types and response fields.</p>
+<h2 id="pricing">Pricing</h2>
+<p>Console uses pay-as-you-go pricing. Below are the prices <strong>per 1M tokens</strong>.</p>
+<div class="docs-table-scroll" role="region" aria-label="Console model pricing" tabIndex="0">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th></tr></thead><tbody><tr><td>Big Pickle</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>Space Bunny Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>LongCat 2.5 Preview Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>Step 5 Preview Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>Exo Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>MiMo-V2.6-Flash Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>MiMo-V2.5 Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>Ling 3.1 Flash Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>Ling 3.0 Flash Fin Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>Nemotron 3 Ultra Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>Nemotron 3.5 Lightning Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>Muse Spark 1.3 Contributor Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td></tr><tr><td>Jev 1.13 Free</td><td>Free</td><td>Free</td><td>-</td><td>-</td></tr><tr><td>Jev 1.13</td><td>$0.042</td><td>Free</td><td>-</td><td>-</td></tr><tr><td>MiniMax M3</td><td>$0.30</td><td>$1.20</td><td>$0.06</td><td>-</td></tr><tr><td>MiniMax M2.7</td><td>$0.30</td><td>$1.20</td><td>$0.06</td><td>-</td></tr><tr><td>MiniMax M2.5</td><td>$0.30</td><td>$1.20</td><td>$0.06</td><td>-</td></tr><tr><td>GLM 5.3 Flash</td><td>$0.15</td><td>$0.50</td><td>$0.03</td><td>-</td></tr><tr><td>GLM 5.3</td><td>$1.40</td><td>$4.40</td><td>$0.26</td><td>-</td></tr><tr><td>GLM 5.2</td><td>$1.40</td><td>$4.40</td><td>$0.26</td><td>-</td></tr><tr><td>GLM 5.1</td><td>$1.40</td><td>$4.40</td><td>$0.26</td><td>-</td></tr><tr><td>GLM 5</td><td>$1.00</td><td>$3.20</td><td>$0.20</td><td>-</td></tr><tr><td>Kimi K2.7 Code</td><td>$0.95</td><td>$4.00</td><td>$0.19</td><td>-</td></tr><tr><td>Kimi K3</td><td>$3.00</td><td>$15.00</td><td>$0.30</td><td>-</td></tr><tr><td>Kimi K2.6</td><td>$0.95</td><td>$4.00</td><td>$0.16</td><td>-</td></tr><tr><td>Kimi K2.5</td><td>$0.60</td><td>$3.00</td><td>$0.10</td><td>-</td></tr><tr><td>Mistral Large 4 (50% off)</td><td><del>$1.36</del> $0.68</td><td><del>$4.18</del> $2.09</td><td><del>$0.14</del> $0.07</td><td>-</td></tr><tr><td>Qwen3.8 Max</td><td>$2.00</td><td>$6.00</td><td>$0.25</td><td>$2.50</td></tr><tr><td>Qwen3.8 Flash</td><td>$0.15</td><td>$0.47</td><td>$0.016</td><td>$0.20</td></tr><tr><td>Qwen3.7 Max</td><td>$2.50</td><td>$7.50</td><td>$0.50</td><td>$3.125</td></tr><tr><td>Qwen3.7 Plus</td><td>$0.40</td><td>$1.60</td><td>$0.04</td><td>$0.50</td></tr><tr><td>Qwen3.6 Plus</td><td>$0.50</td><td>$3.00</td><td>$0.05</td><td>$0.625</td></tr><tr><td>Qwen3.5 Plus</td><td>$0.20</td><td>$1.20</td><td>$0.02</td><td>$0.25</td></tr><tr><td>DeepSeek V4.1 Flash</td><td>$0.30</td><td>$1.20</td><td>$0.006</td><td>-</td></tr><tr><td>DeepSeek V4 Pro</td><td>$1.74</td><td>$3.48</td><td>$0.145</td><td>-</td></tr><tr><td>DeepSeek V4 Flash</td><td>$0.14</td><td>$0.28</td><td>$0.028</td><td>-</td></tr><tr><td>DeepSeek V4 Flash Vision Exp</td><td>$0.14</td><td>$0.28</td><td>$0.028</td><td>-</td></tr><tr><td>Claude Fable 5.1</td><td>$10.00</td><td>$50.00</td><td>$0.25</td><td>$12.50</td></tr><tr><td>Claude Fable 5</td><td>$10.00</td><td>$50.00</td><td>$1.00</td><td>$12.50</td></tr><tr><td>Claude Opus 5.5</td><td>$4.00</td><td>$20.00</td><td>$0.20</td><td>$5.00</td></tr><tr><td>Claude Opus 5</td><td>$5.00</td><td>$25.00</td><td>$0.50</td><td>$6.25</td></tr><tr><td>Claude Opus 4.8</td><td>$5.00</td><td>$25.00</td><td>$0.50</td><td>$6.25</td></tr><tr><td>Claude Opus 4.7</td><td>$5.00</td><td>$25.00</td><td>$0.50</td><td>$6.25</td></tr><tr><td>Claude Opus 4.6</td><td>$5.00</td><td>$25.00</td><td>$0.50</td><td>$6.25</td></tr><tr><td>Claude Opus 4.5</td><td>$5.00</td><td>$25.00</td><td>$0.50</td><td>$6.25</td></tr><tr><td>Claude Sonnet 5.5</td><td>$2.00</td><td>$10.00</td><td>$0.20</td><td>$2.50</td></tr><tr><td>Claude Sonnet 5</td><td>$2.00</td><td>$10.00</td><td>$0.20</td><td>$2.50</td></tr><tr><td>Claude Sonnet 4.6</td><td>$3.00</td><td>$15.00</td><td>$0.30</td><td>$3.75</td></tr><tr><td>Claude Sonnet 4.5 (≤ 200K tokens)</td><td>$3.00</td><td>$15.00</td><td>$0.30</td><td>$3.75</td></tr><tr><td>Claude Sonnet 4.5 (&gt; 200K tokens)</td><td>$6.00</td><td>$22.50</td><td>$0.60</td><td>$7.50</td></tr><tr><td>Claude Haiku 5.5 (≤ 100K tokens)</td><td>$0.10</td><td>$0.50</td><td>$0.01</td><td>$0.125</td></tr><tr><td>Claude Haiku 5.5 (&gt; 100K tokens)</td><td>$0.50</td><td>$2.50</td><td>$0.05</td><td>$0.625</td></tr><tr><td>Claude Haiku 4.5</td><td>$1.00</td><td>$5.00</td><td>$0.10</td><td>$1.25</td></tr><tr><td>Gemini 3.8 Flash</td><td>$1.50</td><td>$7.50</td><td>$0.15</td><td>-</td></tr><tr><td>Gemini 3.7 Flash</td><td>$1.50</td><td>$7.50</td><td>$0.15</td><td>-</td></tr><tr><td>Gemini 3.6 Flash</td><td>$1.50</td><td>$7.50</td><td>$0.15</td><td>-</td></tr><tr><td>Gemini 3.5 Flash</td><td>$1.50</td><td>$9.00</td><td>$0.15</td><td>-</td></tr><tr><td>Gemini 3.5 Flash Lite</td><td>$0.30</td><td>$2.50</td><td>$0.03</td><td>-</td></tr><tr><td>Gemini 3.1 Pro (≤ 200K tokens)</td><td>$2.00</td><td>$12.00</td><td>$0.20</td><td>-</td></tr><tr><td>Gemini 3.1 Pro (&gt; 200K tokens)</td><td>$4.00</td><td>$18.00</td><td>$0.40</td><td>-</td></tr><tr><td>Gemini 3 Flash</td><td>$0.50</td><td>$3.00</td><td>$0.05</td><td>-</td></tr><tr><td>Grok 4.7 (≤ 200K tokens)</td><td>$2.00</td><td>$6.00</td><td>$0.50</td><td>-</td></tr><tr><td>Grok 4.7 (&gt; 200K tokens)</td><td>$4.00</td><td>$12.00</td><td>$1.00</td><td>-</td></tr><tr><td>Grok 4.6 (≤ 200K tokens)</td><td>$2.00</td><td>$6.00</td><td>$0.50</td><td>-</td></tr><tr><td>Grok 4.6 (&gt; 200K tokens)</td><td>$4.00</td><td>$12.00</td><td>$1.00</td><td>-</td></tr><tr><td>Grok 4.5 (≤ 200K tokens)</td><td>$2.00</td><td>$6.00</td><td>$0.30</td><td>-</td></tr><tr><td>Grok 4.5 (&gt; 200K tokens)</td><td>$4.00</td><td>$12.00</td><td>$0.60</td><td>-</td></tr><tr><td>Grok Build 0.1</td><td>$1.00</td><td>$2.00</td><td>$0.20</td><td>-</td></tr><tr><td>Muse Spark 1.3</td><td>$1.25</td><td>$4.25</td><td>$0.15</td><td>-</td></tr><tr><td>Muse Spark 1.2</td><td>$1.25</td><td>$4.25</td><td>$0.15</td><td>-</td></tr><tr><td>GPT 6 Astra (≤ 272K tokens)</td><td>$10.00</td><td>$50.00</td><td>$1.00</td><td>$12.50</td></tr><tr><td>GPT 6 Astra (&gt; 272K tokens)</td><td>$20.00</td><td>$75.00</td><td>$2.00</td><td>$25.00</td></tr><tr><td>GPT 6 Sol (≤ 272K tokens)</td><td>$2.00</td><td>$10.00</td><td>$0.20</td><td>$2.50</td></tr><tr><td>GPT 6 Sol (&gt; 272K tokens)</td><td>$4.00</td><td>$15.00</td><td>$0.40</td><td>$5.00</td></tr><tr><td>GPT 6.1 Sol (≤ 272K tokens)</td><td>$2.00</td><td>$10.00</td><td>$0.20</td><td>$2.50</td></tr><tr><td>GPT 6.1 Sol (&gt; 272K tokens)</td><td>$4.00</td><td>$15.00</td><td>$0.40</td><td>$5.00</td></tr><tr><td>GPT 6 Luna (≤ 272K tokens)</td><td>$0.10</td><td>$0.50</td><td>$0.01</td><td>$0.125</td></tr><tr><td>GPT 6 Luna (&gt; 272K tokens)</td><td>$0.20</td><td>$0.75</td><td>$0.02</td><td>$0.25</td></tr><tr><td>GPT 5.6 Sol (≤ 272K tokens)</td><td>$4.00</td><td>$20.00</td><td>$0.40</td><td>$5.00</td></tr><tr><td>GPT 5.6 Sol (&gt; 272K tokens)</td><td>$8.00</td><td>$30.00</td><td>$0.80</td><td>$10.00</td></tr><tr><td>GPT 5.6 Terra (≤ 272K tokens)</td><td>$2.00</td><td>$12.00</td><td>$0.20</td><td>$2.50</td></tr><tr><td>GPT 5.6 Terra (&gt; 272K tokens)</td><td>$4.00</td><td>$18.00</td><td>$0.40</td><td>$5.00</td></tr><tr><td>GPT 5.6 Luna (≤ 272K tokens)</td><td>$0.20</td><td>$1.20</td><td>$0.02</td><td>$0.25</td></tr><tr><td>GPT 5.6 Luna (&gt; 272K tokens)</td><td>$0.40</td><td>$1.80</td><td>$0.04</td><td>$0.50</td></tr><tr><td>GPT 5.5 (≤ 272K tokens)</td><td>$5.00</td><td>$30.00</td><td>$0.50</td><td>-</td></tr><tr><td>GPT 5.5 (&gt; 272K tokens)</td><td>$10.00</td><td>$45.00</td><td>$1.00</td><td>-</td></tr><tr><td>GPT 5.5 Pro</td><td>$30.00</td><td>$180.00</td><td>$30.00</td><td>-</td></tr><tr><td>GPT 5.4 (≤ 272K tokens)</td><td>$2.50</td><td>$15.00</td><td>$0.25</td><td>-</td></tr><tr><td>GPT 5.4 (&gt; 272K tokens)</td><td>$5.00</td><td>$22.50</td><td>$0.50</td><td>-</td></tr><tr><td>GPT 5.4 Pro</td><td>$30.00</td><td>$180.00</td><td>$30.00</td><td>-</td></tr><tr><td>GPT 5.4 Mini</td><td>$0.75</td><td>$4.50</td><td>$0.075</td><td>-</td></tr><tr><td>GPT 5.4 Nano</td><td>$0.20</td><td>$1.25</td><td>$0.02</td><td>-</td></tr><tr><td>GPT 5.3 Codex Spark</td><td>$1.75</td><td>$14.00</td><td>$0.175</td><td>-</td></tr><tr><td>GPT 5.3 Codex</td><td>$1.75</td><td>$14.00</td><td>$0.175</td><td>-</td></tr><tr><td>GPT 5.2</td><td>$1.75</td><td>$14.00</td><td>$0.175</td><td>-</td></tr><tr><td>GPT 5.2 Codex</td><td>$1.75</td><td>$14.00</td><td>$0.175</td><td>-</td></tr><tr><td>GPT 5.1</td><td>$1.07</td><td>$8.50</td><td>$0.107</td><td>-</td></tr><tr><td>GPT 5.1 Codex</td><td>$1.07</td><td>$8.50</td><td>$0.107</td><td>-</td></tr><tr><td>GPT 5.1 Codex Max</td><td>$1.25</td><td>$10.00</td><td>$0.125</td><td>-</td></tr><tr><td>GPT 5.1 Codex Mini</td><td>$0.25</td><td>$2.00</td><td>$0.025</td><td>-</td></tr><tr><td>GPT 5</td><td>$1.07</td><td>$8.50</td><td>$0.107</td><td>-</td></tr><tr><td>GPT 5 Codex</td><td>$1.07</td><td>$8.50</td><td>$0.107</td><td>-</td></tr><tr><td>GPT 5 Nano</td><td>$0.05</td><td>$0.40</td><td>$0.005</td><td>-</td></tr></tbody></table></div>
+<p><strong>DeepSeek V4 Flash Vision Exp:</strong> Images are converted into tokens based on their dimensions and billed as input tokens alongside text tokens. <a href="https://api-docs.deepseek.com/quick_start/pricing/">Learn more</a>.</p>
+<p>You may notice <a href="/v2/docs/models">low-cost models</a>, such as Haiku, Nano, or Flash, in your usage history. OpenCode uses these
+models to generate session titles.</p>
+<aside class="callout callout-note" aria-label="Note"><strong>Note</strong><div><p>Credit card fees are passed along at cost (4.4% + $0.30 per transaction); we don’t charge anything beyond that.</p></div></aside>
+<h3 id="free-models">Free models</h3>
+<ul>
+<li>Exo Free is available on OpenCode for a limited time. The team is using this time to collect feedback and improve the model.</li>
+<li>MiMo-V2.6-Flash Free is available on OpenCode for a limited time. The team is using this time to collect feedback and improve the model.</li>
+<li>MiMo-V2.5 Free is available on OpenCode for a limited time. The team is using this time to collect feedback and improve the model.</li>
+<li>Ling 3.1 Flash Free is available on OpenCode for a limited time. The team is using this time to collect feedback and improve the model.</li>
+<li>Ling 3.0 Flash Fin Free is available on OpenCode for a limited time. The team is using this time to collect feedback and improve the model.</li>
+<li>Nemotron 3 Ultra Free is available on OpenCode for a limited time. The team is using this time to collect feedback and improve the model.</li>
+<li>Nemotron 3.5 Lightning Free is available on OpenCode for a limited time. The team is using this time to collect feedback and improve the model.</li>
+<li>Big Pickle is a stealth model that’s free on OpenCode for a limited time. The team is using this time to collect feedback and improve the model.</li>
+<li>Space Bunny Free is a stealth model that’s free on OpenCode for a limited time. Its provider follows a zero-retention policy and does not use your data for model training.</li>
+<li>LongCat 2.5 Preview Free is free on OpenCode for a limited time. Its provider follows a zero-retention policy and does not use your data for model training.</li>
+<li>Step 5 Preview Free is free on OpenCode for a limited time. Its provider follows a zero-retention policy and does not use your data for model training.</li>
+<li>Muse Spark 1.3 Contributor Free is available on OpenCode for a limited time. The team is using this time to collect feedback and improve the model.</li>
+<li>Jev 1.13 Free is available on OpenCode for a limited time.</li>
+</ul>
+<p><a href="mailto:help@anoma.ly">Contact us</a> if you have any questions.</p>
+<h3 id="auto-reload">Auto-reload</h3>
+<p>If your balance goes below $5, Console automatically reloads $20. You can change the auto-reload amount or disable
+auto-reload entirely.</p>
+<h3 id="monthly-limits">Monthly limits</h3>
+<p>You can set a monthly usage limit for the entire workspace and for each member of your team.</p>
+<p>For example, with a $20 monthly usage limit, Console will not use more than $20 in a month. If auto-reload is enabled,
+you might still be charged more than $20 when your balance goes below $5.</p>
+<h3 id="deprecated-models">Deprecated models</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Model</th><th>Deprecation date</th></tr></thead><tbody><tr><td>GPT 5.2 Codex</td><td>July 23, 2026</td></tr><tr><td>GPT 5.1 Codex</td><td>July 23, 2026</td></tr><tr><td>GPT 5.1 Codex Max</td><td>July 23, 2026</td></tr><tr><td>GPT 5.1 Codex Mini</td><td>July 23, 2026</td></tr><tr><td>GPT 5 Codex</td><td>July 23, 2026</td></tr><tr><td>Claude Opus 4.1</td><td>August 5, 2026</td></tr><tr><td>Claude Sonnet 4</td><td>June 15, 2026</td></tr><tr><td>Claude Haiku 3.5</td><td>February 16, 2026</td></tr><tr><td>Gemini 3 Pro</td><td>March 9, 2026</td></tr><tr><td>MiniMax M2.5</td><td>August 5, 2026</td></tr><tr><td>MiniMax M2.1</td><td>March 15, 2026</td></tr><tr><td>GLM 5</td><td>May 14, 2026</td></tr><tr><td>GLM 4.7</td><td>March 15, 2026</td></tr><tr><td>GLM 4.6</td><td>March 15, 2026</td></tr><tr><td>Kimi K2.5</td><td>August 5, 2026</td></tr><tr><td>Kimi K2 Thinking</td><td>March 6, 2026</td></tr><tr><td>Kimi K2</td><td>March 6, 2026</td></tr><tr><td>Qwen3 Coder 480B</td><td>February 6, 2026</td></tr></tbody></table>
+<h2 id="privacy">Privacy</h2>
+<p>All our models are hosted in the US and EU. Our providers follow a zero-retention policy and do not use your data for model training, with the following exceptions:</p>
+<ul>
+<li>Big Pickle: During its free period, collected data may be used to improve the model.</li>
+<li>Exo Free: During its free period, collected data may be used to improve the model.</li>
+<li>MiMo-V2.6-Flash Free: During its free period, collected data may be used to improve the model.</li>
+<li>MiMo-V2.5 Free: During its free period, collected data may be used to improve the model.</li>
+<li>Ling 3.1 Flash Free: During its free period, collected data may be used to improve the model.</li>
+<li>Ling 3.0 Flash Fin Free: During its free period, collected data may be used to improve the model.</li>
+<li>Nemotron 3 Ultra Free (NVIDIA free endpoints): Trial use only — do not submit personal or confidential data. Your use is logged for security purposes and to improve NVIDIA products and services. The logged session data for improvement purposes is not linked to your identity or any persistent identifier. For more information about our data processing practices, see our <a href="https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf">Privacy Policy</a>. By interacting with this endpoint, you consent to our collection, recording, and use of such information and the <a href="https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf">NVIDIA API Trial Terms of Service</a>.</li>
+<li>Nemotron 3.5 Lightning Free (NVIDIA free endpoints): Trial use only — do not submit personal or confidential data. Your use is logged for security purposes and to improve NVIDIA products and services. The logged session data for improvement purposes is not linked to your identity or any persistent identifier. For more information about our data processing practices, see our <a href="https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf">Privacy Policy</a>. By interacting with this endpoint, you consent to our collection, recording, and use of such information and the <a href="https://assets.ngc.nvidia.com/products/api-catalog/legal/NVIDIA%20API%20Trial%20Terms%20of%20Service.pdf">NVIDIA API Trial Terms of Service</a>.</li>
+<li>OpenAI APIs: Requests are retained for 30 days in accordance with <a href="https://platform.openai.com/docs/guides/your-data">OpenAI’s Data Policies</a>.</li>
+<li>Anthropic APIs: Requests are retained for 30 days in accordance with <a href="https://docs.anthropic.com/en/docs/claude-code/data-usage">Anthropic’s Data Policies</a>.</li>
+<li>Mistral APIs: Prompts and other inputs are not used for training. Data is retained in accordance with <a href="https://docs.mistral.ai/admin/monitor-comply/zero-data-retention">Mistral’s Data Retention Policy</a>.</li>
+<li>Muse Spark 1.3 Contributor Free: Heavily discounted token pricing in exchange for permission to use your prompts and completions to train future Meta models. <a href="https://dev.meta.ai/docs/pricing-rate-limits#contributor-tier">Learn more</a>.</li>
+</ul>
+<p>For subscription models, see <a href="/v2/docs/console/go#privacy">Go privacy</a>.</p>
+<h2 id="for-teams">For teams</h2>
+<p>Share Console models with your team from a <a href="/v2/docs/console/workspaces">workspace</a>. Owners and admins can
+<a href="/v2/docs/console/members">invite members</a>, choose which models are enabled from the <strong>Models</strong> tab, set
+<a href="/v2/docs/console/budgets">budgets</a>, and connect <a href="/v2/docs/console/providers">their own providers</a>.</p>
+<h2 id="background">Background</h2>
+<p>There are many models available, but only a few work well as coding agents. Providers also vary in configuration,
+performance, and quality, so a model accessed through a gateway such as OpenRouter may perform differently.</p>
+<aside class="callout callout-tip" aria-label="Tip"><strong>Tip</strong><div>We tested a select group of models and providers that work well with OpenCode.</div></aside>
+<p>To build this catalog, we:</p>
+<ol>
+<li>Tested a select group of models and talked to their teams about how to best run them.</li>
+<li>Worked with providers to make sure the models were served correctly.</li>
+<li>Benchmarked each model/provider combination to produce a list we feel good recommending.</li>
+</ol>
+<p>Console is an AI gateway that gives you access to these models.</p>
+<h2 id="goals">Goals</h2>
+<p>We built Console to:</p>
+<ol>
+<li><strong>Benchmark</strong> the best models and providers for coding agents.</li>
+<li>Provide the <strong>highest quality</strong> options without downgrading performance or routing to cheaper providers.</li>
+<li>Pass along <strong>price drops</strong> by selling at cost, with markup only to cover processing fees.</li>
+<li>Have <strong>no lock-in</strong>: use Console with any coding agent, or use another provider with OpenCode.</li>
+</ol></article></main><aside class="toc-column"><nav class="docs-toc" aria-label="On this page"><h2>On this page</h2><ul><li><a href="#how-it-works">How it works</a></li><li><a href="#endpoints">Endpoints</a></li><li class="nested"><a href="#model-list">Model list</a></li><li class="nested"><a href="#jev">Jev</a></li><li><a href="#pricing">Pricing</a></li><li class="nested"><a href="#free-models">Free models</a></li><li class="nested"><a href="#auto-reload">Auto-reload</a></li><li class="nested"><a href="#monthly-limits">Monthly limits</a></li><li class="nested"><a href="#deprecated-models">Deprecated models</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#for-teams">For teams</a></li><li><a href="#background">Background</a></li><li><a href="#goals">Goals</a></li></ul></nav></aside></div><script>
+      const addHeadingAnchors = () => {
+        for (const heading of document.querySelectorAll(".prose :is(h2, h3)[id]")) {
+          if (heading.querySelector(".heading-anchor")) continue
+          const anchor = document.createElement("a")
+          anchor.className = "heading-anchor"
+          anchor.href = `#${heading.id}`
+          anchor.setAttribute("aria-label", `Link to ${heading.textContent ?? "section"}`)
+          anchor.textContent = "#"
+          heading.append(anchor)
+        }
+      }
+
+      addHeadingAnchors()
+      document.addEventListener("astro:page-load", addHeadingAnchors)
+    </script><script type="module">globalThis.process??={},globalThis.process.env??={},document.addEventListener(`click`,async e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`[data-copy-markdown]`);if(!t)return;t.dataset.copied=`true`,t.setAttribute(`aria-label`,`Copied`),window.setTimeout(()=>{delete t.dataset.copied,t.setAttribute(`aria-label`,`Copy page as Markdown`)},1500);let n=await fetch(window.location.href,{headers:{Accept:`text/markdown`}});n.ok&&await navigator.clipboard.writeText(await n.text())});</script></body></html>

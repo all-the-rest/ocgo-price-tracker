@@ -135,10 +135,12 @@ export default function PriceTable(props: PriceTableProps) {
 
   const usageBadge = (usage: number) => {
     if (usage / props.plan.priceMonthly <= 1) return "badge-error";
-    if (usage > props.plan.creditsMonthly) return "badge-success";
-    if (usage < props.plan.creditsMonthly)
-      return usage < props.plan.creditsMonthly / 2 ? "badge-error" : "badge-warning";
-    return "badge-success";
+    // Volles Guthaben ist grün — auch als 6×-Faktor, wenn das abgeleitete
+    // creditsMonthly durch Ausreißer-Tiers darüber liegt (Go: $80 statt $60).
+    if (usage >= props.plan.creditsMonthly || usage / props.plan.priceMonthly >= 6)
+      return "badge-success";
+    if (usage < props.plan.creditsMonthly / 2) return "badge-error";
+    return "badge-warning";
   };
 
   const usagePct = (usage: number) => Math.round((usage / props.plan.creditsMonthly) * 100);
@@ -342,7 +344,7 @@ export default function PriceTable(props: PriceTableProps) {
                         >
                           <span
                             class={`badge badge-sm ${usageBadge(usage())}`}
-                            classList={{ "font-bold": usage() > props.plan.creditsMonthly }}
+                            classList={{ "font-bold": usage() / props.plan.priceMonthly > 6 }}
                           >
                             ${usage()} · {formatMult(usage() / props.plan.priceMonthly, props.lang)}×
                           </span>

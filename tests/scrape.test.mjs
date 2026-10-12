@@ -44,20 +44,30 @@ import {
   computePrivacyDiff,
   normalizeChangelogIds,
   parseGermanDate,
+  parseEnglishDate,
   canonicalModelName,
   canonicalFreeName,
 } from "../scripts/scrape.mjs";
 
 const fixture = readFileSync(
-  join(dirname(fileURLToPath(import.meta.url)), "fixtures", "go-de.html"),
+  join(dirname(fileURLToPath(import.meta.url)), "fixtures", "go-en.html"),
+  "utf8"
+);
+
+const zenFixture = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "fixtures", "models-en.html"),
   "utf8"
 );
 
 // ---------------------------------------------------------------------------
-// Synthetische Seiten im echten Doku-Aufbau: Plan-Tabelle + `starlight-tabs`
-// mit einem `[role=tabpanel]` je Plan (Panel-Label == Plan-Name).
+// Synthetische Seiten im echten Doku-Aufbau: Plan-Tabelle +
+// `div.docs-plan-tabs` mit einem `div[data-plan-panel]` je Plan (Panel-Key ==
+// Plan-Id, Tabs als `button[data-plan-tab]`).
 // ---------------------------------------------------------------------------
 
+const EN_HEADERS = ["Model", "Input", "Output", "Cached Read", "Cached Write", "Monthly limit"];
+// Deutsche Header bleiben als Kompatibilitäts-Nachweis (der Parser akzeptiert
+// beide Sprachen, die Doku ist auf Englisch).
 const DE_HEADERS = [
   "Modell",
   "Eingabe",
@@ -66,7 +76,6 @@ const DE_HEADERS = [
   "Cache-Schreibvorgang",
   "Monatliches Limit",
 ];
-const EN_HEADERS = ["Model", "Input", "Output", "Cached Read", "Cached Write", "Usage"];
 
 function tableHtml(headers, rows) {
   return `<table><thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows
@@ -76,44 +85,45 @@ function tableHtml(headers, rows) {
 
 function planTable(plans) {
   return tableHtml(
-    ["Abonnement", "Preis", "Enthaltene Nutzung"],
-    plans.map((p) => [p.name, `$${p.price}/Monat`, "x"])
+    ["Plan", "Price", "Included usage"],
+    plans.map((p) => [p.name, `$${p.price}/month`, "x"])
   );
 }
 
 /**
- * Baut eine Seite wie die Doku: Plan-Tabelle + Tab-Panels (Labels → Plan-Ids).
+ * Baut eine Seite wie die Doku: Plan-Tabelle + Tab-Panels (Keys → Plan-Ids).
  * Panels ohne Preistabelle (Rate-Limits) werden bewusst nicht erzeugt.
  */
 function buildPage({ plans = [{ name: "Go", price: 10 }], panels = [], extra = "" } = {}) {
-  const tabs = panels
-    .map(
-      (p, i) =>
-        `<div id="tab-panel-${i + 1}" aria-labelledby="tab-${i + 1}" role="tabpanel">${p.table}</div>`
-    )
+  const panelsHtml = panels
+    .map((p) => {
+      const key = p.key ?? planIdFromLabel(p.label);
+      const labelledBy = p.labelledBy ?? `go-pricing-tab-${key}`;
+      return `<div role="tabpanel" id="go-pricing-panel-${key}" aria-labelledby="${labelledBy}" data-plan-panel="${key}">${p.table}</div>`;
+    })
     .join("");
   const tabList = panels
-    .map(
-      (p, i) =>
-        `<li role="presentation"><a role="tab" href="#tab-panel-${i + 1}" id="tab-${i + 1}">${p.label}</a></li>`
-    )
+    .map((p) => {
+      const key = p.key ?? planIdFromLabel(p.label);
+      return `<button type="button" role="tab" id="go-pricing-tab-${key}" aria-controls="go-pricing-panel-${key}" data-plan-tab="${key}">${p.label}</button>`;
+    })
     .join("");
   const tabsHtml = panels.length
-    ? `<starlight-tabs data-sync-key="go-plan"><div class="tablist-wrapper"><ul role="tablist">${tabList}</ul></div>${tabs}</starlight-tabs>`
+    ? `<div class="docs-plan-tabs" data-plan-tabs data-sync-key="go-plan"><div class="docs-plan-tabs-list" role="tablist">${tabList}</div>${panelsHtml}</div>`
     : "";
   return `<html><body><main>${planTable(plans)}${tabsHtml}${extra}</main></body></html>`;
 }
 
-const pricePanel = (label, rows, headers = DE_HEADERS) => ({ label, table: tableHtml(headers, rows) });
-const privacyTable = (rows) => tableHtml(["Modell", "Modelltraining", "Datenaufbewahrung"], rows);
+const pricePanel = (label, rows, headers = EN_HEADERS) => ({ label, table: tableHtml(headers, rows) });
+const privacyTable = (rows) => tableHtml(["Model", "Model training", "Data retention"], rows);
 
 // ---------------------------------------------------------------------------
 // parseHtml: echte Fixture (Plan-Tabelle + zwei Preistabellen)
 // ---------------------------------------------------------------------------
 
-test("parseHtml: extrahiert 39 Modelle aus dem HTML-Dump", () => {
+test("parseHtml: extrahiert 42 Modelle aus dem HTML-Dump", () => {
   const models = parseHtml(fixture);
-  assert.equal(models.length, 39);
+  assert.equal(models.length, 42);
   for (const m of models) {
     assert.equal(typeof m.name, "string");
     assert.equal(typeof m.usage, "object");
@@ -146,7 +156,7 @@ test("parseHtml: MiMo V2.5 Pro mit kleinen Preisen", () => {
 
 test("parseHtml: kostenlose Zeilen (Nutzung '-'/unbegrenzt) → Preise 0, usage null in beiden Plänen", () => {
   const free = parseHtml(fixture).filter((m) => m.usage.go === null);
-  assert.deepEqual(free.map((m) => m.name).sort(), ["LongCat 2.5 Preview Free", "Space Bunny Free"]);
+  assert.deepEqual(free.map((m) => m.name).sort(), ["LongCat 2.5 Preview Free", "Step 5 Preview Free"]);
   for (const m of free) {
     assert.deepEqual(m.usage, { go: null, "go-plus": null });
     assert.deepEqual([m.input, m.output, m.cachedRead, m.cachedWrite], [0, 0, 0, 0]);
@@ -181,36 +191,37 @@ test("parseHtml: pro-Modell-Anfragemuster (Komma-Tausender)", () => {
 // Pläne (Plan-Tabelle + Tab-Zuordnung)
 // ---------------------------------------------------------------------------
 
-test("parsePlans: Go (10/60) und Go Plus (40/240) aus der Fixture", () => {
+test("parsePlans: Go (10/80) und Go Plus (40/240) aus der Fixture", () => {
   const plans = parsePlans(fixture);
   assert.deepEqual(plans, [
     {
       id: "go",
       name: "Go",
       priceMonthly: 10,
-      creditsMonthly: 60,
-      sourceUrl: "https://opencode.ai/docs/de/go/",
+      creditsMonthly: 80,
+      sourceUrl: "https://opencode.ai/v2/docs/console/go/",
     },
     {
       id: "go-plus",
       name: "Go Plus",
       priceMonthly: 40,
       creditsMonthly: 240,
-      sourceUrl: "https://opencode.ai/docs/de/go/",
+      sourceUrl: "https://opencode.ai/v2/docs/console/go/",
     },
   ]);
 });
 
 test("creditsMonthly = höchste endliche Nutzung je Plan", () => {
   const plans = parsePlans(fixture);
-  assert.equal(plans.find((p) => p.id === "go").creditsMonthly, 60);
+  assert.equal(plans.find((p) => p.id === "go").creditsMonthly, 80);
   assert.equal(plans.find((p) => p.id === "go-plus").creditsMonthly, 240);
 });
 
 test("parsePlanPrice/planIdFromLabel: Formate und Normalisierung", () => {
+  assert.equal(parsePlanPrice("$10/month"), 10);
+  assert.equal(parsePlanPrice("$40/month"), 40);
+  assert.equal(parsePlanPrice("10 $/month"), 10);
   assert.equal(parsePlanPrice("$10/Monat"), 10);
-  assert.equal(parsePlanPrice("$40/Monat"), 40);
-  assert.equal(parsePlanPrice("10 $/Monat"), 10);
   assert.equal(planIdFromLabel("Go"), "go");
   assert.equal(planIdFromLabel("Go Plus"), "go-plus");
   assert.equal(planIdFromLabel("  Pro   Plus "), "pro-plus");
@@ -250,10 +261,12 @@ test("extractPlanTableMap: ordnet über ARIA zu (nicht über Position)", () => {
   assert.deepEqual([...map.keys()], ["go", "go-plus"]);
 });
 
-test("parseHtml: deutsche Header werden erkannt", () => {
+test("parseHtml: deutsche Header werden erkannt (Kompatibilität)", () => {
+  const dePricePanel = (label, rows) => ({ label, table: tableHtml(DE_HEADERS, rows) });
+  const dePrivacyTable = (rows) => tableHtml(["Modell", "Modelltraining", "Datenaufbewahrung"], rows);
   const html = buildPage({
-    panels: [pricePanel("Go", [["Deutsches Modell", "$1.40", "$4.40", "$0.26", "-", "$15"]])],
-    extra: privacyTable([["Deutsches Modell", "Nicht verwendet", "0 Tage"]]),
+    panels: [dePricePanel("Go", [["Deutsches Modell", "$1.40", "$4.40", "$0.26", "-", "$15"]])],
+    extra: dePrivacyTable([["Deutsches Modell", "Nicht verwendet", "0 Tage"]]),
   });
   const m = parseHtml(html)[0];
   assert.equal(m.name, "Deutsches Modell");
@@ -288,18 +301,18 @@ test("parseHtml: Panel-Label ohne passenden Plan → ScrapeError", () => {
   assert.throws(() => parseHtml(html), /keinem Plan/);
 });
 
-test("parseHtml: Preis-Tab-Panel ohne aria-labelledby → ScrapeError", () => {
-  const table = tableHtml(DE_HEADERS, [["A", "$1", "$1", "-", "-", "$60"]]);
-  const html = `<html><body><main>${planTable([{ name: "Go", price: 10 }])}<starlight-tabs><div class="tablist-wrapper"><ul role="tablist"><li><a role="tab" href="#tab-panel-1" id="tab-1">Go</a></li></ul></div><div id="tab-panel-1" role="tabpanel">${table}</div></starlight-tabs></main></body></html>`;
-  assert.throws(() => parseHtml(html), /aria-labelledby/);
+test("parseHtml: Preis-Tab-Panel ohne data-plan-panel/aria-labelledby → ScrapeError", () => {
+  const table = tableHtml(EN_HEADERS, [["A", "$1", "$1", "-", "-", "$60"]]);
+  const html = `<html><body><main>${planTable([{ name: "Go", price: 10 }])}<div class="docs-plan-tabs" data-plan-tabs><div role="tablist"><button role="tab" id="go-pricing-tab-go" data-plan-tab="go">Go</button></div><div id="go-pricing-panel-go" role="tabpanel">${table}</div></div></main></body></html>`;
+  assert.throws(() => parseHtml(html), /data-plan-panel\/aria-labelledby/);
 });
 
 test("parseHtml: Tab ohne zugehöriges Panel → ScrapeError", () => {
-  const table = tableHtml(DE_HEADERS, [["A", "$1", "$1", "-", "-", "$60"]]);
+  const table = tableHtml(EN_HEADERS, [["A", "$1", "$1", "-", "-", "$60"]]);
   const html = `<html><body><main>${planTable([
     { name: "Go", price: 10 },
     { name: "Go Plus", price: 40 },
-  ])}<starlight-tabs><div class="tablist-wrapper"><ul role="tablist"><li><a role="tab" href="#tab-panel-1" id="tab-1">Go</a></li><li><a role="tab" href="#tab-panel-2" id="tab-2">Go Plus</a></li></ul></div><div id="tab-panel-1" aria-labelledby="tab-1" role="tabpanel">${table}</div></starlight-tabs></main></body></html>`;
+  ])}<div class="docs-plan-tabs" data-plan-tabs><div role="tablist"><button role="tab" id="go-pricing-tab-go" data-plan-tab="go">Go</button><button role="tab" id="go-pricing-tab-go-plus" data-plan-tab="go-plus">Go Plus</button></div><div id="go-pricing-panel-go" aria-labelledby="go-pricing-tab-go" data-plan-panel="go" role="tabpanel">${table}</div></div></main></body></html>`;
   assert.throws(() => parseHtml(html), /kein zugehöriges Panel/);
 });
 
@@ -347,7 +360,7 @@ for (const limit of ["<strong>Unbegrenzt</strong>", "Unlimited", "-", "<strong>$
           ["Priced Model", "$1", "$1", "-", "-", "$60"],
         ]),
       ],
-      extra: privacyTable([["Other", "Nicht verwendet", "0 Tage"]]),
+      extra: privacyTable([["Other", "Not used", "0 days"]]),
     });
     const model = parseHtml(html).find((m) => m.name === "Union Alpha");
     const limited = limit.includes("$60");
@@ -413,8 +426,8 @@ test("parseHtml: Nutzungs-Zelle mit Doku-Bonus (del/strong/small) → aktueller 
       ]),
     ],
     extra:
-      privacyTable([["DeepSeek V4.1 Flash", "Nicht verwendet", "0 Tage"]]) +
-      "<ul><li>DeepSeek V4.1 Flash — 410 Eingabe-, 71,300 Cache-, 310 Ausgabe-Tokens pro Anfrage</li></ul>",
+      privacyTable([["DeepSeek V4.1 Flash", "Not used", "0 days"]]) +
+      "<ul><li>DeepSeek V4.1 Flash — 410 input, 71,300 cached, 310 output tokens per request</li></ul>",
   });
   const model = parseHtml(html)[0];
   assert.deepEqual(model.usage, { go: 60 });
@@ -467,15 +480,19 @@ test("parseEffectiveFrom: englische DeepSeek-Formulierung → ISO mit Offset", (
   assert.equal(parseEffectiveFrom("Peak montags bis freitags 01:00-04:00 UTC", "Asia/Shanghai"), undefined);
 });
 
-test("parsePeakRules: deutscher Flash/Pro-Hinweis → gemeinsame Regel (Mo–Fr, Wochenende, Peking-Zeit)", () => {
+test("parsePeakRules: englischer Flash/Pro/Vision-Hinweis der Live-Doku → gemeinsame Regel (Mo–Fr, Wochenende, Peking-Zeit)", () => {
   const $ = cheerio.load(
-    "<main><p><strong>DeepSeek V4 Flash / Pro:</strong> Die Peak-Zeiten sind montags bis freitags von 01:00-04:00 und 06:00-10:00 UTC; alle anderen Zeiten, einschließlich der Wochenenden, sind Off-Peak.</p></main>"
+    "<main><p><strong>DeepSeek V4.1 Flash / V4 Pro / V4 Flash / V4 Flash Vision Exp:</strong> Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday through Friday; all other hours, including weekends, are Off-Peak.</p></main>"
   );
   const models = [
+    { name: "DeepSeek V4.1 Flash", tier: "Off-Peak" },
+    { name: "DeepSeek V4.1 Flash", tier: "Peak" },
     { name: "DeepSeek V4 Flash", tier: "Off-Peak" },
     { name: "DeepSeek V4 Flash", tier: "Peak" },
     { name: "DeepSeek V4 Pro", tier: "Off-Peak" },
     { name: "DeepSeek V4 Pro", tier: "Peak" },
+    { name: "DeepSeek V4 Flash Vision Exp", tier: "Off-Peak" },
+    { name: "DeepSeek V4 Flash Vision Exp", tier: "Peak" },
   ];
   const expected = {
     timezone: "Asia/Shanghai",
@@ -484,7 +501,12 @@ test("parsePeakRules: deutscher Flash/Pro-Hinweis → gemeinsame Regel (Mo–Fr,
     // Kein `holidays`: die OpenCode-Doku nennt an der Peak-Notiz keine Feiertage
     // (strikt quellenbindend, kein Override).
   };
-  assert.deepEqual(parsePeakRules($, models), { deepseekv4flash: expected, deepseekv4pro: expected });
+  assert.deepEqual(parsePeakRules($, models), {
+    "deepseekv4.1flash": expected,
+    deepseekv4flash: expected,
+    deepseekv4pro: expected,
+    deepseekv4flashvisionexp: expected,
+  });
 });
 
 test("parsePeakRules: englischer Hinweis mit Feiertagen → holidays china", () => {
@@ -611,17 +633,25 @@ test("parseHtml: Datenschutz — ZDR-Modelle mit true (0 Tage)", () => {
   assert.deepEqual(glm.privacy, { training: false, retentionDays: true, validUntil: null });
 });
 
-test("parseHtml: Datenschutz — DeepSeek V4 Flash mit gültig-bis-Datum (31. Oktober 2026)", () => {
+test("parseHtml: Datenschutz — DeepSeek V4 Flash mit gültig-bis-Datum (valid through October 31, 2026)", () => {
   const flash = parseHtml(fixture).find((m) => m.name === "DeepSeek V4 Flash");
   assert.deepEqual(flash.privacy, { training: false, retentionDays: true, validUntil: "2026-10-31" });
 });
 
 test("parseHtml: kostenlose Preistabellen-Zeile ohne Nutzung bekommt Datenschutz", () => {
-  const free = parseHtml(fixture).find((m) => m.name === "Space Bunny Free");
+  const free = parseHtml(fixture).find((m) => m.name === "LongCat 2.5 Preview Free");
   assert.deepEqual(free.privacy, { training: false, retentionDays: true, validUntil: null });
 });
 
 test("parsePrivacyNotes: Familien-Label (DeepSeek) → validUntil (ISO)", () => {
+  const $ = cheerio.load(
+    "<main><ul><li><strong>DeepSeek:</strong> ZDR agreement is renewed monthly. The current agreement is valid through October 31, 2026.</li></ul></main>"
+  );
+  const notes = parsePrivacyNotes($);
+  assert.equal(notes.get("deepseek"), "2026-10-31");
+});
+
+test("parsePrivacyNotes: deutsches „gilt bis einschließlich“ bleibt gültig (Kompatibilität)", () => {
   const $ = cheerio.load(
     "<main><ul><li><strong>DeepSeek:</strong> Die ZDR-Vereinbarung wird monatlich erneuert. Die aktuelle Vereinbarung gilt bis einschließlich 30. September 2026.</li></ul></main>"
   );
@@ -654,13 +684,13 @@ test("parseHtml: Datenschutz-Notiz ohne passendes Modell → ScrapeError", () =>
   const html = buildPage({
     panels: [pricePanel("Go", [["Alpha", "$1", "$1", "-", "-", "$60"]])],
     extra:
-      privacyTable([["Alpha", "Nicht verwendet", "0 Tage"]]) +
+      privacyTable([["Alpha", "Not used", "0 days"]]) +
       "<ul><li><strong>DeepSeek:</strong> Die ZDR-Vereinbarung gilt bis einschließlich 30. September 2026.</li></ul>",
   });
   assert.throws(() => parseHtml(html), ScrapeError);
 });
 
-test("parseHtml: Datenschutz — Muse Spark 1.2 ohne ZDR ('Kein ZDR' → false)", () => {
+test("parseHtml: Datenschutz — Muse Spark 1.2 ohne ZDR ('Not ZDR' → false)", () => {
   const muse = parseHtml(fixture).find((m) => m.name === "Muse Spark 1.2 Contributor");
   assert.deepEqual(muse.privacy, { training: true, retentionDays: false, validUntil: null });
 });
@@ -668,17 +698,17 @@ test("parseHtml: Datenschutz — Muse Spark 1.2 ohne ZDR ('Kein ZDR' → false)"
 test("parseHtml: Datenschutz — unbekannte Aufbewahrung ('–') lässt retentionDays weg", () => {
   const html = buildPage({
     panels: [pricePanel("Go", [["Alpha", "$1", "$1", "-", "-", "$60"]])],
-    extra: privacyTable([["Alpha", "Nicht verwendet", "–"]]),
+    extra: privacyTable([["Alpha", "Not used", "–"]]),
   });
   const privacy = parseHtml(html)[0].privacy;
   assert.equal(privacy.training, false);
   assert.equal(privacy.retentionDays, undefined);
 });
 
-test("parseHtml: Datenschutz — Fußnoten-Stern ('0 Tage*') zählt als ZDR", () => {
+test("parseHtml: Datenschutz — Fußnoten-Stern ('0 days*') zählt als ZDR", () => {
   const html = buildPage({
     panels: [pricePanel("Go", [["Alpha", "$1", "$1", "-", "-", "$60"]])],
-    extra: privacyTable([["Alpha", "Nicht verwendet", "0 Tage*"]]),
+    extra: privacyTable([["Alpha", "Not used", "0 days*"]]),
   });
   assert.deepEqual(parseHtml(html)[0].privacy, { training: false, retentionDays: true, validUntil: null });
 });
@@ -699,7 +729,7 @@ test("parseHtml: Datenschutz — MiniMax M2.5 übernimmt Familien-Fallback von M
         ["MiniMax M2.7", "$0.30", "$1.20", "$0.06", "-", "$60"],
       ]),
     ],
-    extra: privacyTable([["MiniMax M2.7", "Nicht verwendet", "0 Tage"]]),
+    extra: privacyTable([["MiniMax M2.7", "Not used", "0 days"]]),
   });
   const mimo = parseHtml(html).find((m) => m.name === "MiniMax M2.5");
   assert.deepEqual(mimo.privacy, {
@@ -713,7 +743,7 @@ test("parseHtml: Datenschutz — MiniMax M2.5 übernimmt Familien-Fallback von M
 test("parseHtml: Datenschutz — Modell ohne Zeile und ohne Fallback bleibt null", () => {
   const html = buildPage({
     panels: [pricePanel("Go", [["Alpha", "$1", "$1", "-", "-", "$60"]])],
-    extra: privacyTable([["Beta", "Nicht verwendet", "0 Tage"]]),
+    extra: privacyTable([["Beta", "Not used", "0 days"]]),
   });
   assert.equal(parseHtml(html)[0].privacy, null);
 });
@@ -828,7 +858,7 @@ const PLAN_PLUS = {
   name: "Go Plus",
   priceMonthly: 40,
   creditsMonthly: 240,
-  sourceUrl: "https://opencode.ai/docs/de/go/",
+  sourceUrl: "https://opencode.ai/v2/docs/console/go/",
 };
 
 test("buildChanges: neuer Plan → genau ein plan_added zuerst, neue-Plan-Nutzung unterdrückt", () => {
@@ -1194,7 +1224,7 @@ test("buildChanges: privacy_changed bei geänderter Datenaufbewahrung", () => {
   ]);
 });
 
-test("buildChanges: privacy_changed bei Wechsel auf 'Kein ZDR' (false)", () => {
+test("buildChanges: privacy_changed bei Wechsel auf 'Not ZDR' (false)", () => {
   const prev = [{ ...base[0], privacy: { training: false, retentionDays: true, validUntil: null } }];
   const next = [{ ...base[0], privacy: { training: false, retentionDays: false, validUntil: null } }];
   const changes = buildChanges(prev, next, [], []);
@@ -1619,15 +1649,15 @@ test("validateChangelog: leere Einträge, unbekannte Typen und fehlende Felder b
 // ---------------------------------------------------------------------------
 
 const SNAPSHOT_PLANS = [
-  { id: "go", name: "Go", priceMonthly: 10, creditsMonthly: 60, sourceUrl: "https://opencode.ai/docs/de/go/" },
-  { id: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240, sourceUrl: "https://opencode.ai/docs/de/go/" },
+  { id: "go", name: "Go", priceMonthly: 10, creditsMonthly: 60, sourceUrl: "https://opencode.ai/v2/docs/console/go/" },
+  { id: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240, sourceUrl: "https://opencode.ai/v2/docs/console/go/" },
 ];
 
 test("validateSnapshot: gültiger Snapshot (alle Modelle mit Token-Stats)", () => {
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
@@ -1654,8 +1684,8 @@ test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung",
   const withoutPattern = { ...withUsage, pattern: null, contextWindow: null };
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
@@ -1670,8 +1700,8 @@ test("validateSnapshot: fehlende Token-Stats (pattern) brechen die Validierung",
 test("validateSnapshot: kostenlose Zeile (Preise 0, usage null) ohne Token-Stats ist gültig", () => {
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
@@ -1700,8 +1730,8 @@ test("validateSnapshot: kostenlose Zeile (Preise 0, usage null) ohne Token-Stats
 test("validateSnapshot: kostenloses Modell ohne privacy bricht", () => {
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
@@ -1716,8 +1746,8 @@ test("validateSnapshot: kostenloses Modell ohne privacy bricht", () => {
 test("validateSnapshot: kostenloses Modell ohne fullId bricht", () => {
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
@@ -1740,11 +1770,11 @@ test("validateSnapshot: kostenloses Modell ohne fullId bricht", () => {
 test("validateSnapshot: Plan-Id ist frei (kein enum) — künftige Pläne validieren", () => {
   const snapshot = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
-    plans: [...SNAPSHOT_PLANS, { id: "go-ultra", name: "Go Ultra", priceMonthly: 100, creditsMonthly: 1000, sourceUrl: "https://opencode.ai/docs/de/go/" }],
+    plans: [...SNAPSHOT_PLANS, { id: "go-ultra", name: "Go Ultra", priceMonthly: 100, creditsMonthly: 1000, sourceUrl: "https://opencode.ai/v2/docs/console/go/" }],
     peakRules: {},
     holidayCalendars: {},
     // Ein künftiger Plan liefert für jedes Modell eine Nutzung — die
@@ -1759,8 +1789,8 @@ test("validateSnapshot: Plan-Id ist frei (kein enum) — künftige Pläne validi
 test("validateSnapshot: usage-Schlüssel müssen exakt die Plan-Ids sein", () => {
   const base = {
     fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
@@ -1783,8 +1813,8 @@ test("validateSnapshot: usage-Schlüssel müssen exakt die Plan-Ids sein", () =>
 test("validateSnapshot: Free-Modelle tragen keine Plan-Dimension (usage/plan/allowances)", () => {
   const makeSnapshot = (freeExtra) => ({
     fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
@@ -1812,8 +1842,8 @@ test("validateSnapshot: Free-Modelle tragen keine Plan-Dimension (usage/plan/all
 test("validateSnapshot: peakRules + holidayCalendars (Invarianten §1)", () => {
   const base = () => ({
     fetchedAt: "2026-08-05T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: SNAPSHOT_PLANS,
@@ -2033,34 +2063,40 @@ test("computeCapabilityDiff: erkennt Änderung und ignoriert gleiche Werte", () 
 // ---------------------------------------------------------------------------
 
 test("parseZenEndpointIds: mappt normalisierten Modellnamen → Model-ID", () => {
-  const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"), "utf8");
-  const ids = parseZenEndpointIds(html);
+  const ids = parseZenEndpointIds(zenFixture);
   assert.equal(ids.get("bigpickle"), "big-pickle");
   assert.equal(ids.get("mimov2.5free"), "mimo-v2.5-free");
   assert.equal(ids.get("nemotron3.5lightningfree"), "nemotron-3.5-lightning-free");
-  assert.equal(ids.size, 8);
+  assert.equal(ids.get("jev1.13free"), "jev-1.13-free");
+  assert.equal(ids.size, 88);
 });
 
-test("extractFreeModelsFromDocs: extrahiert nur die kostenlosen Modelle aus Endpunkte + Preise", () => {
-  const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"), "utf8");
-  assert.deepEqual(extractFreeModelsFromDocs(html), [
+test("extractFreeModelsFromDocs: extrahiert nur die kostenlosen Modelle aus Endpoints + Pricing", () => {
+  assert.deepEqual(extractFreeModelsFromDocs(zenFixture), [
     "big-pickle",
-    "hy3-free",
+    "exo-free",
+    "jev-1.13-free",
+    "ling-3.0-flash-fin-free",
+    "ling-3.1-flash-free",
+    "longcat-2.5-preview-free",
     "mimo-v2.5-free",
-    "muse-spark-1.2-contributor-free",
+    "mimo-v2.6-flash-free",
+    "muse-spark-1.3-contributor-free",
     "nemotron-3-ultra-free",
     "nemotron-3.5-lightning-free",
+    "space-bunny-free",
+    "step-5-preview-free",
   ]);
 });
 
 test("extractFreeModelsFromDocs: ignoriert kostenpflichtige Modelle", () => {
-  const html = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "zen-de.html"), "utf8");
-  const free = extractFreeModelsFromDocs(html);
+  const free = extractFreeModelsFromDocs(zenFixture);
   assert.ok(!free.includes("deepseek-v4-flash"));
   assert.ok(!free.includes("minimax-m3"));
+  assert.ok(!free.includes("jev-1.13"));
 });
 
-test("extractFreeModelsFromDocs: erkennt deutsche „Kostenlos“-Zeilen (z. B. Jev 1.13 Free)", () => {
+test("extractFreeModelsFromDocs: erkennt deutsche „Kostenlos“-Zeilen (z. B. Jev 1.13 Free, Kompatibilität)", () => {
   const html = `<!DOCTYPE html><html><body>
 <h2 id="endpunkte">Endpunkte</h2>
 <table><thead><tr><th>Modell</th><th>ID</th></tr></thead><tbody>
@@ -2076,7 +2112,36 @@ test("extractFreeModelsFromDocs: erkennt deutsche „Kostenlos“-Zeilen (z. B. 
   assert.deepEqual(extractFreeModelsFromDocs(html), ["jev-1.13-free"]);
 });
 
-test("parseZenFreeModelPrivacy: klassifiziert ZDR, Training und „keine Aussage“", () => {
+test("extractFreeModelsFromDocs: findet die Pricing-Tabelle im Wrapper-div (docs-table-scroll)", () => {
+  const html = `<!DOCTYPE html><html><body>
+<h2 id="endpoints">Endpoints</h2>
+<p>Text dazwischen.</p>
+<div class="docs-table-scroll" role="region"><table><thead><tr><th>Model</th><th>Model ID</th></tr></thead><tbody>
+<tr><td>A Free</td><td>a-free</td></tr>
+</tbody></table></div>
+<h2 id="pricing">Pricing</h2>
+<div class="docs-table-scroll" role="region"><table><thead><tr><th>Model</th><th>Input</th></tr></thead><tbody>
+<tr><td>A Free</td><td>Free</td></tr>
+</tbody></table></div>
+</body></html>`;
+  assert.deepEqual(extractFreeModelsFromDocs(html), ["a-free"]);
+});
+
+test("parseZenFreeModelPrivacy: klassifiziert die englische Free-Liste (ZDR, Training, „keine Aussage“)", () => {
+  const $ = cheerio.load(zenFixture);
+  const idsByName = parseZenEndpointIds(zenFixture);
+  const privacy = parseZenFreeModelPrivacy($, idsByName);
+  assert.deepEqual(privacy.get("space-bunny-free"), { training: false, retentionDays: true, validUntil: null });
+  assert.deepEqual(privacy.get("longcat-2.5-preview-free"), { training: false, retentionDays: true, validUntil: null });
+  assert.deepEqual(privacy.get("step-5-preview-free"), { training: false, retentionDays: true, validUntil: null });
+  assert.deepEqual(privacy.get("big-pickle"), { training: true, validUntil: null });
+  assert.deepEqual(privacy.get("exo-free"), { training: true, validUntil: null });
+  // Jev 1.13 Free: reine Verfügbarkeits-Aussage ohne Datenschutz → kein Eintrag.
+  assert.equal(privacy.has("jev-1.13-free"), false);
+  assert.equal(privacy.size, 12);
+});
+
+test("parseZenFreeModelPrivacy: klassifiziert deutsche Liste als Fallback (ZDR, Training, „keine Aussage“)", () => {
   const html = `<!DOCTYPE html><html><body>
 <h2 id="preise">Preise</h2>
 <p>Die kostenlosen Modelle:</p>
@@ -2106,7 +2171,7 @@ test("parseZenFreeModelPrivacy: fehlende Liste → leere Map (kein Fehler)", () 
   assert.equal(privacy.size, 0);
 });
 
-test("parseZenFreeModelPrivacy: erkennt Trainings-Varianten (Verbesserung/Training)", () => {
+test("parseZenFreeModelPrivacy: erkennt deutsche Trainings-Varianten (Verbesserung/Training, Kompatibilität)", () => {
   const html = `<p>Die kostenlosen Modelle:</p><ul>
 <li>A Free ist verfügbar. Der Anbieter verwendet Daten zur Verbesserung des Modells.</li>
 <li>B Free ist verfügbar. Die Daten werden zum Trainieren verwendet.</li>
@@ -2257,6 +2322,17 @@ test("parseGermanDate: deutsches Datum → ISO, ungültige Eingaben → null", (
   assert.equal(parseGermanDate("31. Monat 2026"), null);
   assert.equal(parseGermanDate("gibtsnicht"), null);
   assert.equal(parseGermanDate(null), null);
+});
+
+test("parseEnglishDate: englisches Datum → ISO, ungültige Eingaben → null", () => {
+  assert.equal(parseEnglishDate("October 31, 2026"), "2026-10-31");
+  assert.equal(parseEnglishDate("January 5, 2026"), "2026-01-05");
+  assert.equal(parseEnglishDate("August 23, 2026."), "2026-08-23");
+  assert.equal(parseEnglishDate("October 32, 2026"), null);
+  assert.equal(parseEnglishDate("October 2026"), null);
+  assert.equal(parseEnglishDate("Oktober 31, 2026"), null);
+  assert.equal(parseEnglishDate("gibtsnicht"), null);
+  assert.equal(parseEnglishDate(null), null);
 });
 
 // ---------------------------------------------------------------------------

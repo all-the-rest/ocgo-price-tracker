@@ -1,23 +1,23 @@
 {
-  "fetchedAt": "2026-10-12T10:06:10.274Z",
-  "sourceUrl": "https://opencode.ai/docs/de/go/",
-  "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
+  "fetchedAt": "2026-10-12T14:30:10.686Z",
+  "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
+  "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
-  "sourceLang": "de",
+  "sourceLang": "en",
   "plans": [
     {
       "id": "go",
       "name": "Go",
       "priceMonthly": 10,
       "creditsMonthly": 80,
-      "sourceUrl": "https://opencode.ai/docs/de/go/"
+      "sourceUrl": "https://opencode.ai/v2/docs/console/go/"
     },
     {
       "id": "go-plus",
       "name": "Go Plus",
       "priceMonthly": 40,
       "creditsMonthly": 240,
-      "sourceUrl": "https://opencode.ai/docs/de/go/"
+      "sourceUrl": "https://opencode.ai/v2/docs/console/go/"
     }
   ],
   "peakRules": {

@@ -18,14 +18,14 @@ const PLAN = {
   name: "Go",
   priceMonthly: 10,
   creditsMonthly: 60,
-  sourceUrl: "https://opencode.ai/docs/de/go/",
+  sourceUrl: "https://opencode.ai/v2/docs/console/go/",
 };
 const PLAN_PLUS = {
   id: "go-plus",
   name: "Go Plus",
   priceMonthly: 40,
   creditsMonthly: 240,
-  sourceUrl: "https://opencode.ai/docs/de/go/",
+  sourceUrl: "https://opencode.ai/v2/docs/console/go/",
 };
 const PLANS = [PLAN, PLAN_PLUS];
 

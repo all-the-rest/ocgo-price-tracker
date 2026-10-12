@@ -139,12 +139,12 @@ test("Footer: keine Feiertags-Zeile (Zeilensatz entfernt, strikt quellenbindend)
     name: "Go",
     priceMonthly: 10,
     creditsMonthly: 60,
-    sourceUrl: "https://opencode.ai/docs/de/go/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
   };
   const base = {
     fetchedAt: "2026-09-30T00:00:00.000Z",
-    sourceUrl: "https://opencode.ai/docs/de/go/",
-    freeModelsSourceUrl: "https://opencode.ai/docs/de/zen/",
+    sourceUrl: "https://opencode.ai/v2/docs/console/go/",
+    freeModelsSourceUrl: "https://opencode.ai/v2/docs/console/models/",
     capabilitiesSourceUrl: "https://models.dev",
     sourceLang: "de",
     plans: [PLAN],

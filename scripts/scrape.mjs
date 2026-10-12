@@ -11,13 +11,13 @@ import {
 } from "@opencode-ai/models/snapshot";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const SOURCE_URL = "https://opencode.ai/docs/de/go/";
-// Quelle der kostenlosen Zen-Modelle: die Zen-Doku. Unter „Endpunkte“ stehen die
-// Model-IDs, unter „Preise“ die kostenlosen („Free“) Zeilen — das ist die
-// autoritative Liste der gratis Modelle (ersetzt die alte zen/v1/models-API).
-const ZEN_DOCS_URL = "https://opencode.ai/docs/de/zen/";
+const SOURCE_URL = "https://opencode.ai/v2/docs/console/go/";
+// Quelle der kostenlosen Modelle: die Console-Models-Doku. Unter „Endpoints“
+// stehen die Model-IDs, unter „Pricing“ die kostenlosen („Free“) Zeilen — das
+// ist die autoritative Liste der gratis Modelle.
+const ZEN_DOCS_URL = "https://opencode.ai/v2/docs/console/models/";
 const MODELS_DEV_URL = "https://models.dev";
-const SOURCE_LANG = "de";
+const SOURCE_LANG = "en";
 const FLOAT_TOLERANCE = 1e-9;
 const USER_AGENT =
   "ocgo-price-tracker/0.1.0 (+https://github.com/all-the-rest/ocgo-price-tracker)";
@@ -245,8 +245,9 @@ function tableHeaders($, table) {
     .get();
 }
 
-// Spalten-Aliase (Deutsch UND Englisch): die Doku ist teilweise übersetzt, die
-// englische Seite https://opencode.ai/docs/go/ hat dieselbe Struktur.
+// Spalten-Aliase (Englisch UND Deutsch): die Doku ist auf Englisch
+// (https://opencode.ai/v2/docs/console/go/), die Parser akzeptieren weiterhin
+// die alten deutschen Header für Abwärtskompatibilität der Tests.
 const HEADER_ALIASES = {
   name: ["model", "modell"],
   input: ["input", "eingabe"],
@@ -381,16 +382,29 @@ export function parsePlanPrice(text) {
 }
 
 /**
- * Ordnet jedem Plan seine Preistabelle zu — über ARIA (Tab-Panel `aria-labelledby`
- * → Tab `id` innerhalb desselben `starlight-tabs`), NICHT über Position.
+ * Ordnet jedem Plan seine Preistabelle zu — über die Tab-Mechanik
+ * (`div.docs-plan-tabs` mit `button[data-plan-tab]` ↔ `div[data-plan-panel]`,
+ * zusätzlich ARIA `aria-labelledby` → Tab-`id`), NICHT über Position.
  * Panels ohne Preistabelle (z. B. Rate-Limit-Tabellen eines zweiten
- * `starlight-tabs`) werden übersprungen. Jede Verletzung der Panel-/Tab-/Plan-
+ * Tab-Blocks) werden übersprungen. Jede Verletzung der Panel-/Tab-/Plan-
  * Struktur bricht den Lauf rot ab (lieber CI rot als falsche Anzeige).
  */
 export function extractPlanTableMap($, plans) {
   const known = new Map(plans.map((p) => [p.id, p]));
   const planTables = new Map();
   const panels = $("[role=tabpanel]");
+
+  // Sammelt die Tab-Labels eines Tab-Blocks: primär `data-plan-tab` (v2-Docs),
+  // Fallback ARIA-`id` (starlight-tabs).
+  const tabLabelsIn = (searchRoot) => {
+    const labels = new Map();
+    searchRoot.find('[role="tab"]').each((_, t) => {
+      const $t = $(t);
+      const key = $t.attr("data-plan-tab") ?? $t.attr("id");
+      if (key) labels.set(key, $t.text().trim());
+    });
+    return labels;
+  };
 
   panels.each((_, panel) => {
     const $panel = $(panel);
@@ -399,20 +413,25 @@ export function extractPlanTableMap($, plans) {
     if (tables.length > 1) {
       throw new ScrapeError("mehr als eine Preistabelle in einem Tab-Panel");
     }
-    const labelledBy = $panel.attr("aria-labelledby");
-    if (!labelledBy) {
-      throw new ScrapeError("Preis-Tab-Panel ohne aria-labelledby (Plan-Label fehlt)");
-    }
-    const scope = $panel.closest("starlight-tabs");
+    const scope = $panel.closest("[data-plan-tabs], .docs-plan-tabs, starlight-tabs");
     const searchRoot = scope.length ? scope : $panel.parent();
-    const tab = searchRoot
-      .find('[role="tab"]')
-      .filter((_, t) => $(t).attr("id") === labelledBy)
-      .first();
-    if (tab.length === 0) {
-      throw new ScrapeError(`Preis-Tab-Panel "${labelledBy}" hat keinen passenden Tab`);
+    const panelKey = $panel.attr("data-plan-panel") ?? $panel.attr("aria-labelledby");
+    if (!panelKey) {
+      throw new ScrapeError("Preis-Tab-Panel ohne data-plan-panel/aria-labelledby (Plan-Label fehlt)");
     }
-    const label = tab.text().trim();
+    const labels = tabLabelsIn(searchRoot);
+    // ARIA-Fallback: `aria-labelledby` verweist auf die Tab-`id`.
+    let label = labels.get(panelKey);
+    if (label === undefined && $panel.attr("aria-labelledby")) {
+      const tab = searchRoot
+        .find('[role="tab"]')
+        .filter((_, t) => $(t).attr("id") === $panel.attr("aria-labelledby"))
+        .first();
+      if (tab.length > 0) label = tab.text().trim();
+    }
+    if (label === undefined) {
+      throw new ScrapeError(`Preis-Tab-Panel "${panelKey}" hat keinen passenden Tab`);
+    }
     const planId = planIdFromLabel(label);
     if (!known.has(planId)) {
       throw new ScrapeError(
@@ -425,16 +444,17 @@ export function extractPlanTableMap($, plans) {
     planTables.set(planId, tables[0]);
 
     // Kein Tab ohne Panel: jeder Tab desselben Blocks muss ein Panel haben.
-    const tabIds = searchRoot
+    const tabKeys = searchRoot
       .find('[role="tab"]')
-      .map((_, t) => $(t).attr("id"))
+      .map((_, t) => $(t).attr("data-plan-tab") ?? $(t).attr("id"))
       .get();
-    for (const id of tabIds) {
-      if (!id) throw new ScrapeError("Tab ohne id im Preis-Tab-Block");
-      const hasPanel = searchRoot
-        .find('[role="tabpanel"]')
-        .filter((_, p) => $(p).attr("aria-labelledby") === id).length > 0;
-      if (!hasPanel) throw new ScrapeError(`Tab "${id}" hat kein zugehöriges Panel`);
+    const panelKeys = searchRoot
+      .find('[role="tabpanel"]')
+      .map((_, p) => $(p).attr("data-plan-panel") ?? $(p).attr("aria-labelledby"))
+      .get();
+    for (const key of tabKeys) {
+      if (!key) throw new ScrapeError("Tab ohne data-plan-tab/id im Preis-Tab-Block");
+      if (!panelKeys.includes(key)) throw new ScrapeError(`Tab "${key}" hat kein zugehöriges Panel`);
     }
   });
 
@@ -514,8 +534,8 @@ const PRIVACY_FALLBACKS = {
  * x-preview-f-free ist Ox Alpha Free (laut models.dev der Zen-Eintrag „Ox Alpha
  * Free (Unlimited)“) und hat wie das Doku-Modell ZDR.
  *
- * Die reguläre Quelle ist die Fußnoten-Liste „Die kostenlosen Modelle:“ der
- * Zen-Doku (`parseZenFreeModelPrivacy`); `training: true` ist nur der Fallback
+ * Die reguläre Quelle ist die Fußnoten-Liste „Free models“ der
+ * Console-Models-Doku (`parseZenFreeModelPrivacy`); `training: true` ist nur der Fallback
  * für Modelle ganz ohne Datenschutz-Aussage in dieser Liste.
  */
 const FREE_MODEL_PRIVACY_OVERRIDES = {
@@ -526,30 +546,40 @@ const FREE_MODEL_PRIVACY_OVERRIDES = {
  * Liefert das nächste Geschwister-Element vom Typ `tagName` nach `start`
  * (z. B. die erste `<table>` nach einer Überschrift oder die `<ul>` nach einem
  * Absatz). Robust gegen dazwischenliegende Elemente; kein Treffer → leeres
- * Element.
+ * Element. Falls das Geschwister ein Wrapper (z. B. `div.docs-table-scroll`)
+ * ist, wird die erste verschachtelte `tagName` darin zurückgegeben.
  */
 function elementAfter(start, tagName) {
   let el = start.next();
-  while (el.length && !el.is(tagName)) el = el.next();
+  while (el.length && !el.is(tagName)) {
+    const nested = el.find(tagName).first();
+    if (nested.length) return nested;
+    el = el.next();
+  }
   return el;
 }
 
 /**
- * Liefert die erste `<table>` nach der Überschrift mit der gegebenen `id`
- * (z. B. `#endpunkte` oder `#preise`), oder ein leeres Element.
+ * Liefert die erste `<table>` nach der Überschrift mit einer der gegebenen
+ * `ids` (z. B. `#endpoints`/`#endpunkte` oder `#pricing`/`#preise`), oder ein
+ * leeres Element.
  */
-function tableAfterHeading($, headingId) {
-  return elementAfter($(`#${headingId}`), "table");
+function tableAfterHeading($, ...headingIds) {
+  for (const headingId of headingIds) {
+    const table = elementAfter($(`#${headingId}`), "table");
+    if (table.length) return table;
+  }
+  return $([]);
 }
 
 /**
- * Parst die „Endpunkte“-Tabelle der Zen-Doku und liefert eine Map von
+ * Parst die „Endpoints“-Tabelle der Console-Models-Doku und liefert eine Map von
  * normalisiertem Modellnamen → Model-ID (Spalten „Model“ / „Model ID“).
  */
 export function parseZenEndpointIds(html) {
   const $ = cheerio.load(html);
   const map = new Map();
-  const rows = tableAfterHeading($, "endpunkte").find("tbody tr");
+  const rows = tableAfterHeading($, "endpoints", "endpunkte").find("tbody tr");
   rows.each((_, tr) => {
     const cells = $(tr).find("td");
     const name = $(cells[0]).text().trim();
@@ -560,17 +590,18 @@ export function parseZenEndpointIds(html) {
 }
 
 /**
- * Parst die Zen-Doku (`https://opencode.ai/docs/de/zen/`) und extrahiert die
- * kostenlosen Modelle. Die „Endpunkte“-Tabelle liefert die Model-IDs (per
- * normalisiertem Namen), die „Preise“-Tabelle markiert die gratis Zeilen
- * (Input-Spalte = „Free“ oder deutsch „Kostenlos“). Beide werden über den Modellnamen korreliert.
+ * Parst die Console-Models-Doku (`https://opencode.ai/v2/docs/console/models/`)
+ * und extrahiert die kostenlosen Modelle. Die „Endpoints“-Tabelle liefert die
+ * Model-IDs (per normalisiertem Namen), die „Pricing“-Tabelle markiert die
+ * gratis Zeilen (Input-Spalte = „Free“, früher deutsch „Kostenlos“). Beide
+ * werden über den Modellnamen korreliert.
  * Ergebnis: deduplizierte, sortierte Liste der kostenlosen Model-IDs.
  */
 export function extractFreeModelsFromDocs(html) {
   const $ = cheerio.load(html);
   const idsByName = parseZenEndpointIds(html);
   const free = [];
-  const rows = tableAfterHeading($, "preise").find("tbody tr");
+  const rows = tableAfterHeading($, "pricing", "preise").find("tbody tr");
   rows.each((_, tr) => {
     const cells = $(tr).find("td");
     const name = $(cells[0]).text().trim();
@@ -584,29 +615,39 @@ export function extractFreeModelsFromDocs(html) {
 }
 
 /**
- * Parst die Datenschutz-Fußnoten der kostenlosen Zen-Modelle aus der Zen-Doku.
- * Maßgeblich ist die `<ul>` direkt nach dem Absatz „Die kostenlosen Modelle:“
- * im Preise-Abschnitt — NICHT die Go-Datenschutz-Tabelle (die Go-Doku kann für
- * ein Free-Modell abweichen). Pro `<li>` steht der Modellname am Satzanfang
- * („<Name> ist …“), der Rest ist die Aussage:
- *  - ZDR: „Zero-Retention“ + „nicht zum Trainieren“ →
+ * Parst die Datenschutz-Fußnoten der kostenlosen Modelle aus der
+ * Console-Models-Doku. Maßgeblich ist die `<ul>` unter der Überschrift
+ * „Free models“ (`h3#free-models`) — ersatzweise (alte Zen-Doku) die `<ul>`
+ * direkt nach dem Absatz „Die kostenlosen Modelle:“. Pro `<li>` steht der
+ * Modellname am Satzanfang („<Name> is …“ / „<Name> ist …“), der Rest ist die
+ * Aussage:
+ *  - ZDR: „zero-retention policy“ + „does not use … for model training“ (en)
+ *    bzw. „Zero-Retention“ + „nicht zum Trainieren“ (de) →
  *    `{ training: false, retentionDays: true, validUntil: null }`
- *  - Modelltraining: „Feedback“/„zu verbessern“/„Verbesserung des Modells“/
- *    „zum Trainieren“/„Training“ → `{ training: true, validUntil: null }`
+ *  - Modelltraining: „feedback“/„improve the model“/„may be used to improve“
+ *    (en) bzw. „Feedback“/„zu verbessern“/„zum Trainieren“/„Training“ (de) →
+ *    `{ training: true, validUntil: null }`
  *  - keine Datenschutz-Aussage → KEIN Eintrag (es gilt der Default „unbekannt“)
  * Namen werden über `normalizeName` gegen `idsByName` (aus
  * `parseZenEndpointIds`) aufgelöst; nur auflösbare Namen werden übernommen.
- * Fehlt der Absatz oder die Liste, ist das Ergebnis leer (kein Fehler — die
- * Zen-Seite darf umgebaut werden); eine nicht auflösbare Zeile bricht den Lauf
+ * Fehlt die Liste, ist das Ergebnis leer (kein Fehler — die Seite darf
+ * umgebaut werden); eine nicht auflösbare Zeile bricht den Lauf
  * nicht ab, wird aber als Warnung geloggt.
  */
 export function parseZenFreeModelPrivacy($, idsByName) {
   const privacyById = new Map();
   let list = null;
-  $("p").each((_, p) => {
-    if (list) return;
-    if (/die kostenlosen modelle/i.test($(p).text())) list = elementAfter($(p), "ul");
-  });
+  const freeModelsHeading = $("#free-models");
+  if (freeModelsHeading.length) {
+    list = elementAfter(freeModelsHeading, "ul");
+    if (!list.length) list = null;
+  }
+  if (!list) {
+    $("p").each((_, p) => {
+      if (list) return;
+      if (/die kostenlosen modelle/i.test($(p).text())) list = elementAfter($(p), "ul");
+    });
+  }
   if (!list || list.length === 0) return privacyById;
 
   list.find("li").each((_, li) => {
@@ -614,22 +655,28 @@ export function parseZenFreeModelPrivacy($, idsByName) {
       .text()
       .replace(/\s+/g, " ")
       .trim();
-    const sep = text.indexOf(" ist ");
+    const sepEn = text.indexOf(" is ");
+    const sepDe = text.indexOf(" ist ");
+    const sep = sepEn !== -1 && (sepDe === -1 || sepEn < sepDe) ? sepEn : sepDe;
+    const sepLen = sep === sepEn ? 4 : 5;
     if (sep === -1) {
-      console.error(`[scrape] Warnung: Zen-Fußnote ohne „ist“-Trenner (übersprungen): "${text}"`);
+      console.error(`[scrape] Warnung: Free-Modell-Fußnote ohne „is“/„ist“-Trenner (übersprungen): "${text}"`);
       return;
     }
     const name = text.slice(0, sep).trim();
-    const statement = text.slice(sep + 5).trim();
+    const statement = text.slice(sep + sepLen).trim();
     const id = idsByName.get(normalizeName(name));
     if (!id) {
-      console.error(`[scrape] Warnung: Zen-Fußnote für unbekanntes Modell ignoriert: "${name}"`);
+      console.error(`[scrape] Warnung: Free-Modell-Fußnote für unbekanntes Modell ignoriert: "${name}"`);
       return;
     }
-    if (/zero[-\s]?retention/i.test(statement) && /nicht zum trainieren|nicht zum training/i.test(statement)) {
+    if (
+      /zero[-\s]?retention/i.test(statement) &&
+      /does not use .* for model training|nicht zum trainieren|nicht zum training/i.test(statement)
+    ) {
       privacyById.set(id, { training: false, retentionDays: true, validUntil: null });
     } else if (
-      /feedback|zu verbessern|verbesserung des modells|zum trainieren|\btraining\b/i.test(statement)
+      /feedback|improve the model|may be used to improve|to improve\b|zu verbessern|verbesserung des modells|zum trainieren|\btraining\b/i.test(statement)
     ) {
       privacyById.set(id, { training: true, validUntil: null });
     }
@@ -732,7 +779,7 @@ export function parsePatterns($, models) {
       .replace(/\s+/g, " ")
       .trim();
     const m = text.match(
-      /^(.+?)\s*[—–-]\s*([\d.,]+)\s*(?:Eingabe|Input)[-,]{0,2}\s*([\d.,]+)\s*(?:Cache|Cached)[-,]{0,2}\s*([\d.,]+)\s*(?:Ausgabe|Output)[-,]{0,2}\s*Tokens?\s*pro\s*Anfrage\s*$/i
+      /^(.+?)\s*[—–-]\s*([\d.,]+)\s*(?:Eingabe|Input)[-,]{0,2}\s*([\d.,]+)\s*(?:Cache|Cached)[-,]{0,2}\s*([\d.,]+)\s*(?:Ausgabe|Output)[-,]{0,2}\s*(?:Tokens?\s*pro\s*Anfrage|tokens?\s*per\s*request)\s*$/i
     );
     if (!m) return;
 
@@ -804,7 +851,7 @@ function parseModels($, table, colMap) {
 }
 
 /**
- * Findet die Datenschutz-Tabelle (Modell / Modelltraining / Datenaufbewahrung)
+ * Findet die Datenschutz-Tabelle (Model / Model training / Data retention)
  * über die Header-Zeile — NICHT über nth-child-Selektoren.
  */
 function findPrivacyTable($) {
@@ -815,15 +862,15 @@ function findPrivacyTable($) {
       .map((_, th) => $(th).text().trim().toLowerCase())
       .get();
     if (
-      headers.some((h) => h.includes("modelltraining")) &&
-      headers.some((h) => h.includes("datenaufbewahrung"))
+      headers.some((h) => h.includes("modelltraining") || h.includes("model training")) &&
+      headers.some((h) => h.includes("datenaufbewahrung") || h.includes("data retention"))
     ) {
       matches.push(table);
     }
   });
   if (matches.length === 0) {
     throw new ScrapeError(
-      "keine Datenschutz-Tabelle gefunden (Header-Zellen mit 'modelltraining' UND 'datenaufbewahrung' fehlen)"
+      "keine Datenschutz-Tabelle gefunden (Header-Zellen mit 'model training/modelltraining' UND 'data retention/datenaufbewahrung' fehlen)"
     );
   }
   if (matches.length > 1) {
@@ -833,29 +880,31 @@ function findPrivacyTable($) {
 }
 
 /**
- * Parst die Spalte "Modelltraining". "Nicht verwendet"/"Nein" → false, alles
- * andere Nicht-leere (z. B. "Verwendet"/"Ja") → true.
+ * Parst die Spalte "Model training". "Not used"/"Nicht verwendet"/"Nein" →
+ * false, alles andere Nicht-leere (z. B. "Yes"/"Verwendet") → true.
+ * Achtung: `/no\b/` matcht „Not“ NICHT (zwischen „o“ und „t“ liegt keine
+ * Wortgrenze) — deshalb steht „not used“ explizit in der Negations-Liste.
  */
 function parseTraining(text) {
   const t = (text ?? "").trim();
   if (t === "") throw new ScrapeError("Modelltraining unparsebar: leere Zelle");
-  return !/nicht|kein|nein|no\b/i.test(t);
+  return !/not\s+used|nicht|kein|nein|\bno\b/i.test(t);
 }
 
 /**
- * Parst die Spalte "Datenaufbewahrung":
- * - "30 Tage" → 30 (bekannte Dauer in Tagen)
- * - "0 Tage" → true (ZDR = Zero Data Retention)
- * - "Kein ZDR" → false (keine ZDR-Vereinbarung: Daten werden aufbewahrt,
+ * Parst die Spalte "Data retention":
+ * - "30 days"/"30 Tage" → 30 (bekannte Dauer in Tagen)
+ * - "0 days"/"0 Tage" → true (ZDR = Zero Data Retention)
+ * - "Not ZDR"/"Kein ZDR" → false (keine ZDR-Vereinbarung: Daten werden aufbewahrt,
  *   Dauer unbekannt — z. B. Muse Spark 1.2, Meta-Contributor-Tier)
  * - "–"/"-" → undefined (unbekannt, Feld fehlt im JSON)
  */
 function parseRetentionDays(text) {
-  // Fußnoten-Marker (z. B. „0 Tage*“) vor dem Parsen entfernen.
+  // Fußnoten-Marker (z. B. „0 days*“) vor dem Parsen entfernen.
   const t = (text ?? "").trim().replace(/[*†‡¹²³]+$/u, "").trim();
   if (t === "" || t === "-" || t === "—" || t === "–") return undefined;
-  if (/^kein(?:e)?\s+zdr$/i.test(t)) return false;
-  const m = t.match(/^(\d+(?:[.,]\d+)?)\s*Tage?$/i);
+  if (/^(?:kein(?:e)?|not)\s+zdr$/i.test(t)) return false;
+  const m = t.match(/^(\d+(?:[.,]\d+)?)\s*(?:Tage?|days?)$/i);
   if (!m) throw new ScrapeError(`Datenaufbewahrung unparsebar: "${text}"`);
   const days = Number(m[1].replace(",", "."));
   return days === 0 ? true : days;
@@ -892,6 +941,36 @@ export function parseGermanDate(text) {
   return `${m[3]}-${month}-${String(day).padStart(2, "0")}`;
 }
 
+const EN_MONTHS = {
+  january: "01",
+  february: "02",
+  march: "03",
+  april: "04",
+  may: "05",
+  june: "06",
+  july: "07",
+  august: "08",
+  september: "09",
+  october: "10",
+  november: "11",
+  december: "12",
+};
+
+/**
+ * Parst ein englisches Datum ("October 31, 2026") zu ISO ("2026-10-31").
+ * Liefert null bei unbekanntem Format oder Monatsnamen.
+ */
+export function parseEnglishDate(text) {
+  const t = (text ?? "").trim().replace(/\.+$/, "");
+  const m = t.match(/^([A-Za-z]+)\s+(\d{1,2}),\s+(\d{4})$/);
+  if (!m) return null;
+  const month = EN_MONTHS[m[1].toLowerCase()];
+  if (!month) return null;
+  const day = Number(m[2]);
+  if (day < 1 || day > 31) return null;
+  return `${m[3]}-${month}-${String(day).padStart(2, "0")}`;
+}
+
 /**
  * Parst die Datenschutz-Tabelle und liefert eine Map normalisierter Modellnamen
  * → { training, retentionDays }. Die Zuordnung erfolgt über den Modellnamen
@@ -919,9 +998,9 @@ export function parsePrivacyTable($, table) {
 
 /**
  * Parst die Notizen-Liste unter der Datenschutz-Tabelle (z. B. die monatliche
- * ZDR-Vereinbarung der Modellfamilie DeepSeek: "gilt bis einschließlich
- * 31. August 2026") und liefert eine Map normalisierter Notiz-Labels →
- * validUntil (ISO).
+ * ZDR-Vereinbarung der Modellfamilie DeepSeek: deutsch "gilt bis einschließlich
+ * 31. August 2026", englisch "is valid through October 31, 2026") und liefert
+ * eine Map normalisierter Notiz-Labels → validUntil (ISO).
  *
  * Das Label ist die Modellfamilie (z. B. `DeepSeek`) oder modellspezifisch
  * (z. B. `DeepSeek V4 Flash`); die Zuordnung auf die Modelle übernimmt
@@ -943,9 +1022,10 @@ export function parsePrivacyNotes($) {
       .trim();
     if (!label) return;
     const text = $li.text().replace(/\s+/g, " ").trim();
-    const m = text.match(/(?:gilt|gültig)\s+bis(?:\s+einschließlich)?\s+(\d{1,2}\.\s+[A-Za-zäöüß]+\s+\d{4})/i);
-    if (!m) return;
-    const date = parseGermanDate(m[1]);
+    const de = text.match(/(?:gilt|gültig)\s+bis(?:\s+einschließlich)?\s+(\d{1,2}\.\s+[A-Za-zäöüß]+\s+\d{4})/i);
+    const en = text.match(/valid\s+(?:until|through)\s+([A-Za-z]+\s+\d{1,2},\s+\d{4})/i);
+    if (!de && !en) return;
+    const date = de ? parseGermanDate(de[1]) : parseEnglishDate(en[1]);
     if (date) {
       const key = normalizeName(label);
       map.set(key, date);
@@ -2459,7 +2539,7 @@ async function main() {
     const response = await fetch(SOURCE_URL, {
       headers: {
         "User-Agent": USER_AGENT,
-        "Accept-Language": "de-DE,de;q=0.9,en;q=0.5",
+        "Accept-Language": "en-US,en;q=0.9",
       },
     });
     if (!response.ok) throw new ScrapeError(`HTTP ${response.status} beim Abrufen von ${SOURCE_URL}`);

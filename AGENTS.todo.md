@@ -1,5 +1,44 @@
 # AGENTS.todo.md — ocgo-price-tracker
 
+## Entscheidungen 2026-10-12 — v2-Migration (`/docs/de/` → `/v2/docs/console/`)
+Anlass: Die alten Docs-URLs (`/docs/de/go/`, `/docs/de/zen/`) liefern HTTP 404 — die Docs
+sind auf v2 umgezogen, CI war rot (`pnpm scrape` brach ab). Vollständige Regeln stehen in
+`AGENTS.md` — hier nur die getroffenen Entscheidungen samt Begründung.
+
+- [x] **Neue Quellen:** Go-Seite `https://opencode.ai/v2/docs/console/go/` (Pläne, Preise,
+  Privacy, Patterns, Peak-Notiz), Models-Seite `https://opencode.ai/v2/docs/console/models/`
+  (Endpoints + Pricing + „Free models“-Liste) als Free-Quelle. `SOURCE_LANG` = `en`,
+  `Accept-Language: en-US`. Die alten `/zen`- und `/de/zen`-Seiten sind JS-rendered
+  (0 Tabellen) und **nicht** geeignet. Keine stillen Fallbacks (weiterhin `ScrapeError`
+  bei 404/leer).
+- [x] **Modelle vollständig:** v2-Katalog = alter Katalog (42=42 Zeilen, Tokenpreise Go vs.
+  Go Plus 0 Mismatches, nur HTML-Entity `&gt;` vs `>`). Der Migrations-Scrape ergab
+  **0 Changelog-Events** — kein Modell-, Preis- oder Nutzungs-Diff, nur `sourceUrl`/
+  `sourceLang`/`plansChanged` still geschrieben. Free-Count 13 = alter Stand.
+- [x] **Tab-Mechanik:** `div.docs-plan-tabs` (`button[data-plan-tab]` ↔
+  `div[data-plan-panel]`, ARIA als Fallback) statt `starlight-tabs`. `creditsMonthly`
+  Go ist jetzt **80** (war 60): `Monthly limit` Go = $15/$30/$60/$80.
+- [x] **Englische Werte:** Privacy (`Not used`, `N days`, `0 days` → ZDR, `Not ZDR` → false),
+  Patterns (`… tokens per request`), Free-Footnotes (`<Name> is …` unter `h3#free-models`,
+  `zero-retention … does not use … for model training` → ZDR, `feedback`/`improve the
+  model` → `training: true`), Privacy-Notiz (`valid through October 31, 2026` via neuem
+  `parseEnglishDate`). Deutsche Aliase bleiben als Kompatibilität (Parser + Tests).
+- [x] **Fixtures/Tests:** `tests/fixtures/go-de.html`/`zen-de.html` ersetzt durch
+  `go-en.html` (42 Zeilen/Plan) + `models-en.html` (88 Endpoints, 103 Pricing, 13 Free);
+  `buildPage`-Helper baut `docs-plan-tabs`-Markup; DE-Parser-Tests bleiben als
+  Kompatibilitäts-Beweis, EN-Pendants ergänzt (`parseEnglishDate`, Live-Peak-Notiz).
+  **Keine** Zahlen-Pins auf `data/latest.json` (Struktur-Invarianten wie bisher).
+- [x] **Badge-Farben (6×-Regel):** `usageBadge` ist grün ab Guthaben **oder** 6× Monatspreis
+  (Go $60 = 6× → grün statt gelb; nötig, weil `creditsMonthly` Go durch die DeepSeek-Tiers
+  bei $80 liegt), alles **über 6×** zusätzlich fett (Go $80 = 8×). Tooltip-Legende de/en
+  angepasst („unter 6× gelb · ab 6× grün · über 6× fett"). Grün-Anker ist der 6×-Faktor,
+  nicht das abgeleitete Guthaben.
+- [x] **Verifikation:** `pnpm test` 275/275 grün, `pnpm scrape` exit 0 (42 Modelle, alle mit
+  privacy, usage-Map vollständig, keine leeren Changelog-Einträge), `pnpm build` grün,
+  `pnpm smoke` grün (mit `NODE_OPTIONS=--dns-result-order=ipv4first` — Sandbox-Quirk:
+  vite-Preview lauscht hier nur auf `::1`, ohne die Option scheitert Node-`fetch` mit
+  ECONNREFUSED; auf GitHub-Runnern nicht nötig, kein Repo-Fix).
+
 ## Entscheidungen 2026-09-30 — datengetriebene Peak-Regeln (peakHours → peakRules)
 Anlass: Der Wochentags-Scope der Peak-Regeln stand wörtlich in der Doku („montags bis
 freitags … einschließlich der Wochenenden sind Off-Peak"), wurde aber verworfen; stattdessen
@@ -35,7 +74,7 @@ weder `holidayCalendars` noch eine Footer-Feiertagszeile.
   stammte aus dem DeepSeek-Original, nicht aus der OpenCode-Doku). Die Auswertung unterstützt es
   (vor `effectiveFrom` kein Peak) und ist per Test abgedeckt.
 - [x] **Keine Feiertagsdaten (strikt quellenbindend).** Live verifiziert: die Peak-Notiz auf
-  `https://opencode.ai/docs/de/go/` nennt **keine** Feiertage (de **und** en). „excluding Chinese
+  `https://opencode.ai/v2/docs/console/go/` nennt **keine** Feiertage (v2-Docs, englisch). „excluding Chinese
   public holidays" steht nur in der DeepSeek-Originaldoku, also außerhalb der Tracker-Quelle →
   `peakRules[].holidays` und `holidayCalendars` bleiben in `data/latest.json` **leer/fehlend**.
   `parseHolidays` bleibt als Parser (spec §3: nur setzen, wenn die Quelle sie nennt; Aussage ohne

@@ -1,11 +1,10 @@
 # Price Tracking for OpenCode Go
 
-Scrapet täglich die Preistabelle von `https://opencode.ai/docs/de/go/` und
+Scrapet täglich die Preistabelle von `https://opencode.ai/v2/docs/console/go/` und
 berechnet die Preise wahlweise auf Basis des vollen Monatsguthabens
 (Effektivpreis = Listenpreis × Guthaben/Nutzung) oder dessen, was man
 tatsächlich zahlt (Monatspreis/Nutzung). Monatsguthaben und Monatspreis werden
-dynamisch gefetcht (Doku-Seite: Intro `10 $/Monat`, Limit-Liste „Monatliches
-Limit — Nutzung im Wert von $60“; Fallback 60/10).
+dynamisch aus der Plan-Tabelle der Doku-Seite gefetcht.
 Die Ergebnisse werden als statische SolidJS-Seite unter
 `https://ocgo-pricing.all-the.rest` bereitgestellt.
 
@@ -43,7 +42,7 @@ aktualisiert dabei `data/latest.json`, `data/history.json`, `CHANGELOG.json` und
   - `freeModels` = kostenlose Zen-Modelle mit `availableFrom`
 - `data/history.json` — Chronologie aller Snapshots (`{ "snapshots": [...] }`)
 - `CHANGELOG.json` — strukturierte Änderungs-Events (neuer + alter Preis bei Preisänderungen), wird per CI committet → Git-History
-- `pnpm test` — Scraper-Unit-Tests gegen den HTML-Dump in `tests/fixtures/go-de.html`
+- `pnpm test` — Scraper-Unit-Tests gegen die HTML-Dumps in `tests/fixtures/go-en.html` + `tests/fixtures/models-en.html`
 
 ## Deployment
 

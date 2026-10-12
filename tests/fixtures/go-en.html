@@ -1,0 +1,1810 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Reliable access to open coding models with two usage tiers."><meta name="theme-color" content="#000000"><meta name="astro-view-transitions-enabled" content="true"><meta name="astro-view-transitions-fallback" content="swap"><script type="module" src="/v2/_astro/ClientRouter.astro_astro_type_script_index_0_lang.QXqYV-0P.js"></script><link rel="canonical" href="https://opencode.ai/v2/docs/console/go/"><link rel="icon" type="image/svg+xml" href="/v2/favicon.svg"><title>Go | OpenCode</title><link rel="stylesheet" href="/v2/_astro/_..CwgjG4PU.css"></head><body><a class="skip-link" href="#docs-content">Skip to content</a><header class="site-header"><div class="header-inner"><a class="brand" href="/v2/" aria-label="OpenCode home"><img src="/v2/assets/logo-dark.svg" alt="OpenCode"></a><nav aria-label="Documentation sections"><a href="/v2/docs/">Docs</a><a href="/v2/docs/cli/">CLI</a><a href="/v2/docs/build/">Build</a><a href="/v2/docs/api/">API</a><a href="/v2/docs/console/" aria-current="page">Console</a><a href="/docs">V1</a></nav><div class="header-spacer"></div><button class="search-trigger" type="button" data-search-open aria-label="Search documentation"><span>Search</span><kbd>⌘K</kbd></button><a class="github-link" href="https://github.com/anomalyco/opencode" aria-label="OpenCode on GitHub">GitHub</a></div></header><dialog class="search-dialog" data-search-dialog data-pagefind-path="/v2/docs/pagefind/pagefind.js" data-base-url="/v2/docs/" aria-label="Search documentation"><form method="dialog" class="search-bar"><span aria-hidden="true">&gt;</span><input data-search-input type="search" placeholder="Search docs" autocomplete="off"><button type="submit" aria-label="Close search">Esc</button></form><div class="search-results" data-search-results><p>Start typing to search the documentation.</p></div></dialog><script>
+  let pagefind
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault()
+      const dialog = document.querySelector("[data-search-dialog]")
+      dialog?.showModal()
+      dialog?.querySelector("[data-search-input]")?.focus()
+    }
+  })
+
+  const setupSearch = () => {
+    const dialog = document.querySelector("[data-search-dialog]")
+    const input = document.querySelector("[data-search-input]")
+    const results = document.querySelector("[data-search-results]")
+    const trigger = document.querySelector("[data-search-open]")
+    if (trigger && !trigger.dataset.searchReady) {
+      trigger.dataset.searchReady = "true"
+      trigger.addEventListener("click", () => {
+        dialog?.showModal()
+        input?.focus()
+      })
+    }
+
+    if (input && results && !input.dataset.searchReady) input.addEventListener("input", async () => {
+      input.dataset.searchReady = "true"
+      const query = input.value.trim()
+      if (!query) {
+        results.innerHTML = "<p>Start typing to search the documentation.</p>"
+        return
+      }
+
+      const pagefindPath = dialog?.dataset.pagefindPath
+      if (!pagefindPath) return
+      const api = pagefind ?? (pagefind = await import(pagefindPath))
+      const search = await api.search(query)
+      const pages = await Promise.all(search.results.slice(0, 8).map((result) => result.data()))
+      results.replaceChildren(
+        ...pages.map((page) => {
+          const link = document.createElement("a")
+          const base = dialog.dataset.baseUrl ?? "/"
+          link.href = page.url.startsWith(base)
+            ? page.url
+            : `${dialog.dataset.baseUrl?.replace(/\/$/, "")}${page.url}`
+          const title = document.createElement("strong")
+          title.textContent = page.meta.title
+          const excerpt = document.createElement("span")
+          excerpt.innerHTML = page.excerpt
+          link.append(title, excerpt)
+          return link
+        }),
+      )
+      if (!pages.length) results.innerHTML = "<p>No results found.</p>"
+    })
+  }
+
+  setupSearch()
+  document.addEventListener("astro:page-load", setupSearch)
+</script><details class="mobile-navigation"><summary>Console navigation</summary><nav class="docs-sidebar" aria-label="Documentation"><section><ul><li><a href="/v2/docs/console/">Intro</a></li><li><a href="/v2/docs/console/models/">Models</a></li><li><a href="/v2/docs/console/providers/">Providers</a></li><li><a href="/v2/docs/console/websearch/">Web Search</a></li><li><a href="/v2/docs/console/go/" aria-current="page">Go</a></li></ul></section><section><h2>Workspace</h2><ul><li><a href="/v2/docs/console/workspaces/">Basics</a></li><li><a href="/v2/docs/console/members/">Members</a></li><li><a href="/v2/docs/console/sso/">SSO</a></li><li><a href="/v2/docs/console/scim/">SCIM</a></li><li><a href="/v2/docs/console/budgets/">Budgets</a></li><li><a href="/v2/docs/console/billing/">Billing</a></li></ul></section><section><h2>API</h2><ul><li><a href="/v2/docs/console/api/">Overview</a></li><li><a href="/v2/docs/console/api/inference/">Inference</a></li><li><a href="/v2/docs/console/api/providers/">Providers</a></li><li><a href="/v2/docs/console/api/budgets/">Budgets</a></li></ul></section></nav></details><div class="docs-frame"><aside class="sidebar-column"><nav class="docs-sidebar" aria-label="Documentation"><section><ul><li><a href="/v2/docs/console/">Intro</a></li><li><a href="/v2/docs/console/models/">Models</a></li><li><a href="/v2/docs/console/providers/">Providers</a></li><li><a href="/v2/docs/console/websearch/">Web Search</a></li><li><a href="/v2/docs/console/go/" aria-current="page">Go</a></li></ul></section><section><h2>Workspace</h2><ul><li><a href="/v2/docs/console/workspaces/">Basics</a></li><li><a href="/v2/docs/console/members/">Members</a></li><li><a href="/v2/docs/console/sso/">SSO</a></li><li><a href="/v2/docs/console/scim/">SCIM</a></li><li><a href="/v2/docs/console/budgets/">Budgets</a></li><li><a href="/v2/docs/console/billing/">Billing</a></li></ul></section><section><h2>API</h2><ul><li><a href="/v2/docs/console/api/">Overview</a></li><li><a href="/v2/docs/console/api/inference/">Inference</a></li><li><a href="/v2/docs/console/api/providers/">Providers</a></li><li><a href="/v2/docs/console/api/budgets/">Budgets</a></li></ul></section></nav></aside><main id="docs-content"><article class="prose" data-pagefind-body data-pagefind-meta="title:Go"><h1>Go<button type="button" aria-label="Copy page as Markdown" data-copy-markdown data-pagefind-ignore><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="8" y="8" width="13" height="13" rx="2"></rect><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"></path></svg><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m5 12 4 4L19 6"></path></svg></button></h1><p>OpenCode Go gives you reliable access to popular open coding models, with two monthly plans:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Plan</th><th>Price</th><th>Included usage</th></tr></thead><tbody><tr><td><strong>Go</strong></td><td><strong>$10/month</strong></td><td>Lower-cost access to the models below</td></tr><tr><td><strong>Go Plus</strong></td><td><strong>$40/month</strong></td><td>Higher usage limits across the models below</td></tr></tbody></table>
+<p>Go works like any other provider in OpenCode. You subscribe to OpenCode Go and get your API key. It’s <strong>completely optional</strong> and you don’t need it to use OpenCode.</p>
+<p>The service is designed primarily for international users and provides stable global access.</p>
+<h2 id="how-it-works">How it works</h2>
+<ol>
+<li>
+<p>Sign in to the <a href="https://opencode.ai/console">OpenCode Console</a>, subscribe to Go or Go Plus, add your billing details, and copy your API key.</p>
+</li>
+<li>
+<p>Run <code>/connect</code> in the TUI, select <strong>OpenCode Go</strong>, and paste your API key.</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="text"><code><span class="line"><span>/connect</span></span></code></pre>
+</li>
+<li>
+<p>Run <code>/models</code> to select a model available through Go.</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="text"><code><span class="line"><span>/models</span></span></code></pre>
+</li>
+</ol>
+<aside class="callout callout-note" aria-label="Note"><strong>Note</strong><div><p>Go and Go Plus are for workspaces with a single member, such as the <strong>Personal</strong> workspace created when you sign up. A
+workspace with a Go subscription cannot invite members.</p></div></aside>
+<p>The current list of models includes:</p>
+<ul>
+<li><strong>Grok 4.7</strong></li>
+<li><strong>Grok 4.6</strong></li>
+<li><strong>GLM-5.3-Flash</strong></li>
+<li><strong>GLM-5.3</strong></li>
+<li><strong>GLM-5.2</strong></li>
+<li><strong>GPT 6 Luna</strong></li>
+<li><strong>GPT 5.6 Luna</strong></li>
+<li><strong>Claude Haiku 5.5</strong></li>
+<li><strong>Kimi K3</strong></li>
+<li><strong>Kimi K2.7 Code</strong></li>
+<li><strong>Kimi K2.6</strong></li>
+<li><strong>LongCat-2.0</strong></li>
+<li><strong>LongCat 2.5 Preview Free</strong> (limited time)</li>
+<li><strong>Step 5 Preview Free</strong> (limited time)</li>
+<li><strong>MiMo-V2.6-Flash</strong></li>
+<li><strong>MiMo-V2.6-Pro</strong></li>
+<li><strong>MiMo-V2.5</strong></li>
+<li><strong>MiMo-V2.5-Pro</strong></li>
+<li><strong>MiniMax M3</strong></li>
+<li><strong>MiniMax M2.7</strong></li>
+<li><strong>Muse Spark 1.3 Contributor</strong> (<a href="https://ai.developer.meta.com/legal/geographic-use-policy">limited regions</a>)</li>
+<li><strong>Muse Spark 1.2 Contributor</strong> (<a href="https://ai.developer.meta.com/legal/geographic-use-policy">limited regions</a>)</li>
+<li><strong>Qwen3.8 Max</strong></li>
+<li><strong>Qwen3.8 Flash</strong></li>
+<li><strong>Qwen3.7 Plus</strong></li>
+<li><strong>DeepSeek V4.1 Flash</strong></li>
+<li><strong>DeepSeek V4 Pro</strong></li>
+<li><strong>DeepSeek V4 Flash</strong></li>
+<li><strong>DeepSeek V4 Flash Vision Exp</strong></li>
+<li><strong>Hy4 preview</strong></li>
+<li><strong>Hy3</strong></li>
+<li><strong>Space Bunny</strong></li>
+</ul>
+<p>The list of models may change as we test and add new ones.</p>
+<h2 id="where-can-i-use-it">Where can I use it?</h2>
+<p>OpenCode Go is designed for <a href="https://opencode.ai">OpenCode</a> and other coding agents
+that produce similar types of requests. Traffic is monitored for abuse that
+degrades the experience for other users.</p>
+<p>Your client should:</p>
+<ol>
+<li>Send typical coding agent traffic</li>
+<li>Identify itself with its own user agent, such as <code>my-coding-agent/1.0</code>, rather
+than a generic SDK or HTTP-library name.</li>
+<li>Send a stable session ID in <code>x-opencode-session</code> for each conversation so we can optimize routing and
+prompt caching.</li>
+</ol>
+<h3 id="validated-clients">Validated clients</h3>
+<p>Besides OpenCode, the following clients have been validated to work properly
+with OpenCode Go. Although we do not guarantee that they will continue to work in the future.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Client</th><th>Session support</th></tr></thead><tbody><tr><td><strong>Hermes</strong></td><td>Builds containing <a href="https://github.com/NousResearch/hermes-agent/pull/101864">PR #101864</a> send the header on main and auxiliary OpenCode requests. The fix was merged after v0.21.0; that release alone does not include it.</td></tr><tr><td><strong>Claude Code</strong></td><td>Go recognizes its native session header. No custom-header wrapper is needed.</td></tr><tr><td><strong>Codex</strong></td><td>Go recognizes its native session header. Some versions and proxy setups still omit it; preserve the session header when forwarding requests.</td></tr><tr><td><strong>ZCode</strong></td><td>Go recognizes its native session header. Our <a href="https://github.com/zai-org/feedback/issues/492">request for <code>x-opencode-session</code></a> remains open, but it is no longer necessary to send that specific header.</td></tr><tr><td><strong>Pi</strong></td><td>Current builds send session information for OpenCode. Update older installations.</td></tr><tr><td><strong>jcode</strong></td><td>Update to <strong>v0.81.6 or later</strong>, which includes the <a href="https://github.com/1jehuang/jcode/issues/1167">session-header fix</a>.</td></tr><tr><td><strong>Kilo Code CLI</strong></td><td>Builds containing <a href="https://github.com/Kilo-Org/kilocode/pull/13752">PR #13752</a> restore OpenCode session headers. This fix covers the CLI, not the VS Code extension. See <a href="https://github.com/Kilo-Org/kilocode/issues/13723">issue #13723</a>.</td></tr></tbody></table>
+<h3 id="known-problematic-clients">Known problematic clients</h3>
+<p>These clients have missing or incomplete session support in the versions we
+investigated. The linked reports track fixes and workarounds.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Client</th><th>Status and tracking</th></tr></thead><tbody><tr><td><strong>DeepSeek Harness</strong></td><td>Session information arrives on some model paths, but is missing on others. We recognize its native header; the remaining work is to send it across all adapters. <a href="https://github.com/deepseek-ai/deepseek-harness/discussions/5495">Discussion #5495</a>.</td></tr><tr><td><strong>GitHub Copilot Chat</strong></td><td>Automatic session-header support is requested in <a href="https://github.com/microsoft/vscode/issues/334186">VS Code issue #334186</a>.</td></tr><tr><td><strong>Kimi Code</strong></td><td>Automatic session-header support is requested in <a href="https://github.com/MoonshotAI/kimi-code/issues/3506">issue #3506</a>.</td></tr><tr><td><strong>MiMo Code</strong></td><td><a href="https://github.com/XiaomiMiMo/MiMo-Code/issues/2317">Issue #2317</a> has a proposed fix in <a href="https://github.com/XiaomiMiMo/MiMo-Code/pull/2327">PR #2327</a>, which has not yet merged.</td></tr></tbody></table>
+<h2 id="usage-limits">Usage limits</h2>
+<p>Usage limits are defined as monthly dollar amounts. The table below shows the
+monthly limit for each plan and the token costs for each model. Token pricing is
+the same for Go and Go Plus.</p>
+<p>Each model has the following usage limits: 5-hour — 20% of the monthly limit;
+weekly — 50%; and monthly — 100%.</p>
+<p>Each model’s monthly limit below determines how its usage counts toward those allowances.</p>
+<p>Token prices are per 1M tokens.</p>
+<div class="docs-plan-tabs" data-plan-tabs data-sync-key="go-plan"><div class="docs-plan-tabs-list" role="tablist" aria-label="Go plan"><button type="button" role="tab" id="go-pricing-tab-go" aria-controls="go-pricing-panel-go" aria-selected="true" tabindex="0" data-plan-tab="go">Go</button><button type="button" role="tab" id="go-pricing-tab-go-plus" aria-controls="go-pricing-panel-go-plus" aria-selected="false" tabindex="-1" data-plan-tab="go-plus">Go Plus</button></div><div role="tabpanel" id="go-pricing-panel-go" aria-labelledby="go-pricing-tab-go" data-plan-panel="go"><div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monthly limit</th></tr></thead><tbody><tr><td>GLM-5.3-Flash</td><td>$0.15</td><td>$0.50</td><td>$0.03</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>GLM-5.3</td><td>$1.40</td><td>$4.40</td><td>$0.26</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>GLM-5.2</td><td>$1.40</td><td>$4.40</td><td>$0.26</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Kimi K3</td><td>$3.00</td><td>$15.00</td><td>$0.30</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>Kimi K2.7 Code</td><td>$0.95</td><td>$4.00</td><td>$0.19</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Kimi K2.6</td><td>$0.95</td><td>$4.00</td><td>$0.16</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>LongCat-2.0</td><td>$0.30</td><td>$1.20</td><td>$0.006</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>LongCat 2.5 Preview Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td><td><strong>Unlimited</strong><br/><small>limited time</small></td></tr><tr><td>Step 5 Preview Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td><td><strong>Unlimited</strong><br/><small>limited time</small></td></tr><tr><td>MiMo-V2.6-Flash</td><td>$0.14</td><td>$0.28</td><td>$0.0028</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>MiMo-V2.6-Pro</td><td>$0.435</td><td>$0.87</td><td>$0.003625</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>MiMo-V2.5</td><td>$0.14</td><td>$0.28</td><td>$0.0028</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>MiMo-V2.5-Pro</td><td>$0.435</td><td>$0.87</td><td>$0.003625</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>MiniMax M3</td><td>$0.30</td><td>$1.20</td><td>$0.06</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>MiniMax M2.7</td><td>$0.30</td><td>$1.20</td><td>$0.06</td><td>$0.375</td><td><strong>$60</strong></td></tr><tr><td>Muse Spark 1.3 Contributor</td><td>$0.10</td><td>$0.20</td><td>$0.002</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Muse Spark 1.2 Contributor</td><td>$0.10</td><td>$0.20</td><td>$0.002</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Qwen3.8 Max</td><td>$2.00</td><td>$6.00</td><td>$0.25</td><td>$2.50</td><td><strong>$15</strong></td></tr><tr><td>Qwen3.8 Flash</td><td>$0.15</td><td>$0.47</td><td>$0.016</td><td>$0.20</td><td><strong>$30</strong></td></tr><tr><td>Qwen3.7 Plus (≤ 256K tokens)</td><td>$0.40</td><td>$1.60</td><td>$0.04</td><td>$0.50</td><td><strong>$60</strong></td></tr><tr><td>Qwen3.7 Plus (&gt; 256K tokens)</td><td>$1.20</td><td>$4.80</td><td>$0.12</td><td>$1.50</td><td><strong>$60</strong></td></tr><tr><td>DeepSeek V4.1 Flash (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td><td><strong>$80</strong></td></tr><tr><td>DeepSeek V4.1 Flash (Peak)</td><td>$0.30</td><td>$1.20</td><td>$0.006</td><td>-</td><td><strong>$80</strong></td></tr><tr><td>DeepSeek V4 Pro (Off-Peak)</td><td>$0.66</td><td>$1.98</td><td>$0.022</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>DeepSeek V4 Pro (Peak)</td><td>$1.32</td><td>$3.96</td><td>$0.044</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>DeepSeek V4 Flash (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td><td><strong>$30</strong></td></tr><tr><td>DeepSeek V4 Flash (Peak)</td><td>$0.30</td><td>$1.20</td><td>$0.006</td><td>-</td><td><strong>$30</strong></td></tr><tr><td>DeepSeek V4 Flash Vision Exp (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>DeepSeek V4 Flash Vision Exp (Peak)</td><td>$0.30</td><td>$1.20</td><td>$0.006</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>Hy4 preview</td><td>$0.834</td><td>$2.501</td><td>$0.042</td><td>-</td><td><strong>$30</strong></td></tr><tr><td>Hy3</td><td>$0.14</td><td>$0.58</td><td>$0.035</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Space Bunny</td><td>$0.15</td><td>$0.60</td><td>$0.03</td><td>-</td><td><strong>$30</strong></td></tr><tr><td>Grok 4.7 (≤ 200K tokens)</td><td>$2.00</td><td>$6.00</td><td>$0.50</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>Grok 4.7 (&gt; 200K tokens)</td><td>$4.00</td><td>$12.00</td><td>$1.00</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>Grok 4.6 (≤ 200K tokens)</td><td>$2.00</td><td>$6.00</td><td>$0.50</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>Grok 4.6 (&gt; 200K tokens)</td><td>$4.00</td><td>$12.00</td><td>$1.00</td><td>-</td><td><strong>$15</strong></td></tr><tr><td>GPT 6 Luna (≤ 272K tokens)</td><td>$0.10</td><td>$0.50</td><td>$0.01</td><td>$0.125</td><td><strong>$15</strong></td></tr><tr><td>GPT 6 Luna (&gt; 272K tokens)</td><td>$0.20</td><td>$0.75</td><td>$0.02</td><td>$0.25</td><td><strong>$15</strong></td></tr><tr><td>GPT 5.6 Luna (≤ 272K tokens)</td><td>$0.20</td><td>$1.20</td><td>$0.02</td><td>$0.25</td><td><strong>$15</strong></td></tr><tr><td>GPT 5.6 Luna (&gt; 272K tokens)</td><td>$0.40</td><td>$1.80</td><td>$0.04</td><td>$0.50</td><td><strong>$15</strong></td></tr><tr><td>Claude Haiku 5.5 (≤ 100K tokens)</td><td>$0.10</td><td>$0.50</td><td>$0.01</td><td>$0.125</td><td><strong>$15</strong></td></tr><tr><td>Claude Haiku 5.5 (&gt; 100K tokens)</td><td>$0.50</td><td>$2.50</td><td>$0.05</td><td>$0.625</td><td><strong>$15</strong></td></tr></tbody></table></div></div><div role="tabpanel" id="go-pricing-panel-go-plus" aria-labelledby="go-pricing-tab-go-plus" hidden data-plan-panel="go-plus"><div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Model</th><th>Input</th><th>Output</th><th>Cached Read</th><th>Cached Write</th><th>Monthly limit</th></tr></thead><tbody><tr><td>GLM-5.3-Flash</td><td>$0.15</td><td>$0.50</td><td>$0.03</td><td>-</td><td><strong>$180</strong></td></tr><tr><td>GLM-5.3</td><td>$1.40</td><td>$4.40</td><td>$0.26</td><td>-</td><td><strong>$120</strong></td></tr><tr><td>GLM-5.2</td><td>$1.40</td><td>$4.40</td><td>$0.26</td><td>-</td><td><strong>$180</strong></td></tr><tr><td>Kimi K3</td><td>$3.00</td><td>$15.00</td><td>$0.30</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Kimi K2.7 Code</td><td>$0.95</td><td>$4.00</td><td>$0.19</td><td>-</td><td><strong>$180</strong></td></tr><tr><td>Kimi K2.6</td><td>$0.95</td><td>$4.00</td><td>$0.16</td><td>-</td><td><strong>$240</strong></td></tr><tr><td>LongCat-2.0</td><td>$0.30</td><td>$1.20</td><td>$0.006</td><td>-</td><td><strong>$240</strong></td></tr><tr><td>LongCat 2.5 Preview Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td><td><strong>Unlimited</strong><br/><small>limited time</small></td></tr><tr><td>Step 5 Preview Free</td><td>Free</td><td>Free</td><td>Free</td><td>-</td><td><strong>Unlimited</strong><br/><small>limited time</small></td></tr><tr><td>MiMo-V2.6-Flash</td><td>$0.14</td><td>$0.28</td><td>$0.0028</td><td>-</td><td><strong>$120</strong></td></tr><tr><td>MiMo-V2.6-Pro</td><td>$0.435</td><td>$0.87</td><td>$0.003625</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>MiMo-V2.5</td><td>$0.14</td><td>$0.28</td><td>$0.0028</td><td>-</td><td><strong>$120</strong></td></tr><tr><td>MiMo-V2.5-Pro</td><td>$0.435</td><td>$0.87</td><td>$0.003625</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>MiniMax M3</td><td>$0.30</td><td>$1.20</td><td>$0.06</td><td>-</td><td><strong>$180</strong></td></tr><tr><td>MiniMax M2.7</td><td>$0.30</td><td>$1.20</td><td>$0.06</td><td>$0.375</td><td><strong>$240</strong></td></tr><tr><td>Muse Spark 1.3 Contributor</td><td>$0.10</td><td>$0.20</td><td>$0.002</td><td>-</td><td><strong>$120</strong></td></tr><tr><td>Muse Spark 1.2 Contributor</td><td>$0.10</td><td>$0.20</td><td>$0.002</td><td>-</td><td><strong>$120</strong></td></tr><tr><td>Qwen3.8 Max</td><td>$2.00</td><td>$6.00</td><td>$0.25</td><td>$2.50</td><td><strong>$60</strong></td></tr><tr><td>Qwen3.8 Flash</td><td>$0.15</td><td>$0.47</td><td>$0.016</td><td>$0.20</td><td><strong>$90</strong></td></tr><tr><td>Qwen3.7 Plus (≤ 256K tokens)</td><td>$0.40</td><td>$1.60</td><td>$0.04</td><td>$0.50</td><td><strong>$180</strong></td></tr><tr><td>Qwen3.7 Plus (&gt; 256K tokens)</td><td>$1.20</td><td>$4.80</td><td>$0.12</td><td>$1.50</td><td><strong>$180</strong></td></tr><tr><td>DeepSeek V4.1 Flash (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td><td><strong>$160</strong></td></tr><tr><td>DeepSeek V4.1 Flash (Peak)</td><td>$0.30</td><td>$1.20</td><td>$0.006</td><td>-</td><td><strong>$160</strong></td></tr><tr><td>DeepSeek V4 Pro (Off-Peak)</td><td>$0.66</td><td>$1.98</td><td>$0.022</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>DeepSeek V4 Pro (Peak)</td><td>$1.32</td><td>$3.96</td><td>$0.044</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>DeepSeek V4 Flash (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td><td><strong>$120</strong></td></tr><tr><td>DeepSeek V4 Flash (Peak)</td><td>$0.30</td><td>$1.20</td><td>$0.006</td><td>-</td><td><strong>$120</strong></td></tr><tr><td>DeepSeek V4 Flash Vision Exp (Off-Peak)</td><td>$0.15</td><td>$0.60</td><td>$0.003</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>DeepSeek V4 Flash Vision Exp (Peak)</td><td>$0.30</td><td>$1.20</td><td>$0.006</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Hy4 preview</td><td>$0.834</td><td>$2.501</td><td>$0.042</td><td>-</td><td><strong>$120</strong></td></tr><tr><td>Hy3</td><td>$0.14</td><td>$0.58</td><td>$0.035</td><td>-</td><td><strong>$240</strong></td></tr><tr><td>Space Bunny</td><td>$0.15</td><td>$0.60</td><td>$0.03</td><td>-</td><td><strong>$120</strong></td></tr><tr><td>Grok 4.7 (≤ 200K tokens)</td><td>$2.00</td><td>$6.00</td><td>$0.50</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Grok 4.7 (&gt; 200K tokens)</td><td>$4.00</td><td>$12.00</td><td>$1.00</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Grok 4.6 (≤ 200K tokens)</td><td>$2.00</td><td>$6.00</td><td>$0.50</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>Grok 4.6 (&gt; 200K tokens)</td><td>$4.00</td><td>$12.00</td><td>$1.00</td><td>-</td><td><strong>$60</strong></td></tr><tr><td>GPT 6 Luna (≤ 272K tokens)</td><td>$0.10</td><td>$0.50</td><td>$0.01</td><td>$0.125</td><td><strong>$60</strong></td></tr><tr><td>GPT 6 Luna (&gt; 272K tokens)</td><td>$0.20</td><td>$0.75</td><td>$0.02</td><td>$0.25</td><td><strong>$60</strong></td></tr><tr><td>GPT 5.6 Luna (≤ 272K tokens)</td><td>$0.20</td><td>$1.20</td><td>$0.02</td><td>$0.25</td><td><strong>$60</strong></td></tr><tr><td>GPT 5.6 Luna (&gt; 272K tokens)</td><td>$0.40</td><td>$1.80</td><td>$0.04</td><td>$0.50</td><td><strong>$60</strong></td></tr><tr><td>Claude Haiku 5.5 (≤ 100K tokens)</td><td>$0.10</td><td>$0.50</td><td>$0.01</td><td>$0.125</td><td><strong>$60</strong></td></tr><tr><td>Claude Haiku 5.5 (&gt; 100K tokens)</td><td>$0.50</td><td>$2.50</td><td>$0.05</td><td>$0.625</td><td><strong>$60</strong></td></tr></tbody></table></div></div></div>
+<p><strong>LongCat 2.5 Preview Free:</strong> Free for a limited time.</p>
+<p><strong>Step 5 Preview Free:</strong> Free for a limited time.</p>
+<p><strong>DeepSeek V4.1 Flash / V4 Pro / V4 Flash / V4 Flash Vision Exp:</strong> Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday through Friday; all other hours, including weekends, are Off-Peak. <a href="https://api-docs.deepseek.com/quick_start/pricing/">Learn more</a>.</p>
+<p><strong>DeepSeek V4 Flash Vision Exp:</strong> Images are converted into tokens based on their dimensions and billed as input tokens alongside text tokens. <a href="https://api-docs.deepseek.com/quick_start/pricing/">Learn more</a>.</p>
+<h3 id="estimated-requests">Estimated requests</h3>
+<p>The tables below estimate request counts based on typical Go usage patterns. Go
+Plus estimates scale with each model’s higher usage limit.</p>
+<div class="docs-plan-tabs" data-plan-tabs data-sync-key="go-plan"><div class="docs-plan-tabs-list" role="tablist" aria-label="Go plan"><button type="button" role="tab" id="go-requests-tab-go" aria-controls="go-requests-panel-go" aria-selected="true" tabindex="0" data-plan-tab="go">Go</button><button type="button" role="tab" id="go-requests-tab-go-plus" aria-controls="go-requests-panel-go-plus" aria-selected="false" tabindex="-1" data-plan-tab="go-plus">Go Plus</button></div><div role="tabpanel" id="go-requests-panel-go" aria-labelledby="go-requests-tab-go" data-plan-panel="go"><div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Model</th><th>Requests per 5 hours</th><th>Requests per week</th><th>Requests per month</th></tr></thead><tbody><tr><td>GLM-5.3-Flash</td><td>6,320</td><td>15,790</td><td>31,580</td></tr><tr><td>GLM-5.3</td><td>220</td><td>540</td><td>1,080</td></tr><tr><td>GLM-5.2</td><td>880</td><td>2,150</td><td>4,300</td></tr><tr><td>Kimi K3</td><td>110</td><td>250</td><td>490</td></tr><tr><td>Kimi K2.7 Code</td><td>1,350</td><td>3,380</td><td>6,750</td></tr><tr><td>Kimi K2.6</td><td>1,150</td><td>2,880</td><td>5,750</td></tr><tr><td>LongCat-2.0</td><td>11,400</td><td>28,600</td><td>57,200</td></tr><tr><td>LongCat 2.5 Preview Free</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr><tr><td>Step 5 Preview Free</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr><tr><td>MiMo-V2.6-Flash</td><td>30,100</td><td>75,200</td><td>150,400</td></tr><tr><td>MiMo-V2.6-Pro</td><td>3,250</td><td>8,150</td><td>16,300</td></tr><tr><td>MiMo-V2.5</td><td>30,100</td><td>75,200</td><td>150,400</td></tr><tr><td>MiMo-V2.5-Pro</td><td>3,250</td><td>8,150</td><td>16,300</td></tr><tr><td>MiniMax M3</td><td>3,200</td><td>8,000</td><td>16,000</td></tr><tr><td>MiniMax M2.7</td><td>3,400</td><td>8,500</td><td>17,000</td></tr><tr><td>Muse Spark 1.3 Contributor</td><td>45,300</td><td>113,300</td><td>226,600</td></tr><tr><td>Muse Spark 1.2 Contributor</td><td>45,300</td><td>113,300</td><td>226,600</td></tr><tr><td>Qwen3.8 Max</td><td>160</td><td>400</td><td>810</td></tr><tr><td>Qwen3.8 Flash</td><td>5,400</td><td>13,500</td><td>27,000</td></tr><tr><td>Qwen3.7 Plus</td><td>4,300</td><td>10,800</td><td>21,600</td></tr><tr><td>DeepSeek V4.1 Flash</td><td>34,670</td><td>86,670</td><td>173,330</td></tr><tr><td>DeepSeek V4 Pro</td><td>1,050</td><td>2,600</td><td>5,200</td></tr><tr><td>DeepSeek V4 Flash</td><td>13,000</td><td>32,500</td><td>65,000</td></tr><tr><td>DeepSeek V4 Flash Vision Exp</td><td>6,500</td><td>16,250</td><td>32,500</td></tr><tr><td>Hy4 preview</td><td>1,350</td><td>3,380</td><td>6,770</td></tr><tr><td>Hy3</td><td>4,300</td><td>10,750</td><td>21,500</td></tr><tr><td>Space Bunny</td><td>3,130</td><td>7,810</td><td>15,630</td></tr><tr><td>Grok 4.7</td><td>169</td><td>423</td><td>845</td></tr><tr><td>Grok 4.6</td><td>169</td><td>423</td><td>845</td></tr><tr><td>GPT 6 Luna</td><td>4,230</td><td>10,560</td><td>21,130</td></tr><tr><td>GPT 5.6 Luna</td><td>2,050</td><td>5,100</td><td>10,250</td></tr><tr><td>Claude Haiku 5.5</td><td>3,850</td><td>9,620</td><td>19,230</td></tr></tbody></table></div></div><div role="tabpanel" id="go-requests-panel-go-plus" aria-labelledby="go-requests-tab-go-plus" hidden data-plan-panel="go-plus"><div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Model</th><th>Requests per 5 hours</th><th>Requests per week</th><th>Requests per month</th></tr></thead><tbody><tr><td>GLM-5.3-Flash</td><td>18,960</td><td>47,370</td><td>94,740</td></tr><tr><td>GLM-5.3</td><td>1,760</td><td>4,320</td><td>8,640</td></tr><tr><td>GLM-5.2</td><td>2,640</td><td>6,450</td><td>12,900</td></tr><tr><td>Kimi K3</td><td>440</td><td>1,000</td><td>1,960</td></tr><tr><td>Kimi K2.7 Code</td><td>4,050</td><td>10,140</td><td>20,250</td></tr><tr><td>Kimi K2.6</td><td>4,600</td><td>11,520</td><td>23,000</td></tr><tr><td>LongCat-2.0</td><td>45,600</td><td>114,400</td><td>228,800</td></tr><tr><td>LongCat 2.5 Preview Free</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr><tr><td>Step 5 Preview Free</td><td>Unlimited</td><td>Unlimited</td><td>Unlimited</td></tr><tr><td>MiMo-V2.6-Flash</td><td>60,200</td><td>150,400</td><td>300,800</td></tr><tr><td>MiMo-V2.6-Pro</td><td>13,000</td><td>32,600</td><td>65,200</td></tr><tr><td>MiMo-V2.5</td><td>60,200</td><td>150,400</td><td>300,800</td></tr><tr><td>MiMo-V2.5-Pro</td><td>13,000</td><td>32,600</td><td>65,200</td></tr><tr><td>MiniMax M3</td><td>9,600</td><td>24,000</td><td>48,000</td></tr><tr><td>MiniMax M2.7</td><td>13,600</td><td>34,000</td><td>68,000</td></tr><tr><td>Muse Spark 1.3 Contributor</td><td>90,600</td><td>226,600</td><td>453,200</td></tr><tr><td>Muse Spark 1.2 Contributor</td><td>90,600</td><td>226,600</td><td>453,200</td></tr><tr><td>Qwen3.8 Max</td><td>640</td><td>1,600</td><td>3,240</td></tr><tr><td>Qwen3.8 Flash</td><td>16,200</td><td>40,500</td><td>81,000</td></tr><tr><td>Qwen3.7 Plus</td><td>12,900</td><td>32,400</td><td>64,800</td></tr><tr><td>DeepSeek V4.1 Flash</td><td>69,330</td><td>173,330</td><td>346,670</td></tr><tr><td>DeepSeek V4 Pro</td><td>4,200</td><td>10,400</td><td>20,800</td></tr><tr><td>DeepSeek V4 Flash</td><td>52,000</td><td>130,000</td><td>260,000</td></tr><tr><td>DeepSeek V4 Flash Vision Exp</td><td>26,000</td><td>65,000</td><td>130,000</td></tr><tr><td>Hy4 preview</td><td>5,400</td><td>13,520</td><td>27,080</td></tr><tr><td>Hy3</td><td>17,200</td><td>43,000</td><td>86,000</td></tr><tr><td>Space Bunny</td><td>12,500</td><td>31,250</td><td>62,500</td></tr><tr><td>Grok 4.7</td><td>676</td><td>1,692</td><td>3,380</td></tr><tr><td>Grok 4.6</td><td>676</td><td>1,692</td><td>3,380</td></tr><tr><td>GPT 6 Luna</td><td>16,920</td><td>42,240</td><td>84,520</td></tr><tr><td>GPT 5.6 Luna</td><td>8,200</td><td>20,400</td><td>41,000</td></tr><tr><td>Claude Haiku 5.5</td><td>15,380</td><td>38,460</td><td>76,920</td></tr></tbody></table></div></div></div><script type="module">globalThis.process??={},globalThis.process.env??={};var e=(e,t)=>{e.querySelectorAll(`[data-plan-tab]`).forEach(e=>{let n=e.dataset.planTab===t;e.setAttribute(`aria-selected`,String(n)),e.tabIndex=n?0:-1}),e.querySelectorAll(`[data-plan-panel]`).forEach(e=>{e.hidden=e.dataset.planPanel!==t})},t=(t,n)=>{let r=t.dataset.syncKey;r&&(document.querySelectorAll(`[data-plan-tabs]`).forEach(t=>{t.dataset.syncKey===r&&e(t,n)}),localStorage.setItem(`docs-plan-tabs:${r}`,n))};document.querySelectorAll(`[data-plan-tabs]`).forEach(t=>{let n=t.dataset.syncKey,r=n?localStorage.getItem(`docs-plan-tabs:${n}`):void 0;r&&e(t,r)}),document.addEventListener(`click`,e=>{if(!(e.target instanceof Element))return;let n=e.target.closest(`[data-plan-tab]`),r=n?.closest(`[data-plan-tabs]`);!n||!r||!n.dataset.planTab||t(r,n.dataset.planTab)}),document.addEventListener(`keydown`,e=>{if(!(e.target instanceof HTMLButtonElement)||!e.target.matches(`[data-plan-tab]`))return;let n=e.target.closest(`[data-plan-tabs]`);if(!n)return;let r=[...n.querySelectorAll(`[data-plan-tab]`)],i=r.indexOf(e.target),a=e.key===`Home`?r[0]:e.key===`End`?r.at(-1):e.key===`ArrowRight`?r[(i+1)%r.length]:e.key===`ArrowLeft`?r[(i-1+r.length)%r.length]:void 0;a?.dataset.planTab&&(e.preventDefault(),t(n,a.dataset.planTab),a.focus())});</script>
+<p>The estimates use the following token counts per request; actual usage varies.</p>
+<ul>
+<li>Grok 4.7/4.6 — 390 input, 32,500 cached, 120 output tokens per request</li>
+<li>GLM-5.3-Flash — 1,000 input, 55,000 cached, 200 output tokens per request</li>
+<li>GLM-5.3/5.2 — 700 input, 52,000 cached, 150 output tokens per request</li>
+<li>GPT 6 Luna — 1,000 input, 50,000 cached, 220 output tokens per request</li>
+<li>GPT 5.6 Luna — 1,000 input, 50,000 cached, 220 output tokens per request</li>
+<li>Claude Haiku 5.5 — 1,100 input, 55,000 cached, 240 output tokens per request</li>
+<li>Kimi K3 — 1,050 input, 76,500 cached, 300 output tokens per request</li>
+<li>Kimi K2.7/K2.6 — 870 input, 55,000 cached, 200 output tokens per request</li>
+<li>LongCat-2.0 — 920 input, 88,900 cached, 200 output tokens per request</li>
+<li>DeepSeek V4.1 Flash — 410 input, 71,300 cached, 310 output tokens per request</li>
+<li>DeepSeek V4 Pro — 750 input, 82,000 cached, 290 output tokens per request</li>
+<li>DeepSeek V4 Flash — 410 input, 71,300 cached, 310 output tokens per request</li>
+<li>DeepSeek V4 Flash Vision Exp — 410 input, 71,300 cached, 310 output tokens per request</li>
+<li>MiniMax M3 — 510 input, 56,000 cached, 190 output tokens per request</li>
+<li>MiniMax M2.7 — 300 input, 55,000 cached, 125 output tokens per request</li>
+<li>Muse Spark 1.3 Contributor — 620 input, 71,400 cached, 300 output tokens per request</li>
+<li>Muse Spark 1.2 Contributor — 620 input, 71,400 cached, 300 output tokens per request</li>
+<li>MiMo-V2.6-Flash — 830 input, 71,500 cached, 295 output tokens per request</li>
+<li>MiMo-V2.6-Pro — 790 input, 86,000 cached, 305 output tokens per request</li>
+<li>MiMo-V2.5 — 830 input, 71,500 cached, 295 output tokens per request</li>
+<li>MiMo-V2.5-Pro — 790 input, 86,000 cached, 305 output tokens per request</li>
+<li>Qwen3.8 Max — 420 input, 66,000 cached, 200 output tokens per request</li>
+<li>Qwen3.8 Flash — 600 input, 58,000 cached, 200 output tokens per request</li>
+<li>Qwen3.7 Plus — 500 input, 57,000 cached, 190 output tokens per request</li>
+<li>Hy4 preview — 830 input, 71,500 cached, 295 output tokens per request</li>
+<li>Hy3 — 830 input, 71,500 cached, 295 output tokens per request</li>
+<li>Space Bunny — 1,000 input, 55,000 cached, 200 output tokens per request</li>
+</ul>
+<p>You can track your current usage in the <a href="https://opencode.ai/console">console</a>.</p>
+<aside class="callout callout-tip" aria-label="Tip"><strong>Tip</strong><div>If you reach the usage limit, you can continue using the free models.</div></aside>
+<p>Usage limits may change as we learn from early usage and feedback.</p>
+<hr/>
+<h3 id="usage-beyond-limits">Usage beyond limits</h3>
+<p>If you also have credits in your Console balance, you can enable the <strong>Use balance</strong>
+option in the console. When enabled, Go will fall back to your <a href="/v2/docs/console/models#pricing">pay-as-you-go balance</a>
+after you’ve reached your usage limits instead of blocking requests.</p>
+<h3 id="why-some-models-have-lower-usage">Why some models have lower usage</h3>
+<p>With Go, the included monthly usage varies by model.</p>
+<p>For most models, we make this work through bulk discounts and reserved GPU capacity. We then pass those savings on to you as higher monthly usage.</p>
+<p>For some models, we haven’t had the opportunity to negotiate a discount or host them at a lower cost, either because the model is new or because their public pricing is already discounted.</p>
+<p>For these models, you still get a little more than if you paid the model providers directly; this is why their included monthly usage is lower.</p>
+<h2 id="endpoints">Endpoints</h2>
+<p>You can also access Go models through the following API endpoints.</p>
+<div class="docs-table-scroll" role="region" aria-label="Go model endpoints" tabIndex="0">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Model</th><th>Model ID</th><th>Endpoint</th><th>AI SDK Package</th></tr></thead><tbody><tr><td>Grok 4.7</td><td>grok-4.7</td><td><code>https://opencode.ai/zen/go/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Grok 4.6</td><td>grok-4.6</td><td><code>https://opencode.ai/zen/go/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 6 Luna</td><td>gpt-6-luna</td><td><code>https://opencode.ai/zen/go/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>GPT 5.6 Luna</td><td>gpt-5.6-luna</td><td><code>https://opencode.ai/zen/go/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Claude Haiku 5.5</td><td>claude-haiku-5-5</td><td><code>https://opencode.ai/zen/go/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>GLM-5.3-Flash</td><td>glm-5.3-flash</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>GLM-5.3</td><td>glm-5.3</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>GLM-5.2</td><td>glm-5.2</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Kimi K3</td><td>kimi-k3</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Kimi K2.7 Code</td><td>kimi-k2.7-code</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Kimi K2.6</td><td>kimi-k2.6</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>LongCat-2.0</td><td>longcat-2.0</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>DeepSeek V4.1 Flash</td><td>deepseek-v4.1-flash</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>DeepSeek V4 Pro</td><td>deepseek-v4-pro</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>DeepSeek V4 Flash</td><td>deepseek-v4-flash</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>DeepSeek V4 Flash Vision Exp</td><td>deepseek-v4-flash-vision-exp</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiMo-V2.6-Flash</td><td>mimo-v2.6-flash</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiMo-V2.6-Pro</td><td>mimo-v2.6-pro</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiMo-V2.5</td><td>mimo-v2.5</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiMo-V2.5-Pro</td><td>mimo-v2.5-pro</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>MiniMax M3</td><td>minimax-m3</td><td><code>https://opencode.ai/zen/go/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>MiniMax M2.7</td><td>minimax-m2.7</td><td><code>https://opencode.ai/zen/go/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Muse Spark 1.3 Contributor</td><td>muse-spark-1.3-contributor</td><td><code>https://opencode.ai/zen/go/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Muse Spark 1.2 Contributor</td><td>muse-spark-1.2-contributor</td><td><code>https://opencode.ai/zen/go/v1/responses</code></td><td><code>@ai-sdk/openai</code></td></tr><tr><td>Qwen3.8 Max</td><td>qwen3.8-max</td><td><code>https://opencode.ai/zen/go/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Qwen3.8 Flash</td><td>qwen3.8-flash</td><td><code>https://opencode.ai/zen/go/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Qwen3.7 Plus</td><td>qwen3.7-plus</td><td><code>https://opencode.ai/zen/go/v1/messages</code></td><td><code>@ai-sdk/anthropic</code></td></tr><tr><td>Hy4 preview</td><td>hy4-preview</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Hy3</td><td>hy3</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Space Bunny</td><td>space-bunny</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>LongCat 2.5 Preview Free</td><td>longcat-2.5-preview-free</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr><tr><td>Step 5 Preview Free</td><td>step-5-preview-free</td><td><code>https://opencode.ai/zen/go/v1/chat/completions</code></td><td><code>@ai-sdk/openai-compatible</code></td></tr></tbody></table></div>
+<p>These AI SDK packages are for applications calling Go directly. To use Go in OpenCode, connect with <code>/connect</code> and set
+the <a href="/v2/docs/models">model</a> using the format <code>opencode-go/&lt;model-id&gt;</code>:</p>
+<figure class="astro-code-figure"><figcaption class="astro-code-title">opencode.jsonc</figcaption><pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="jsonc"><code><span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  &quot;$schema&quot;</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">&quot;https://opencode.ai/config.json&quot;</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#005CC5;--shiki-dark:#79B8FF">  &quot;model&quot;</span><span style="color:#24292E;--shiki-dark:#E1E4E8">: </span><span style="color:#032F62;--shiki-dark:#9ECBFF">&quot;opencode-go/kimi-k3&quot;</span><span style="color:#24292E;--shiki-dark:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#24292E;--shiki-dark:#E1E4E8">}</span></span></code></pre></figure>
+<h3 id="models">Models</h3>
+<p>Fetch the full list of available models and their metadata from the models endpoint:</p>
+<pre class="astro-code astro-code-themes github-light github-dark" style="background-color:#fff;--shiki-dark-bg:#24292e;color:#24292e;--shiki-dark:#e1e4e8;overflow-x:auto" tabindex="0" data-language="bash"><code><span class="line"><span style="color:#6F42C1;--shiki-dark:#B392F0">curl</span><span style="color:#032F62;--shiki-dark:#9ECBFF"> https://opencode.ai/zen/go/v1/models</span></span></code></pre>
+<h2 id="privacy">Privacy</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Model</th><th>Model training</th><th>Data retention</th></tr></thead><tbody><tr><td>Grok 4.7</td><td>Not used</td><td>30 days</td></tr><tr><td>Grok 4.6</td><td>Not used</td><td>30 days</td></tr><tr><td>GPT 6 Luna</td><td>Not used</td><td>30 days</td></tr><tr><td>GPT 5.6 Luna</td><td>Not used</td><td>30 days</td></tr><tr><td>Claude Haiku 5.5</td><td>Not used</td><td>30 days</td></tr><tr><td>GLM-5.3-Flash</td><td>Not used</td><td>0 days</td></tr><tr><td>GLM-5.3</td><td>Not used</td><td>0 days</td></tr><tr><td>GLM-5.2</td><td>Not used</td><td>0 days</td></tr><tr><td>Kimi K3</td><td>Not used</td><td>0 days</td></tr><tr><td>Kimi K2.7 Code</td><td>Not used</td><td>0 days</td></tr><tr><td>Kimi K2.6</td><td>Not used</td><td>0 days</td></tr><tr><td>LongCat-2.0</td><td>Not used</td><td>0 days</td></tr><tr><td>MiMo-V2.6-Pro</td><td>Not used</td><td>0 days</td></tr><tr><td>MiMo-V2.6-Flash</td><td>Not used</td><td>0 days</td></tr><tr><td>MiMo-V2.5-Pro</td><td>Not used</td><td>0 days</td></tr><tr><td>MiMo-V2.5</td><td>Not used</td><td>0 days</td></tr><tr><td>Qwen3.8 Max</td><td>Not used</td><td>0 days</td></tr><tr><td>Qwen3.8 Flash</td><td>Not used</td><td>0 days</td></tr><tr><td>Qwen3.7 Plus</td><td>Not used</td><td>0 days</td></tr><tr><td>MiniMax M3</td><td>Not used</td><td>0 days</td></tr><tr><td>MiniMax M2.7</td><td>Not used</td><td>0 days</td></tr><tr><td>Muse Spark 1.3 Contributor</td><td>Yes</td><td>Not ZDR</td></tr><tr><td>Muse Spark 1.2 Contributor</td><td>Yes</td><td>Not ZDR</td></tr><tr><td>DeepSeek V4.1 Flash</td><td>Not used</td><td>0 days*</td></tr><tr><td>DeepSeek V4 Pro</td><td>Not used</td><td>0 days*</td></tr><tr><td>DeepSeek V4 Flash</td><td>Not used</td><td>0 days*</td></tr><tr><td>DeepSeek V4 Flash Vision Exp</td><td>Not used</td><td>0 days*</td></tr><tr><td>Hy4 preview</td><td>Not used</td><td>0 days</td></tr><tr><td>Hy3</td><td>Not used</td><td>0 days</td></tr><tr><td>Space Bunny</td><td>Not used</td><td>0 days</td></tr><tr><td>LongCat 2.5 Preview Free</td><td>Not used</td><td>0 days</td></tr><tr><td>Step 5 Preview Free</td><td>Not used</td><td>0 days</td></tr></tbody></table>
+<ul>
+<li><strong>Grok 4.7/4.6:</strong> ZDR disables important API features that depend on stored data, including the stateful Responses API, Files and Collections, and the Batch API. <a href="https://docs.x.ai/developers/faq/security#what-is-zero-data-retention-zdr">Learn more</a>.</li>
+<li><strong>GPT 6 Luna / GPT 5.6 Luna:</strong> Abuse monitoring logs are generated for all API feature usage and retained for up to 30 days. <a href="https://developers.openai.com/api/docs/guides/your-data#data-retention-controls-for-abuse-monitoring">Learn more</a>.</li>
+<li><strong>Claude Haiku 5.5:</strong> Requests are retained for 30 days in accordance with <a href="https://docs.anthropic.com/en/docs/claude-code/data-usage">Anthropic’s Data Policies</a>.</li>
+<li><strong>Muse Spark 1.3 Contributor:</strong> Heavily discounted token pricing in exchange for permission to use your prompts and completions to train future Meta models. Availability is limited to regions permitted by Meta’s <a href="https://ai.developer.meta.com/legal/geographic-use-policy">Geographic Use Policy</a>. <a href="https://dev.meta.ai/docs/pricing-rate-limits#contributor-tier">Learn more</a>.</li>
+<li><strong>Muse Spark 1.2 Contributor:</strong> Heavily discounted token pricing in exchange for permission to use your prompts and completions to train future Meta models. Availability is limited to regions permitted by Meta’s <a href="https://ai.developer.meta.com/legal/geographic-use-policy">Geographic Use Policy</a>. <a href="https://dev.meta.ai/docs/pricing-rate-limits#contributor-tier">Learn more</a>.</li>
+<li><strong>DeepSeek:</strong> ZDR agreement is renewed monthly. The current agreement is valid through October 31, 2026.</li>
+</ul>
+<h2 id="background">Background</h2>
+<p>Open models have gotten really good. They now reach performance close to proprietary models for coding tasks. Because many providers can serve them competitively, they are usually far cheaper.</p>
+<p>However, getting reliable, low latency access to them can be difficult. Providers vary in quality and availability.</p>
+<aside class="callout callout-tip" aria-label="Tip"><strong>Tip</strong><div>We tested a select group of models and providers that work well with OpenCode.</div></aside>
+<p>To fix this, we did a couple of things:</p>
+<ol>
+<li>We tested a select group of open models and talked to their teams about how to best run them.</li>
+<li>We worked with a few providers to make sure these were being served correctly.</li>
+<li>We benchmarked the combination of the model/provider and came up with a list that we feel good recommending.</li>
+</ol>
+<p>Both Go and Go Plus provide access to these models; choose the plan that fits how much you use them.</p>
+<h2 id="goals">Goals</h2>
+<p>We created OpenCode Go to:</p>
+<ol>
+<li>Make AI coding <strong>accessible</strong> to more people with a low cost subscription.</li>
+<li>Provide <strong>reliable</strong> access to the best open coding models.</li>
+<li>Curate models that are <strong>tested and benchmarked</strong> for coding agent use.</li>
+<li>Have <strong>no lock-in</strong> by allowing you to use any other provider with OpenCode as well.</li>
+</ol></article></main><aside class="toc-column"><nav class="docs-toc" aria-label="On this page"><h2>On this page</h2><ul><li><a href="#how-it-works">How it works</a></li><li><a href="#where-can-i-use-it">Where can I use it?</a></li><li class="nested"><a href="#validated-clients">Validated clients</a></li><li class="nested"><a href="#known-problematic-clients">Known problematic clients</a></li><li><a href="#usage-limits">Usage limits</a></li><li class="nested"><a href="#estimated-requests">Estimated requests</a></li><li class="nested"><a href="#usage-beyond-limits">Usage beyond limits</a></li><li class="nested"><a href="#why-some-models-have-lower-usage">Why some models have lower usage</a></li><li><a href="#endpoints">Endpoints</a></li><li class="nested"><a href="#models">Models</a></li><li><a href="#privacy">Privacy</a></li><li><a href="#background">Background</a></li><li><a href="#goals">Goals</a></li></ul></nav></aside></div><script>
+      const addHeadingAnchors = () => {
+        for (const heading of document.querySelectorAll(".prose :is(h2, h3)[id]")) {
+          if (heading.querySelector(".heading-anchor")) continue
+          const anchor = document.createElement("a")
+          anchor.className = "heading-anchor"
+          anchor.href = `#${heading.id}`
+          anchor.setAttribute("aria-label", `Link to ${heading.textContent ?? "section"}`)
+          anchor.textContent = "#"
+          heading.append(anchor)
+        }
+      }
+
+      addHeadingAnchors()
+      document.addEventListener("astro:page-load", addHeadingAnchors)
+    </script><script type="module">globalThis.process??={},globalThis.process.env??={},document.addEventListener(`click`,async e=>{if(!(e.target instanceof Element))return;let t=e.target.closest(`[data-copy-markdown]`);if(!t)return;t.dataset.copied=`true`,t.setAttribute(`aria-label`,`Copied`),window.setTimeout(()=>{delete t.dataset.copied,t.setAttribute(`aria-label`,`Copy page as Markdown`)},1500);let n=await fetch(window.location.href,{headers:{Accept:`text/markdown`}});n.ok&&await navigator.clipboard.writeText(await n.text())});</script></body></html>
