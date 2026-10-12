@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-08T18:01:08.898Z",
+  "fetchedAt": "2026-10-12T10:06:10.274Z",
   "sourceUrl": "https://opencode.ai/docs/de/go/",
   "freeModelsSourceUrl": "https://opencode.ai/docs/de/zen/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -9,7 +9,7 @@
       "id": "go",
       "name": "Go",
       "priceMonthly": 10,
-      "creditsMonthly": 60,
+      "creditsMonthly": 80,
       "sourceUrl": "https://opencode.ai/docs/de/go/"
     },
     {
@@ -912,8 +912,8 @@
       "cachedRead": 0.003,
       "cachedWrite": null,
       "usage": {
-        "go": 60,
-        "go-plus": 120
+        "go": 80,
+        "go-plus": 160
       },
       "pattern": {
         "input": 410,
@@ -948,8 +948,8 @@
       "cachedRead": 0.006,
       "cachedWrite": null,
       "usage": {
-        "go": 60,
-        "go-plus": 120
+        "go": 80,
+        "go-plus": 160
       },
       "pattern": {
         "input": 410,
