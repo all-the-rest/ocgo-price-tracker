@@ -133,13 +133,14 @@ export default function PriceTable(props: PriceTableProps) {
       .replace("{output}", formatTokens(p.output, props.lang));
   };
 
+  // Faktor-Skala zum Monatspreis: ≤ 1,5× rot, unter 6× gelb, ab 6× grün.
+  // Bewusst ohne creditsMonthly: das abgeleitete Guthaben kann durch
+  // Ausreißer-Tiers darüber liegen (Go: $80 statt $60) und würde sonst
+  // mittlere Tiers ($30 = 3×) fälschlich rot färben.
   const usageBadge = (usage: number) => {
-    if (usage / props.plan.priceMonthly <= 1) return "badge-error";
-    // Volles Guthaben ist grün — auch als 6×-Faktor, wenn das abgeleitete
-    // creditsMonthly durch Ausreißer-Tiers darüber liegt (Go: $80 statt $60).
-    if (usage >= props.plan.creditsMonthly || usage / props.plan.priceMonthly >= 6)
-      return "badge-success";
-    if (usage < props.plan.creditsMonthly / 2) return "badge-error";
+    const factor = usage / props.plan.priceMonthly;
+    if (factor <= 1.5) return "badge-error";
+    if (factor >= 6) return "badge-success";
     return "badge-warning";
   };
 
