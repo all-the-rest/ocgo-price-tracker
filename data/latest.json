@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-12T14:30:10.686Z",
+  "fetchedAt": "2026-10-13T06:03:26.024Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1682,6 +1682,28 @@
       "provider": "OpenCode Stealth",
       "fullId": "opencode/big-pickle",
       "name": "Big Pickle",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "cat-jam-free",
+      "availableFrom": "2026-10-13",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 262144,
+      "provider": null,
+      "fullId": "opencode/cat-jam-free",
+      "name": "Cat Jam Free",
       "privacy": {
         "training": true,
         "validUntil": null
