@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-13T18:08:45.758Z",
+  "fetchedAt": "2026-10-14T04:03:28.650Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -481,8 +481,8 @@
         "toolCall": true
       },
       "privacy": {
-        "training": true,
-        "retentionDays": false,
+        "training": false,
+        "retentionDays": 30,
         "validUntil": null
       },
       "contextWindow": 262144,
