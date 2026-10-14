@@ -519,6 +519,34 @@ const PATTERN_FALLBACKS = {
 };
 
 /**
+ * Default-Anfragemuster für Tabellenzeilen mit Preisen, für die die Doku (noch)
+ * kein eigenes Muster nennt: die Command-Code-Durchschnittsnachricht (800 Input /
+ * 50.000 Cached-Read / 162 Output Tokens pro Anfrage). Denselben Messwert führt
+ * auch das Schwestern-Projekt `ai-10-usd` als Fallback
+ * (`AVERAGE_MESSAGE_PATTERN`, `scripts/comparison-core.mjs`).
+ *
+ * Bewusste Entscheidung (2026-10-14; erstes betroffenes Modell: Gemini 4 Argon
+ * Contributor): die Doku rollt neue Modelle teils unvollständig aus. Ohne Default
+ * bricht die zod-Prüfung („Preise ohne pattern") den GANZEN Lauf rot — ein
+ * unvollständig ausgerolltes Modell blockierte damit alle Preis-Updates der
+ * übrigen Katalogzeilen. Rangfolge: dokumentiertes Muster (`parsePatterns`) >
+ * Familien-Fallback (`PATTERN_FALLBACKS`) > dieser Default. Kostenlose Zeilen
+ * (Unlimited, Preise 0) bleiben bewusst OHNE Muster — dort ist „kein Muster"
+ * korrekt, die Kosten pro Anfrage sind $0,00.
+ */
+const DEFAULT_PATTERN = { input: 800, cachedRead: 50000, output: 162 };
+
+/**
+ * Hat die Tabellenzeile einen Token-Preis? Kostenlose Zeilen („Free"/"-",
+ * Preise 0) gelten als preislos — für sie ist „kein Muster" korrekt und das
+ * Default-Muster darf nicht greifen. Die Nutzung sagt darüber nichts aus: eine
+ * Zeile kann Preis 0 und eine begrenzte Nutzung gleichzeitig haben.
+ */
+function isPricedRow(m) {
+  return [m.input, m.output, m.cachedRead].some((v) => v !== null && v > 0);
+}
+
+/**
  * Fallback-Datenschutz für Modelle ohne eigene Zeile in der Datenschutz-Tabelle:
  * normalisierter Modellname → Familien-Modell, dessen privacy-Angabe übernommen
  * wird (z. B. MiniMax M2.5 → MiniMax M2.7). Übernommene Werte werden im
@@ -1276,6 +1304,38 @@ export function peakRuleFromNote(note, timeZone) {
 }
 
 /**
+ * Zerlegt den Modell-Teil einer Peak-Notiz (vor dem ersten `:`) in seine
+ * Listen-Einträge: „DeepSeek V4.1 Flash / V4 Pro" →
+ * [„deepseekv4.1flash", „v4pro"]. Spätere Einträge dürfen den gemeinsamen
+ * Familien-Präfix weglassen („V4 Pro" statt „DeepSeek V4 Pro").
+ */
+function noteLabels(subjectText) {
+  return subjectText
+    .split(/[\/,;+&]|\s+(?:und|and)\s+/i)
+    .map((part) => normalizeName(part.trim()))
+    .filter((label) => label.length > 0);
+}
+
+/**
+ * Trifft ein Listen-Eintrag der Notiz ein Modell, dessen Präfix im Eintrag
+ * weggeworfen wurde („V4 Pro" → „DeepSeek V4 Pro")? Das fehlende Präfix muss
+ * von einem Geschwister-Eintrag belegt sein („DeepSeek V4.1 Flash"), damit eine
+ * Kurzform nicht auf eine fremde Modellfamilie zeigt. Genau dieses Fallbeispiel
+ * ist live aufgetaucht: die Doku hat „V4 Flash" und „V4 Flash Vision Exp" aus
+ * dem Eintrag gestrichen, „V4 Pro" blieb stehen — die Zuordnung darf daran
+ * nicht zerbrechen (ein fehlender Eintrag ist kein Parse-Fehler).
+ */
+function labelCoversModel(labels, norm) {
+  for (const [i, label] of labels.entries()) {
+    if (label.length < 3 || !norm.endsWith(label)) continue;
+    const family = norm.slice(0, norm.length - label.length);
+    if (family === "") continue;
+    if (labels.some((other, j) => j !== i && other.startsWith(family))) return true;
+  }
+  return false;
+}
+
+/**
  * Parst die datengetriebenen Peak-Regeln (`peakRules`) aus den Hinweisen unter
  * der Preistabelle. Es werden **alle** `main p`/`main li`-Notizen gesammelt, die
  * `peak`/`spitzenzeiten`/`stoßzeiten` UND `UTC` nennen. Jede Notiz muss einen
@@ -1296,12 +1356,18 @@ export function parsePeakRules($, models = []) {
 
   const rules = new Map();
   for (const note of peakNotes) {
-    const subject = normalizeName(note.split(":", 1)[0]);
-    // Zuordnung bewusst konservativ: exakter Name im Subject ODER gemeinsamer
-    // Modell-Präfix (z. B. "DeepSeek V4 Flash / Pro" → beide DeepSeek-Modelle).
+    const subjectText = note.split(":", 1)[0];
+    const subject = normalizeName(subjectText);
+    const labels = noteLabels(subjectText);
+    // Zuordnung bewusst konservativ: exakter Name im Subject, ein Listen-Eintrag
+    // mit weggeworfenem Familien-Präfix („V4 Pro" → „DeepSeek V4 Pro") ODER
+    // gemeinsamer Modell-Präfix (z. B. „DeepSeek V4 Flash / Pro" → beide
+    // DeepSeek-Modelle). Ein aus dem Eintrag entferntes Modell ist KEIN
+    // Fehler — es trifft dann eben kein Label.
     const matched = peakModels.filter((name) => {
       const norm = normalizeName(name);
       if (subject.includes(norm)) return true;
+      if (labelCoversModel(labels, norm)) return true;
       return peakModels.some((other) => {
         if (other === name) return false;
         const prefix = sharedModelPrefix(name, other);
@@ -1454,6 +1520,11 @@ function parsePageData($) {
     let pattern = patternMap.get(norm);
     if (!pattern && PATTERN_FALLBACKS[norm]) {
       pattern = patternMap.get(PATTERN_FALLBACKS[norm]);
+    }
+    // Letzter Ausweg (nur wenn es keinen Familien-Fallback gibt): Default-Muster
+    // für Zeilen mit Preisen ohne jedes dokumentierte Muster.
+    if (!pattern && isPricedRow(m)) {
+      pattern = DEFAULT_PATTERN;
     }
     m.pattern = pattern ?? null;
   }
@@ -2027,13 +2098,27 @@ export function buildChanges(
     [...firstSeen].filter(([k]) => typeof k === "string").map(([k, v]) => [normalizeName(k), v])
   );
   const seenSince = (key) => firstSeen.get(key) ?? firstSeenNorm.get(normalizeName(key));
+  // Gestufte Modelle (Off-/Peak) stehen in der Historie unter dem tier-behafteten
+  // Schlüssel (`modelKey`), das Diff arbeitet aber tier-los (`diffKey`). Für
+  // `model_removed` die Varianten „… (Off-Peak)"/„… (Peak)" nachschlagen und den
+  // ÄLTESTEN Treffer nehmen — sonst zeigt das Event fälschlich `days: 0`
+  // (Regression 2026-10-14: erster Abgang eines Off-Peak-Modells).
+  const seenSinceFamily = (key) => {
+    const exact = seenSince(key);
+    if (exact) return exact;
+    const prefix = `${normalizeName(key)}(`;
+    return [...firstSeenNorm.entries()]
+      .filter(([k]) => k.startsWith(prefix))
+      .map(([, v]) => v)
+      .sort()[0];
+  };
 
   for (const key of added) {
     const model = nextById.get(normalizeName(key));
     changes.push({ type: "model_added", model: key, pricing: model ? pricingOf(model) : null });
   }
   for (const key of removed) {
-    const first = seenSince(key);
+    const first = seenSinceFamily(key);
     const days = first ? Math.max(0, Math.round((Date.parse(today) - Date.parse(first)) / 86_400_000)) : 0;
     const prevModel = prevById.get(normalizeName(key));
     changes.push({
@@ -2234,11 +2319,9 @@ const ModelSchema = z
     privacy: PrivacySchema.nullable(),
   })
   .superRefine((m, ctx) => {
-    // Modelle MIT Preisen/Nutzung müssen ein Anfragemuster haben; kostenlose
-    // Zeilen (Nutzung in jedem Plan null, Preise 0) dürfen ohne Muster durchgehen.
-    const hasUsage = Object.values(m.usage).some((v) => v !== null);
-    const hasPricing = hasUsage || [m.input, m.output, m.cachedRead].some((v) => v !== null && v > 0);
-    if (hasPricing && m.pattern === null) {
+    // Modelle MIT Preisen müssen ein Anfragemuster haben; kostenlose Zeilen
+    // (Preise 0) dürfen ohne Muster durchgehen.
+    if (isPricedRow(m) && m.pattern === null) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["pattern"], message: "pattern fehlt (Preise vorhanden)" });
     }
   });

@@ -187,6 +187,48 @@ test("parseHtml: pro-Modell-Anfragemuster (Komma-Tausender)", () => {
   }
 });
 
+test("parseHtml: Zeile ohne Muster-Notiz bekommt das Default-Muster (Command-Code-Durchschnitt)", () => {
+  // Regression 2026-10-14: Gemini 4 Argon Contributor kam mit Preisen, aber ohne
+  // Muster-Notiz in die Doku — der Default (800/50.000/162) hält den Lauf am
+  // Leben, statt alle Preis-Updates rot abzubrechen.
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Gemini 4 Argon Contributor", "$4.00", "$20.00", "$0.20", "-", "$60"]])],
+    extra: privacyTable([["Gemini 4 Argon Contributor", "Yes", "Not ZDR"]]),
+  });
+  assert.deepEqual(parseHtml(html)[0].pattern, { input: 800, cachedRead: 50000, output: 162 });
+});
+
+test("parseHtml: dokumentiertes Muster gewinnt gegen das Default-Muster", () => {
+  const html = buildPage({
+    panels: [pricePanel("Go", [["Gemini 4 Argon Contributor", "$4.00", "$20.00", "$0.20", "-", "$60"]])],
+    extra:
+      privacyTable([["Gemini 4 Argon Contributor", "Yes", "Not ZDR"]]) +
+      "<ul><li>Gemini 4 Argon Contributor — 410 input, 71,300 cached, 310 output tokens per request</li></ul>",
+  });
+  assert.deepEqual(parseHtml(html)[0].pattern, { input: 410, cachedRead: 71300, output: 310 });
+});
+
+test("parseHtml: Familien-Fallback hat Vorrang vor dem Default-Muster", () => {
+  // MiniMax M2.5 ohne eigene Notiz übernimmt das Muster von M2.7 — erst wenn es
+  // davon nichts gibt, greift das Default-Muster.
+  const html = buildPage({
+    panels: [
+      pricePanel("Go", [
+        ["MiniMax M2.5", "$0.30", "$1.20", "$0.06", "-", "$60"],
+        ["MiniMax M2.7", "$0.30", "$1.20", "$0.06", "-", "$60"],
+      ]),
+    ],
+    extra:
+      privacyTable([["MiniMax M2.5", "Not used", "0 days"]]) +
+      "<ul><li>MiniMax M2.7 — 300 input, 55,000 cached, 125 output tokens per request</li></ul>",
+  });
+  const models = parseHtml(html);
+  // M2.7 hat ein eigenes (dokumentiertes) Muster …
+  assert.deepEqual(models.find((m) => m.name === "MiniMax M2.7").pattern, { input: 300, cachedRead: 55000, output: 125 });
+  // … M2.5 übernimmt es über den Familien-Fallback statt des Defaults.
+  assert.deepEqual(models.find((m) => m.name === "MiniMax M2.5").pattern, { input: 300, cachedRead: 55000, output: 125 });
+});
+
 // ---------------------------------------------------------------------------
 // Pläne (Plan-Tabelle + Tab-Zuordnung)
 // ---------------------------------------------------------------------------
@@ -506,6 +548,54 @@ test("parsePeakRules: englischer Flash/Pro/Vision-Hinweis der Live-Doku → geme
     deepseekv4flash: expected,
     deepseekv4pro: expected,
     deepseekv4flashvisionexp: expected,
+  });
+});
+
+test("parsePeakRules: verkürzter Live-Eintrag (V4 Pro ohne Präfix) trifft das Modell", () => {
+  const $ = cheerio.load(
+    "<main><p><strong>DeepSeek V4.1 Flash / V4 Pro:</strong> Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday through Friday; all other hours, including weekends, are Off-Peak.</p></main>"
+  );
+  const expected = {
+    timezone: "Asia/Shanghai",
+    peak: { days: [1, 2, 3, 4, 5], windowsUtc: [[1, 4], [6, 10]] },
+    offPeak: { days: [6, 7], allDay: true },
+  };
+  // Regression 2026-10-14: die Doku hat „V4 Flash"/„V4 Flash Vision Exp" aus dem
+  // Eintrag gestrichen — „V4 Pro" blieb als Kurzform ohne Familien-Präfix stehen.
+  assert.deepEqual(
+    parsePeakRules($, [
+      { name: "DeepSeek V4.1 Flash", tier: "Off-Peak" },
+      { name: "DeepSeek V4.1 Flash", tier: "Peak" },
+      { name: "DeepSeek V4 Pro", tier: "Off-Peak" },
+      { name: "DeepSeek V4 Pro", tier: "Peak" },
+    ]),
+    { "deepseekv4.1flash": expected, deepseekv4pro: expected }
+  );
+});
+
+test("parsePeakRules: ein aus dem Listen-Eintrag entferntes Modell ist kein Parse-Fehler", () => {
+  const $ = cheerio.load(
+    "<main><p><strong>DeepSeek V4.1 Flash / V4 Pro:</strong> Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday through Friday; all other hours, including weekends, are Off-Peak.</p></main>"
+  );
+  // Nur „V4 Pro" steht noch in der Preistabelle — der Eintrag bleibt zuordenbar.
+  const rules = parsePeakRules($, [
+    { name: "DeepSeek V4 Pro", tier: "Off-Peak" },
+    { name: "DeepSeek V4 Pro", tier: "Peak" },
+  ]);
+  assert.deepEqual(Object.keys(rules), ["deepseekv4pro"]);
+  assert.deepEqual(rules.deepseekv4pro.peak.windowsUtc, [[1, 4], [6, 10]]);
+  assert.deepEqual(rules.deepseekv4pro.offPeak.days, [6, 7]);
+});
+
+test("parsePeakRules: Kurzform matcht nicht fremde Familie (Präfix muss belegt sein)", () => {
+  const $ = cheerio.load(
+    "<main><p><strong>DeepSeek V4.1 Flash / V4 Pro:</strong> Peak hours are 01:00-04:00 UTC, Monday through Friday.</p></main>"
+  );
+  // „Kimi V4 Pro" endet zwar auf „v4pro", die Notiz belegt aber kein „kimi"-Präfix.
+  assert.throws(() => parsePeakRules($, [{ name: "Kimi V4 Pro", tier: "Peak" }]), (err) => {
+    assert.ok(err instanceof ScrapeError);
+    assert.match(err.message, /keinem Modell zugeordnet/);
+    return true;
   });
 });
 
@@ -958,6 +1048,28 @@ test("computeCapabilityDiff/computePrivacyDiff: matchen trotz Schreibvariante", 
 
 test("buildChanges: Baseline ohne Vorgänger erzeugt keinen Eintrag", () => {
   assert.deepEqual(buildChanges(null, base, [], []), []);
+});
+
+test("buildChanges: model_removed eines nur gestuft beobachteten Modells zählt echte Tage", () => {
+  // Regression 2026-10-14: die Historie schlüsselt `firstSeen` mit `modelKey`
+  // (inkl. „(Off-Peak)"), das Diff liefert tier-lose Keys — ohne Varianten-
+  // Lookup stand fälschlich `days: 0` im Event (DeepSeek V4 Flash Vision Exp).
+  const prev = [
+    { name: "DeepSeek V4 Flash Vision Exp", tier: "Off-Peak", usage: { go: 15 }, input: 0.15, output: 0.6, cachedRead: 0.003, cachedWrite: null },
+    { name: "DeepSeek V4 Flash Vision Exp", tier: "Peak", usage: { go: 15 }, input: 0.3, output: 1.2, cachedRead: 0.006, cachedWrite: null },
+  ];
+  const fs = new Map([
+    ["DeepSeek V4 Flash Vision Exp (Off-Peak)", "2026-08-21"],
+    ["DeepSeek V4 Flash Vision Exp (Peak)", "2026-08-21"],
+  ]);
+  const changes = buildChanges(prev, [], [], [], "2026-10-14", fs);
+  assert.deepEqual(
+    changes.map((c) => [c.model, c.days]),
+    [
+      ["DeepSeek V4 Flash Vision Exp", 54],
+      ["DeepSeek V4 Flash Vision Exp (Peak)", 54],
+    ]
+  );
 });
 
 test("buildChanges: Off-Peak-Stufe gilt als Normal-Nutzung (kein add/remove, Preisänderung)", () => {

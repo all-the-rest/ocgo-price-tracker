@@ -301,3 +301,39 @@ Scraper-Regeln, UI-Regeln) — hier nur die getroffenen Entscheidungen samt Begr
   als Fehler wertet (fängt JS-Laufzeitfehler, die Build + `pnpm smoke` nicht sehen).
   Eigene Suite/config (nicht in die Screenshot-Suite — die bleibt assertion-frei),
   in CI nach dem Smoke-Step. Browser via Container-Image oder `playwright install`.
+
+## Entscheidungen 2026-10-14 — Doku-Änderung (CI-Reparatur)
+Anlass: CI rot (`Peak-Modelle ohne UTC-Zeitfenster: DeepSeek V4 Pro`). Ursache: die Live-Doku
+hat am 2026-10-14 **DeepSeek V4 Flash** und **DeepSeek V4 Flash Vision Exp** entfernt (Preis-,
+Rate-Limit- und Modell-Liste) und die Peak-Notiz auf `DeepSeek V4.1 Flash / V4 Pro:` verkürzt —
+„V4 Pro“ steht dort als Listen-Eintrag ohne Familien-Präfix. Zusätzlich neu: **Gemini 4 Argon
+Contributor** (mit Preisen, aber ohne dokumentiertes Anfragemuster). Regeln stehen in `AGENTS.md`.
+
+- [x] **Peak-Notiz-Listen tolerant:** `parsePeakRules` zerlegt das Subjekt an `/ , ; + &` sowie
+  `und`/`and` in Einträge; ein Eintrag ohne Familien-Präfix matcht, wenn das weggeworfene Präfix
+  von einem Geschwister-Eintrag belegt ist („V4 Pro“ → „DeepSeek V4 Pro“). **Ein aus dem Eintrag
+  entferntes Modell ist kein Parse-Fehler** (Nutzer-Vorgabe: „soll nicht failen wenn ein Eintrag
+  weg ist“). Eine Notiz, der gar kein Modell mehr zugeordnet werden kann, bleibt rot (Gate gegen
+  still schweigende Parser-Rückfälle); Kurzform ohne belegtes Präfix matcht nicht fremde Familien.
+- [x] **Default-Anfragemuster statt hartem Abbruch:** Reihenfolge dokumentiertes Muster >
+  Familien-Fallback (`PATTERN_FALLBACKS`) > `DEFAULT_PATTERN = 800/50.000/162`
+  (Command-Code-Durchschnittsnachricht; identisch zu `AVERAGE_MESSAGE_PATTERN` in `ai-10-usd`,
+  `scripts/comparison-core.mjs` — Nutzer-Vorgabe „als default fallback nutzen“). Gilt nur für
+  Zeilen mit Preisen; kostenlose Zeilen bleiben ohne Muster. Ohne den Default blockierte EIN
+  unvollständig ausgerolltes Modell per zod-Prüfung den gesamten Lauf und alle Preis-Updates.
+- [x] **`isPricedRow`** als eine Wahrheit für Scrape-Default und zod-Backstop (preisbasiert —
+  Nutzung sagt nichts darüber aus: Free-Preis + begrenzte Nutzung bleibt musterlose Zeile).
+- [x] **Datenänderungen lokal committet** (Nutzer-Vorgabe): model_removed ×4 (DeepSeek V4 Flash /
+  Vision Exp je Off-/Peak), model_added ×1 (Gemini 4 Argon Contributor); peakRules schrumpft auf
+  `deepseekv4.1flash`/`deepseekv4pro` (ohne Events). Wegen lokalem Datencommit feuert der
+  CI-Dispatch an `ai-10-usd` **nicht** → danach manuell per `gh api` triggern ( dokumentiert in
+  `AGENTS.md`).
+
+### Verworfen
+- **Einmal-Override nur für Gemini** (`PATTERN_OVERRIDES`): Nutzer klarer als Default für alle
+  musterlosen Preis-Zeilen haben — ein Sonderfall pro Modell wäre beim nächsten Rollout wieder
+  rot geworden.
+- **Warten, bis die Doku das Gemini-Muster nachliefert** (CI bleibt rot): blockiert alle Preis-
+  Updates und Deploys wegen EINES unvollständig ausgerollten Modells — der Default hält den
+  Tracker lebendig, ohne dass eine erfundene Zahl „dokumentiert“ aussieht (UI zeigt weiter das
+  Muster, die Doku-Lücke ist im `AGENTS.md` vermerkt).
