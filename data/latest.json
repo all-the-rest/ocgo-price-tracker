@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-14T04:03:28.650Z",
+  "fetchedAt": "2026-10-14T11:04:25.840Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -51,64 +51,6 @@
       }
     },
     "deepseekv4pro": {
-      "timezone": "Asia/Shanghai",
-      "peak": {
-        "days": [
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "windowsUtc": [
-          [
-            1,
-            4
-          ],
-          [
-            6,
-            10
-          ]
-        ]
-      },
-      "offPeak": {
-        "days": [
-          6,
-          7
-        ],
-        "allDay": true
-      }
-    },
-    "deepseekv4flash": {
-      "timezone": "Asia/Shanghai",
-      "peak": {
-        "days": [
-          1,
-          2,
-          3,
-          4,
-          5
-        ],
-        "windowsUtc": [
-          [
-            1,
-            4
-          ],
-          [
-            6,
-            10
-          ]
-        ]
-      },
-      "offPeak": {
-        "days": [
-          6,
-          7
-        ],
-        "allDay": true
-      }
-    },
-    "deepseekv4flashvisionexp": {
       "timezone": "Asia/Shanghai",
       "peak": {
         "days": [
@@ -1078,148 +1020,6 @@
       "provider": "DeepSeek"
     },
     {
-      "name": "DeepSeek V4 Flash",
-      "tier": "Off-Peak",
-      "input": 0.15,
-      "output": 0.6,
-      "cachedRead": 0.003,
-      "cachedWrite": null,
-      "usage": {
-        "go": 30,
-        "go-plus": 120
-      },
-      "pattern": {
-        "input": 410,
-        "cachedRead": 71300,
-        "output": 310
-      },
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": "2026-10-31"
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/deepseek-v4-flash",
-      "provider": "DeepSeek"
-    },
-    {
-      "name": "DeepSeek V4 Flash",
-      "tier": "Peak",
-      "input": 0.3,
-      "output": 1.2,
-      "cachedRead": 0.006,
-      "cachedWrite": null,
-      "usage": {
-        "go": 30,
-        "go-plus": 120
-      },
-      "pattern": {
-        "input": 410,
-        "cachedRead": 71300,
-        "output": 310
-      },
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": "2026-10-31"
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/deepseek-v4-flash",
-      "provider": "DeepSeek"
-    },
-    {
-      "name": "DeepSeek V4 Flash Vision Exp",
-      "tier": "Off-Peak",
-      "input": 0.15,
-      "output": 0.6,
-      "cachedRead": 0.003,
-      "cachedWrite": null,
-      "usage": {
-        "go": 15,
-        "go-plus": 60
-      },
-      "pattern": {
-        "input": 410,
-        "cachedRead": 71300,
-        "output": 310
-      },
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": "2026-10-31"
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/deepseek-v4-flash-vision-exp",
-      "provider": "DeepSeek"
-    },
-    {
-      "name": "DeepSeek V4 Flash Vision Exp",
-      "tier": "Peak",
-      "input": 0.3,
-      "output": 1.2,
-      "cachedRead": 0.006,
-      "cachedWrite": null,
-      "usage": {
-        "go": 15,
-        "go-plus": 60
-      },
-      "pattern": {
-        "input": 410,
-        "cachedRead": 71300,
-        "output": 310
-      },
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": "2026-10-31"
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/deepseek-v4-flash-vision-exp",
-      "provider": "DeepSeek"
-    },
-    {
       "name": "Hy4 preview",
       "tier": null,
       "input": 0.834,
@@ -1693,6 +1493,45 @@
       "contextWindow": 1000000,
       "id": "opencode-go/claude-haiku-5-5",
       "provider": "Claude Haiku"
+    },
+    {
+      "name": "Gemini 4 Argon Contributor",
+      "tier": null,
+      "input": 4,
+      "output": 20,
+      "cachedRead": 0.2,
+      "cachedWrite": null,
+      "usage": {
+        "go": 60,
+        "go-plus": 240
+      },
+      "pattern": {
+        "input": 800,
+        "cachedRead": 50000,
+        "output": 162
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "audio",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": true,
+        "retentionDays": false,
+        "validUntil": null
+      },
+      "contextWindow": 1048576,
+      "id": "opencode-go/gemini-4-argon-contributor",
+      "provider": "Gemini"
     }
   ],
   "freeModels": [
