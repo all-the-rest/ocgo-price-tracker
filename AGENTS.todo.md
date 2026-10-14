@@ -333,6 +333,24 @@ Contributor** (mit Preisen, aber ohne dokumentiertes Anfragemuster). Regeln steh
 - **Einmal-Override nur für Gemini** (`PATTERN_OVERRIDES`): Nutzer klarer als Default für alle
   musterlosen Preis-Zeilen haben — ein Sonderfall pro Modell wäre beim nächsten Rollout wieder
   rot geworden.
+
+## Entscheidungen 2026-10-14 — Go-Referral-CTA entfernt
+Anlass: Nutzer-Vorgabe „can you remove the referral link". Interaktive Klärung (Tool `question`)
+→ **„Remove whole Go CTA"**: die gesamte Go-Empfehlungskarte im Hero (Button
+`https://opencode.ai/go?ref=PKTZTZE0P0`, Referral-Hinweis, Badge, Benefit-Text) entfällt
+ersatzlos — nicht nur der `?ref=`-Param.
+
+- [ ] `src/components/Hero.tsx`: Karten-`<div id={HEADING_IDS.go} …>` (Zeilen 21–40) entfernt,
+  `HEADING_IDS`-Import wird ungenutzt → mit entfernen. Rest (Titel, Subtitle, Intro, Stats)
+  bleibt unverändert.
+- [ ] `src/i18n.ts`: fünf Go-CTA-Keys in **beiden** Sprachen entfernt (`goCta`, `goTitle`,
+  `goBadge`, `goBenefit`, `goRefHint`).
+- [ ] `src/headings.ts`: `go: "go"`-Eintrag aus `HEADING_IDS` entfernt (kein anderer
+  Referenznutzer).
+- [ ] `tests/headings.test.mjs`: `'id="go"'` und `'anchor="go"'` aus `retiredLiterals` entfernt
+  (Test-Edit → K3 verletzt → voller Loop: Implementer + unabhängiger Verifier).
+- [ ] Bestehende Screenshot-Suite enthält kein `toHaveScreenshot` (nur assertion-freie
+  Captures) → kein Screenshot-Update nötig.
 - **Warten, bis die Doku das Gemini-Muster nachliefert** (CI bleibt rot): blockiert alle Preis-
   Updates und Deploys wegen EINES unvollständig ausgerollten Modells — der Default hält den
   Tracker lebendig, ohne dass eine erfundene Zahl „dokumentiert“ aussieht (UI zeigt weiter das

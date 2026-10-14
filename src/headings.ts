@@ -25,8 +25,6 @@ export const HEADING_IDS = {
   privacy: "privacy",
   /** Changelog (EN „Changelog“). */
   changelog: "changelog",
-  /** Go-Empfehlungskarte im Hero (EN „OpenCode Go“). */
-  go: "go",
   /** Impressum (EN-Label „Impressum“ — identischer Slug). */
   imprint: "impressum",
   /** Rechtlicher Datenschutz-Abschnitt (EN-Label „Privacy“). */
