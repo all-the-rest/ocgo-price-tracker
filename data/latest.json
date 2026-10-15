@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-15T08:08:57.752Z",
+  "fetchedAt": "2026-10-15T16:06:40.427Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -297,7 +297,7 @@
         "validUntil": null
       },
       "contextWindow": 262144,
-      "id": "opencode-go/kimi-k2.6",
+      "id": "opencode/kimi-k2.6",
       "provider": "Moonshot AI"
     },
     {
@@ -1233,7 +1233,7 @@
         "validUntil": null
       },
       "contextWindow": 500000,
-      "id": "opencode-go/grok-4.6",
+      "id": "opencode/grok-4.6",
       "provider": "xAI"
     },
     {
@@ -1269,7 +1269,7 @@
         "validUntil": null
       },
       "contextWindow": 500000,
-      "id": "opencode-go/grok-4.6",
+      "id": "opencode/grok-4.6",
       "provider": "xAI"
     },
     {
@@ -1783,6 +1783,29 @@
       }
     },
     {
+      "id": "nemotron-3.5-super-vl-free",
+      "availableFrom": "2026-10-15",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": "NVIDIA",
+      "fullId": "opencode/nemotron-3.5-super-vl-free",
+      "name": "Nemotron 3.5 Super VL Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
       "id": "space-bunny-free",
       "availableFrom": "2026-09-23",
       "capabilities": {
@@ -1799,7 +1822,7 @@
       },
       "contextWindow": 1048576,
       "provider": "OpenCode Stealth",
-      "fullId": "opencode-go/space-bunny-free",
+      "fullId": "opencode/space-bunny-free",
       "name": "Space Bunny Free",
       "privacy": {
         "training": false,
