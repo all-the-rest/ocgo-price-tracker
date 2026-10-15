@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-15T16:06:40.427Z",
+  "fetchedAt": "2026-10-15T23:10:22.121Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -368,17 +368,21 @@
       "provider": "Meituan"
     },
     {
-      "name": "Step 5 Preview Free",
+      "name": "Step 5 Preview",
       "tier": null,
-      "input": 0,
-      "output": 0,
-      "cachedRead": 0,
-      "cachedWrite": 0,
+      "input": 1,
+      "output": 2.7,
+      "cachedRead": 0.1,
+      "cachedWrite": null,
       "usage": {
-        "go": null,
-        "go-plus": null
+        "go": 60,
+        "go-plus": 240
       },
-      "pattern": null,
+      "pattern": {
+        "input": 1000,
+        "cachedRead": 55000,
+        "output": 200
+      },
       "capabilities": {
         "input": [
           "text",
@@ -397,8 +401,8 @@
         "validUntil": null
       },
       "contextWindow": 1000000,
-      "id": "opencode-go/step-5-preview-free",
-      "provider": null
+      "id": "opencode-go/step-5-preview",
+      "provider": "StepFun"
     },
     {
       "name": "Cat Jam Free",
@@ -427,7 +431,7 @@
         "retentionDays": 30,
         "validUntil": null
       },
-      "contextWindow": 262144,
+      "contextWindow": 1048576,
       "id": "opencode-go/cat-jam-free",
       "provider": null
     },
@@ -1570,7 +1574,7 @@
         "reasoning": true,
         "toolCall": true
       },
-      "contextWindow": 262144,
+      "contextWindow": 1048576,
       "provider": null,
       "fullId": "opencode-go/cat-jam-free",
       "name": "Cat Jam Free",
@@ -1824,31 +1828,6 @@
       "provider": "OpenCode Stealth",
       "fullId": "opencode/space-bunny-free",
       "name": "Space Bunny Free",
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "step-5-preview-free",
-      "availableFrom": "2026-10-08",
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1000000,
-      "provider": null,
-      "fullId": "opencode-go/step-5-preview-free",
-      "name": "Step 5 Preview Free",
       "privacy": {
         "training": false,
         "retentionDays": true,
