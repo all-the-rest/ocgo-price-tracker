@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-14T14:04:30.952Z",
+  "fetchedAt": "2026-10-15T08:08:57.752Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1576,6 +1576,30 @@
       "name": "Cat Jam Free",
       "privacy": {
         "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "deepseek-v4.1-flash-free",
+      "availableFrom": "2026-10-15",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 200000,
+      "provider": "DeepSeek",
+      "fullId": "opencode/deepseek-v4.1-flash-free",
+      "name": "DeepSeek V4.1 Flash Free",
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
         "validUntil": null
       }
     },
