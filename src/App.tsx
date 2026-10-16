@@ -150,6 +150,7 @@ export default function App(props: AppProps = {}) {
   const [caps, setCaps] = createSignal<CapId[]>([]);
   const [freeCaps, setFreeCaps] = createSignal<CapId[]>([]);
   const [showTraining, setShowTraining] = createSignal(true);
+  const [showFreeTraining, setShowFreeTraining] = createSignal(true);
 
   const t = () => i18n[lang()];
 
@@ -306,6 +307,8 @@ export default function App(props: AppProps = {}) {
           setSort={setFreeSort}
           caps={freeCaps()}
           setCaps={setFreeCaps}
+          showTraining={showFreeTraining()}
+          setShowTraining={setShowFreeTraining}
         />
         <PrivacyTable
           models={data.models}

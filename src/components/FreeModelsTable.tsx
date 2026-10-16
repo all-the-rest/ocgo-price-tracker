@@ -19,12 +19,17 @@ interface FreeModelsTableProps {
   setSort: (u: (prev: FreeSortState) => FreeSortState) => void;
   caps: CapId[];
   setCaps: (u: (prev: CapId[]) => CapId[]) => void;
+  showTraining: boolean;
+  setShowTraining: (v: boolean) => void;
 }
 
 export default function FreeModelsTable(props: FreeModelsTableProps) {
   const sortedFree = createMemo(() => {
     const { field, dir } = props.sort;
     let models = props.freeModels;
+    if (!props.showTraining) {
+      models = models.filter((f) => !(f.privacy && f.privacy.training === true));
+    }
     if (props.caps.length > 0) {
       models = models.filter((f) => {
         const s = capsOf(f);
@@ -67,7 +72,22 @@ export default function FreeModelsTable(props: FreeModelsTableProps) {
             props.plans.map((p) => planLabel(p.id, props.t)).join(", "),
           )}
         </p>
-        <CapabilityFilter value={() => props.caps} setter={props.setCaps} t={props.t} />
+        <CapabilityFilter
+          value={() => props.caps}
+          setter={props.setCaps}
+          t={props.t}
+          trailing={
+            <label class="label cursor-pointer gap-2">
+              <span class="label-text">{props.t.trainingFilter}</span>
+              <input
+                type="checkbox"
+                class="toggle toggle-primary toggle-sm"
+                checked={props.showTraining}
+                onChange={(e) => props.setShowTraining(e.currentTarget.checked)}
+              />
+            </label>
+          }
+        />
         <div class="mt-4 w-full overflow-x-auto">
           <table class="table table-sm table-zebra">
             <thead>
