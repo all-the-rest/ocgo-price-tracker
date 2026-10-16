@@ -156,9 +156,9 @@ Scraper-Regeln, UI-Regeln) — hier nur die getroffenen Entscheidungen samt Begr
   Doku. `monthlyCredit`, `monthlyCost`, `models[].multiplier` und die vier `effective*` sind
   **entfernt** — sie sind plan-abhängig, die Rechnung liegt jetzt in `src/weighted.ts`
   (`usageOf`/`multiplierOf`/`fieldPrice`). Vorher zwei Quellen der Wahrheit, jetzt eine.
-- [x] `creditsMonthly` = **höchste endliche `usage` des Plans** (Go 60, Go Plus 240). Die früheren
-  Prosa-Parser („Nutzung im Wert von $60", „das Sechsfache") sind entfernt: die Doku hat die Sätze
-  gestrichen, und ein stiller 60/10-Fallback wäre für Go Plus schlicht falsch. Fehlende Plan-Tabelle
+- [x] `creditsMonthly` = **6 × Monatspreis des Plans** (Go 60, Go Plus 240). Das höchste finite
+  Modell-Limit (z. B. DeepSeek V4.1 Flash $80/$160) ist kein verlässlicher Basiswert — die Doku
+  nennt den Gesamtwert nicht mehr; die alten Prosa-Parser bleiben entfernt. Fehlende Plan-Tabelle
   → rot, nicht Fallback.
 - [x] Plan-Zuordnung der Preistabellen über **ARIA** (`tabpanel[aria-labelledby]` → `tab#id` → Label),
   nicht über Position; Preis-Kreuzprüfung über die Pläne (Doku sagt: Tokenpreise identisch),

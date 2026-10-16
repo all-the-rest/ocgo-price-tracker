@@ -240,7 +240,7 @@ test("parsePlans: Go (10/80) und Go Plus (40/240) aus der Fixture", () => {
       id: "go",
       name: "Go",
       priceMonthly: 10,
-      creditsMonthly: 80,
+      creditsMonthly: 60,
       sourceUrl: "https://opencode.ai/v2/docs/console/go/",
     },
     {
@@ -253,9 +253,9 @@ test("parsePlans: Go (10/80) und Go Plus (40/240) aus der Fixture", () => {
   ]);
 });
 
-test("creditsMonthly = höchste endliche Nutzung je Plan", () => {
+test("creditsMonthly = 6 × Monatspreis des Plans", () => {
   const plans = parsePlans(fixture);
-  assert.equal(plans.find((p) => p.id === "go").creditsMonthly, 80);
+  assert.equal(plans.find((p) => p.id === "go").creditsMonthly, 60);
   assert.equal(plans.find((p) => p.id === "go-plus").creditsMonthly, 240);
 });
 

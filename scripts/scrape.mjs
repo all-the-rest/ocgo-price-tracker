@@ -1562,13 +1562,23 @@ function parsePageData($) {
     }
   }
 
-  // creditsMonthly = höchste endliche Nutzung des Plans (volles Monatsguthaben).
+  // creditsMonthly = volles Monatsguthaben des Plans. Die Quelle nennt den
+  // Wert nicht mehr (die alte Prosa "Nutzung im Wert von $X" / "das
+  // X-fache dieses Betrags" ist seit 2026-09-28 aus der Doku verschwunden);
+  // das höchste finite Modell-Limit ("Ausreißer-Tiers", z. B. DeepSeek V4.1
+  // Flash mit $80 bei Go) ist keine verlässliche Basis (würde das Guthaben
+  // von $60 auf $80 anheben). Deshalb stabiler Nominalwert 6 × Monatspreis
+  // (Go: 6 × $10 = $60, Go Plus: 6 × $40 = $240) — konsistent mit dem
+  // historischen "6x"-Wert und mit scraper-seitig parsebarem priceMonthly.
   for (const plan of plans) {
     const values = models.map((m) => m.usage[plan.id]).filter((v) => typeof v === "number");
     if (values.length === 0) {
       throw new ScrapeError(`Plan "${plan.id}" hat keine endliche Nutzung — creditsMonthly nicht bestimmbar`);
     }
-    plan.creditsMonthly = Math.max(...values);
+    if (!Number.isFinite(plan.priceMonthly) || plan.priceMonthly <= 0) {
+      throw new ScrapeError(`Plan "${plan.id}" hat keinen parsebaren Monatspreis — creditsMonthly nicht bestimmbar`);
+    }
+    plan.creditsMonthly = plan.priceMonthly * 6;
     plan.sourceUrl = SOURCE_URL;
   }
 
@@ -1585,7 +1595,7 @@ export function parseHtml(html) {
 }
 
 /**
- * Extrahiert die Pläne (inkl. `creditsMonthly` = höchste endliche Nutzung des
+ * Extrahiert die Pläne (inkl. `creditsMonthly` = 6 × Monatspreis des
  * Plans) aus dem HTML einer OpenCode-Go-Dokumentationsseite.
  */
 export function parsePlans(html) {

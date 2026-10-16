@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-15T23:10:22.121Z",
+  "fetchedAt": "2026-10-16T07:38:56.407Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -9,7 +9,7 @@
       "id": "go",
       "name": "Go",
       "priceMonthly": 10,
-      "creditsMonthly": 80,
+      "creditsMonthly": 60,
       "sourceUrl": "https://opencode.ai/v2/docs/console/go/"
     },
     {
@@ -1631,12 +1631,60 @@
       }
     },
     {
+      "id": "glm-5.3-flash-free",
+      "availableFrom": "2026-10-16",
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 200000,
+      "provider": "Z.ai",
+      "fullId": "opencode/glm-5.3-flash-free",
+      "name": "GLM-5.3-Flash Free",
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      }
+    },
+    {
       "id": "jev-1.13-free",
       "availableFrom": "2026-09-19",
       "capabilities": null,
       "contextWindow": null,
       "provider": null,
       "fullId": "opencode/jev-1.13-free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "ll-alpha-free",
+      "availableFrom": "2026-10-16",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 262144,
+      "provider": null,
+      "fullId": "opencode/ll-alpha-free",
+      "name": "LL Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
