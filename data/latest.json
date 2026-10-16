@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-16T14:05:05.915Z",
+  "fetchedAt": "2026-10-16T16:05:21.037Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -379,15 +379,24 @@
         "go-plus": null
       },
       "pattern": null,
-      "capabilities": null,
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
       "privacy": {
         "training": false,
         "retentionDays": 30,
         "validUntil": null
       },
-      "contextWindow": null,
-      "id": null,
-      "provider": null
+      "contextWindow": 1048576,
+      "id": "opencode-go/beam-free",
+      "provider": "Beam"
     },
     {
       "name": "MiMo V2.6 Flash",
@@ -1389,10 +1398,20 @@
     {
       "id": "beam-free",
       "availableFrom": "2026-10-16",
-      "capabilities": null,
-      "contextWindow": null,
-      "provider": null,
-      "fullId": "opencode/beam-free",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": "Beam",
+      "fullId": "opencode-go/beam-free",
+      "name": "Beam Free",
       "privacy": {
         "training": true,
         "validUntil": null
