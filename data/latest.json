@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-16T10:03:39.628Z",
+  "fetchedAt": "2026-10-16T14:05:05.915Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -368,7 +368,7 @@
       "provider": "StepFun"
     },
     {
-      "name": "Cat Jam Free",
+      "name": "Beam Free",
       "tier": null,
       "input": 0,
       "output": 0,
@@ -379,23 +379,14 @@
         "go-plus": null
       },
       "pattern": null,
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
+      "capabilities": null,
       "privacy": {
         "training": false,
         "retentionDays": 30,
         "validUntil": null
       },
-      "contextWindow": 1048576,
-      "id": "opencode-go/cat-jam-free",
+      "contextWindow": null,
+      "id": null,
       "provider": null
     },
     {
@@ -1396,6 +1387,18 @@
   ],
   "freeModels": [
     {
+      "id": "beam-free",
+      "availableFrom": "2026-10-16",
+      "capabilities": null,
+      "contextWindow": null,
+      "provider": null,
+      "fullId": "opencode/beam-free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
       "id": "big-pickle",
       "availableFrom": "2026-08-05",
       "capabilities": {
@@ -1412,28 +1415,6 @@
       "provider": "OpenCode Stealth",
       "fullId": "opencode/big-pickle",
       "name": "Big Pickle",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "cat-jam-free",
-      "availableFrom": "2026-10-13",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1048576,
-      "provider": null,
-      "fullId": "opencode-go/cat-jam-free",
-      "name": "Cat Jam Free",
       "privacy": {
         "training": true,
         "validUntil": null
