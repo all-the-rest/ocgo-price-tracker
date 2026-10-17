@@ -235,7 +235,7 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 ## Verifikation
 
 Der Build-/Verify-/Commit-/Push-Flow — Rollentrennung, `nach-verify`-Flag, Commit-Footer,
-Amend, CI-Beobachtung — steht im Skill `build-verify` (`agents-skills`; Always-on-Kernel
+Amend, CI-Beobachtung — steht im Skill `build-verify` (`agents-skills`; Kernregel
 `.agents/rules/build-verify.md`) und wird hier **nicht wiederholt**. Der unabhängige
 Verifikator prüft in diesem Repo:
 
@@ -263,7 +263,7 @@ funktionieren) und **vor** Commit/Push abnehmen lassen. Kein Push ohne Abnahme.
 
 ## Delegation & Parallelisierung (Subagenten)
 
-Rollen, Delegation und Verify-Läufe regelt der Skill `build-verify` (`agents-skills`; Always-on-Kernel
+Rollen, Delegation und Verify-Läufe regelt der Skill `build-verify` (`agents-skills`; Kernregel
 `.agents/rules/build-verify.md`): Orchestrator delegiert, Implementierung und Verifikation laufen in
 **getrennten** Subagenten, jeder Subagent bekommt eine in sich geschlossene Aufgabenbeschreibung,
 kleine Edits macht der Orchestrator direkt. Details stehen dort, nicht hier.
