@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-16T16:05:21.037Z",
+  "fetchedAt": "2026-10-17T12:08:02.349Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1615,32 +1615,6 @@
       "provider": "Mimo",
       "fullId": "opencode/mimo-v2.6-flash-free",
       "name": "MiMo V2.6 Flash Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "muse-spark-1.3-contributor-free",
-      "availableFrom": "2026-09-02",
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video",
-          "pdf",
-          "audio"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1048576,
-      "provider": "Meta",
-      "fullId": "opencode/muse-spark-1.3-contributor-free",
-      "name": "Muse Spark 1.3 Free",
       "privacy": {
         "training": true,
         "validUntil": null
