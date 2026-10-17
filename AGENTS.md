@@ -234,10 +234,7 @@ Verbatim-Sources inkl. Call-Paths (auch dynamische Dispatch-Hops).
 
 ## Verifikation
 
-Der Build-/Verify-/Commit-/Push-Flow — Rollentrennung, `nach-verify`-Flag, Commit-Footer,
-Amend, CI-Beobachtung — steht im Skill `build-verify` (`agents-skills`; Kernregel
-`.agents/rules/build-verify.md`) und wird hier **nicht wiederholt**. Der unabhängige
-Verifikator prüft in diesem Repo:
+Der unabhängige Verifikator prüft in diesem Repo:
 
 - `pnpm scrape` (exit 0, korrekte Daten — **vor Commit verpflichtend**), `pnpm test` grün, `pnpm build` grün,
   `dist/` enthält `data/latest.json` + `CNAME`, Workflow-YAML valide,
@@ -263,10 +260,9 @@ funktionieren) und **vor** Commit/Push abnehmen lassen. Kein Push ohne Abnahme.
 
 ## Delegation & Parallelisierung (Subagenten)
 
-Rollen, Delegation und Verify-Läufe regelt der Skill `build-verify` (`agents-skills`; Kernregel
-`.agents/rules/build-verify.md`): Orchestrator delegiert, Implementierung und Verifikation laufen in
+Rollen, Delegation und Verify-Läufe: Orchestrator delegiert, Implementierung und Verifikation laufen in
 **getrennten** Subagenten, jeder Subagent bekommt eine in sich geschlossene Aufgabenbeschreibung,
-kleine Edits macht der Orchestrator direkt. Details stehen dort, nicht hier.
+kleine Edits macht der Orchestrator direkt.
 
 - **Entscheidungen werden IMMER als interaktive Frage gestellt** (Tool `question`), nie als Frage im Fließtext:
   echte Wahlmöglichkeiten (Alternative ja/nein, Datenmodell, Event-Form, Abbruch-vs-weiter) mit einer Empfehlung
