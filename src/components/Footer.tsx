@@ -54,6 +54,9 @@ export default function Footer(props: FooterProps) {
           >
             {props.t.rssFeed}
           </a>
+          <a href="/data/latest.json" target="_blank" rel="noopener noreferrer" class="underline">
+            {props.t.dataJson}
+          </a>
           <a href={`#${HEADING_IDS.imprint}`} class="underline" onClick={(e) => scrollToSection(HEADING_IDS.imprint, e)}>
             {props.t.impressum}
           </a>
