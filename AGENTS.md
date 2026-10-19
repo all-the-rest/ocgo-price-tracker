@@ -242,7 +242,7 @@ Der unabhängige Verifikator prüft in diesem Repo:
 Analyse selbst in Batches (≤10 Bilder, nach Zustand → Viewport → Route) gegen die
 Checkliste des Skills; unsichere Befunde (Hairline-Borders, 8-px-Gaps, unlesbare
 Downscale-Regionen) liest das Modell **erneut selbst** mit einer konkreten Frage nach
-(Skill `ui-review`: re-read, don't guess) statt zu raten — es gibt keinen
+(Skill `ui-review`: re-read, do not guess) statt zu raten — es gibt keinen
 Vision-Subagenten mehr, und der Report wird nicht mit unsicheren Befunden gefüllt.
 Findings-Report mit `Severity | File:Line | Screenshot | Finding | Suggested fix`;
 `critical`/`high` blockieren die Freigabe. Zusätzlich `pnpm test:contrast` — die
