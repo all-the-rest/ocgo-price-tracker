@@ -355,3 +355,10 @@ ersatzlos — nicht nur der `?ref=`-Param.
   Updates und Deploys wegen EINES unvollständig ausgerollten Modells — der Default hält den
   Tracker lebendig, ohne dass eine erfundene Zahl „dokumentiert“ aussieht (UI zeigt weiter das
   Muster, die Doku-Lücke ist im `AGENTS.md` vermerkt).
+
+## Ausgelagerte Belege (aus `AGENTS.md` verschoben)
+Begründungen/Messwerte, die bei der Bereinigung der Regeldatei hierher wanderten — die zugehörigen
+Regeln selbst stehen weiterhin in `AGENTS.md`.
+
+- **5/95-Gewichtung in `requestCost`** (5 % Input-Preis + 95 % Cached-Write-Preis für Input-Tokens):
+  basiert auf beobachteter Nutzung (Luna ~28/72, Qwen3.8 Max ~0/100 Input/Cached-Write).
