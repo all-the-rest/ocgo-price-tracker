@@ -241,7 +241,9 @@ Der unabhängige Verifikator prüft in diesem Repo:
 (eine Seite >2000 px wird im Full-Page-PNG downskkaliert und unterhalb des Folds unlesbar).
 Analyse selbst in Batches (≤10 Bilder, nach Zustand → Viewport → Route) gegen die
 Checkliste des Skills; unsichere Befunde (Hairline-Borders, 8-px-Gaps, unlesbare
-Downscale-Regionen) an den `vision-creative`-Subagenten eskalieren statt zu raten.
+Downscale-Regionen) liest das Modell **erneut selbst** mit einer konkreten Frage nach
+(Skill `ui-review`: re-read, don't guess) statt zu raten — es gibt keinen
+Vision-Subagenten mehr, und der Report wird nicht mit unsicheren Befunden gefüllt.
 Findings-Report mit `Severity | File:Line | Screenshot | Finding | Suggested fix`;
 `critical`/`high` blockieren die Freigabe. Zusätzlich `pnpm test:contrast` — die
 automatisierte WCAG-AA-Matrix über alle daisyUI-Badge-/Alert-Kombinationen in
