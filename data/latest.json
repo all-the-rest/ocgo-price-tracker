@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-17T12:08:02.349Z",
+  "fetchedAt": "2026-10-19T12:09:07.675Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -548,6 +548,39 @@
       "provider": "Xiaomi"
     },
     {
+      "name": "MiniMax M3.1 Flash Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": {
+        "go": null,
+        "go-plus": null
+      },
+      "pattern": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "id": "opencode-go/minimax-m3.1-flash-free",
+      "provider": "MiniMax"
+    },
+    {
       "name": "MiniMax M3",
       "tier": null,
       "input": 0.3,
@@ -1020,43 +1053,6 @@
       "contextWindow": 256000,
       "id": "opencode-go/hy3",
       "provider": "Tencent"
-    },
-    {
-      "name": "Space Bunny",
-      "tier": null,
-      "input": 0.15,
-      "output": 0.6,
-      "cachedRead": 0.03,
-      "cachedWrite": null,
-      "usage": {
-        "go": 30,
-        "go-plus": 120
-      },
-      "pattern": {
-        "input": 1000,
-        "cachedRead": 55000,
-        "output": 200
-      },
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 1048576,
-      "id": "opencode-go/space-bunny",
-      "provider": null
     },
     {
       "name": "Grok 4.7",
@@ -1621,6 +1617,31 @@
       }
     },
     {
+      "id": "minimax-m3.1-flash-free",
+      "availableFrom": "2026-10-19",
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1000000,
+      "provider": "MiniMax",
+      "fullId": "opencode-go/minimax-m3.1-flash-free",
+      "name": "MiniMax M3.1 Flash Free",
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      }
+    },
+    {
       "id": "nemotron-3-ultra-free",
       "availableFrom": "2026-08-05",
       "capabilities": {
@@ -1684,31 +1705,6 @@
       "name": "Nemotron 3.5 Super VL Free",
       "privacy": {
         "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "space-bunny-free",
-      "availableFrom": "2026-09-23",
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1048576,
-      "provider": "OpenCode Stealth",
-      "fullId": "opencode/space-bunny-free",
-      "name": "Space Bunny Free",
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
         "validUntil": null
       }
     }
