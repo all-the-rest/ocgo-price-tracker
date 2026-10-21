@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-21T12:01:22.815Z",
+  "fetchedAt": "2026-10-21T18:01:11.114Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1483,6 +1483,28 @@
       }
     },
     {
+      "id": "flint-40b-free",
+      "availableFrom": "2026-10-21",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 262144,
+      "provider": "Flint",
+      "fullId": "opencode/flint-40b-free",
+      "name": "Flint 40B Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
       "id": "glm-5.3-flash-free",
       "availableFrom": "2026-10-16",
       "capabilities": {
@@ -1515,28 +1537,6 @@
       "contextWindow": null,
       "provider": null,
       "fullId": "opencode/jev-1.13-free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "ll-alpha-free",
-      "availableFrom": "2026-10-16",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 262144,
-      "provider": null,
-      "fullId": "opencode/ll-alpha-free",
-      "name": "LL Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
@@ -1583,7 +1583,7 @@
         "toolCall": true
       },
       "contextWindow": 200000,
-      "provider": "Xiaomi",
+      "provider": "Mimo",
       "fullId": "opencode/mimo-v2.5-free",
       "name": "MiMo V2.5 Free",
       "privacy": {
@@ -1655,7 +1655,7 @@
         "toolCall": true
       },
       "contextWindow": 1000000,
-      "provider": "NVIDIA",
+      "provider": "Nemotron",
       "fullId": "opencode/nemotron-3-ultra-free",
       "name": "Nemotron 3 Ultra Free",
       "privacy": {
@@ -1677,7 +1677,7 @@
         "toolCall": true
       },
       "contextWindow": 262144,
-      "provider": "NVIDIA",
+      "provider": "Nemotron",
       "fullId": "opencode/nemotron-3.5-lightning-free",
       "name": "Nemotron 3.5 Lightning Free",
       "privacy": {
@@ -1700,7 +1700,7 @@
         "toolCall": true
       },
       "contextWindow": 1048576,
-      "provider": "NVIDIA",
+      "provider": "Nemotron",
       "fullId": "opencode/nemotron-3.5-super-vl-free",
       "name": "Nemotron 3.5 Super VL Free",
       "privacy": {
