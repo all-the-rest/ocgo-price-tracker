@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-19T12:09:07.675Z",
+  "fetchedAt": "2026-10-21T12:01:22.815Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -338,8 +338,8 @@
       "cachedRead": 0.1,
       "cachedWrite": null,
       "usage": {
-        "go": 60,
-        "go-plus": 240
+        "go": 15,
+        "go-plus": 60
       },
       "pattern": {
         "input": 1000,
