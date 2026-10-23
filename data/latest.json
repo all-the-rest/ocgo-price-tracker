@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-22T16:00:38.338Z",
+  "fetchedAt": "2026-10-23T23:18:31.608Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -190,12 +190,49 @@
       "provider": "Z.ai"
     },
     {
+      "name": "Kimi K3.1 Pro",
+      "tier": null,
+      "input": 2,
+      "output": 10,
+      "cachedRead": 0.2,
+      "cachedWrite": 2,
+      "usage": {
+        "go": 15,
+        "go-plus": 60
+      },
+      "pattern": {
+        "input": 1050,
+        "cachedRead": 76500,
+        "output": 300
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1048576,
+      "id": "opencode-go/kimi-k3.1-pro",
+      "provider": "Moonshot AI"
+    },
+    {
       "name": "Kimi K3",
       "tier": null,
       "input": 3,
       "output": 15,
       "cachedRead": 0.3,
-      "cachedWrite": null,
+      "cachedWrite": 3,
       "usage": {
         "go": 15,
         "go-plus": 60
@@ -1464,29 +1501,6 @@
       }
     },
     {
-      "id": "exo-free",
-      "availableFrom": "2026-10-06",
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1048576,
-      "provider": null,
-      "fullId": "opencode/exo-free",
-      "name": "Exo Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
       "id": "flint-40b-free",
       "availableFrom": "2026-10-21",
       "capabilities": {
@@ -1567,31 +1581,6 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "mimo-v2.5-free",
-      "availableFrom": "2026-08-05",
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "audio",
-          "video"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 200000,
-      "provider": "Mimo",
-      "fullId": "opencode/mimo-v2.5-free",
-      "name": "MiMo V2.5 Free",
-      "privacy": {
-        "training": true,
         "validUntil": null
       }
     },
