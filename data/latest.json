@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-23T23:18:31.608Z",
+  "fetchedAt": "2026-10-24T22:37:33.775Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -101,8 +101,7 @@
         "input": [
           "text",
           "image",
-          "video",
-          "pdf"
+          "video"
         ],
         "output": [
           "text"
@@ -1392,15 +1391,15 @@
       "provider": "Claude Haiku"
     },
     {
-      "name": "Gemini 4 Argon Contributor",
-      "tier": null,
-      "input": 4,
-      "output": 20,
+      "name": "Gemini 4 Argon",
+      "tier": "50% off",
+      "input": 4.002,
+      "output": 20.001,
       "cachedRead": 0.2,
       "cachedWrite": null,
       "usage": {
-        "go": 60,
-        "go-plus": 240
+        "go": 30,
+        "go-plus": 120
       },
       "pattern": {
         "input": 800,
@@ -1422,12 +1421,12 @@
         "toolCall": true
       },
       "privacy": {
-        "training": true,
-        "retentionDays": false,
+        "training": false,
+        "retentionDays": true,
         "validUntil": null
       },
       "contextWindow": 1048576,
-      "id": "opencode-go/gemini-4-argon-contributor",
+      "id": "opencode-go/gemini-4-argon",
       "provider": "Gemini"
     }
   ],
@@ -1529,8 +1528,7 @@
         "input": [
           "text",
           "image",
-          "video",
-          "pdf"
+          "video"
         ],
         "output": [
           "text"
