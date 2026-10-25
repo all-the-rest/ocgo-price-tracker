@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-24T22:37:33.775Z",
+  "fetchedAt": "2026-10-25T13:09:05.783Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -332,38 +332,6 @@
       },
       "contextWindow": 1000000,
       "id": "opencode-go/longcat-2.0",
-      "provider": "Meituan"
-    },
-    {
-      "name": "LongCat 2.5 Preview Free",
-      "tier": null,
-      "input": 0,
-      "output": 0,
-      "cachedRead": 0,
-      "cachedWrite": 0,
-      "usage": {
-        "go": null,
-        "go-plus": null
-      },
-      "pattern": null,
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/longcat-2.5-preview-free",
       "provider": "Meituan"
     },
     {
@@ -1555,30 +1523,6 @@
       "fullId": "opencode/jev-1.13-free",
       "privacy": {
         "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "longcat-2.5-preview-free",
-      "availableFrom": "2026-09-26",
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1000000,
-      "provider": "Meituan",
-      "fullId": "opencode-go/longcat-2.5-preview-free",
-      "name": "LongCat 2.5 Preview Free",
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
         "validUntil": null
       }
     },
