@@ -1,4 +1,5 @@
 import type { Basis, Model, Plan, PriceField } from "./types";
+import { actualPaid } from "./fees";
 
 export type { PriceField };
 
@@ -26,7 +27,7 @@ export function multiplierOf(m: Model, plan: Plan): number | null {
  * - "full" → Effektivpreis bei vollem Monatsguthaben
  *            (Listenpreis × creditsMonthly/Nutzung des Plans)
  * - "paid" → Effektivpreis auf Basis dessen, was man tatsächlich zahlt
- *            (Listenpreis × priceMonthly/Nutzung, z. B. $10 → 1,5× bei
+ *            (Listenpreis × actualPaid(plan)/Nutzung, z. B. $10 → 1,5× bei
  *            $15-Nutzung). Beide Effektivbasen brauchen den Plan; unbegrenzte
  *            Nutzung (`null`) → null.
  *
@@ -43,7 +44,7 @@ export function fieldPrice(m: Model, f: PriceField, basis: Basis, plan: Plan): n
   if (raw === null) return null;
   if (basis === "paid") {
     const usage = usageOf(m, plan);
-    return usage === null ? null : raw * (plan.priceMonthly / usage);
+    return usage === null ? null : raw * (actualPaid(plan) / usage);
   }
   const mult = multiplierOf(m, plan);
   return mult === null ? raw : raw * mult;

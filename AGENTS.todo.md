@@ -28,12 +28,10 @@ sind auf v2 umgezogen, CI war rot (`pnpm scrape` brach ab). Vollständige Regeln
   `buildPage`-Helper baut `docs-plan-tabs`-Markup; DE-Parser-Tests bleiben als
   Kompatibilitäts-Beweis, EN-Pendants ergänzt (`parseEnglishDate`, Live-Peak-Notiz).
   **Keine** Zahlen-Pins auf `data/latest.json` (Struktur-Invarianten wie bisher).
-- [x] **Badge-Farben (Faktor-Skala, 2026-10-12 nachgeschärft):** `usageBadge` nutzt nur den
-  Faktor zum Monatspreis — ≤1,5× rot, unter 6× gelb, ab 6× grün, über 6× fett — planübergreifend
-  (Go: $15 rot, $30 gelb, $60 grün, $80 grün+fett; Go Plus proportional: $60 rot … $240 grün).
-  Anlass: die halbes-Guthaben-Schwelle ($80/2 = $40) färbte $30 = 3× fälschlich rot; `creditsMonthly`
-  spielt in der Farbskala keine Rolle mehr. Tooltip-Legende de/en dokumentiert die Skala
-  („Faktor zum Monatspreis: ≤ 1,5× rot · unter 6× gelb · ab 6× grün · über 6× grün + fett").
+- [x] **Badge-Farben:** dunkelrot unter `actualPaid`; danach Anteil an `plan.creditsMonthly`: ≤25 % rot,
+  <100 % gelb, 100 % grün, >100 % dunkelgrün (Go: $15 = 25 % rot, $20/$30 gelb, $60 grün,
+  $80 = 133 % dunkelgrün; Go Plus: $60 = 25 % rot, $80–$180 gelb, $240 grün). Gebührenstruktur in
+  `src/fees.ts`, für OpenCode Go aktuell 0.
 - [x] **Verifikation:** `pnpm test` 275/275 grün, `pnpm scrape` exit 0 (42 Modelle, alle mit
   privacy, usage-Map vollständig, keine leeren Changelog-Einträge), `pnpm build` grün,
   `pnpm smoke` grün (mit `NODE_OPTIONS=--dns-result-order=ipv4first` — Sandbox-Quirk:

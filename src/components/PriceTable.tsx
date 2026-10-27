@@ -5,6 +5,7 @@ import Heading from "./Heading";
 import type { Basis, HolidayCalendars, Model, PeakRules, Plan } from "../types";
 import { fmt, fmtContextWindow, fmtPricing } from "../util";
 import { fieldPrice, formatTokens, formatReqPerMonth, requestCost, requestsPerMonth, usageOf } from "../weighted";
+import { actualPaid } from "../fees";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import { setupDragScroll } from "../dragscroll";
 import Tooltip from "./Tooltip";
@@ -133,15 +134,17 @@ export default function PriceTable(props: PriceTableProps) {
       .replace("{output}", formatTokens(p.output, props.lang));
   };
 
-  // Faktor-Skala zum Monatspreis: ≤ 1,5× rot, unter 6× gelb, ab 6× grün.
-  // Bewusst ohne creditsMonthly: das abgeleitete Guthaben kann durch
-  // Ausreißer-Tiers darüber liegen (Go: $80 statt $60) und würde sonst
-  // mittlere Tiers ($30 = 3×) fälschlich rot färben.
+  // Anteil am Credit-Claim (`plan.creditsMonthly`); zuerst gegen tatsächlich gezahlten Preis prüfen.
   const usageBadge = (usage: number) => {
-    const factor = usage / props.plan.priceMonthly;
-    if (factor <= 1.5) return "badge-error";
-    if (factor >= 6) return "badge-success";
-    return "badge-warning";
+    const paid = actualPaid(props.plan);
+    if (usage < paid) return "badge-error";
+    const claim = props.plan.creditsMonthly;
+    if (claim == null || claim <= 0) return "badge-success";
+    const share = usage / claim;
+    if (share <= 0.25 + 1e-6) return "bg-error/20 text-error border border-error";
+    if (share < 1 - 1e-6) return "badge-warning";
+    if (share <= 1 + 1e-6) return "bg-success/20 text-success border border-success";
+    return "badge-success";
   };
 
   const usagePct = (usage: number) => Math.round((usage / props.plan.creditsMonthly) * 100);
@@ -153,9 +156,9 @@ export default function PriceTable(props: PriceTableProps) {
       .sort((a, b) => a - b);
     if (props.basis === "paid") {
       const rows = usages
-        .map((u) => `$${u} → ${factorPhrase(u / props.plan.priceMonthly, props.lang, "value")}`)
+        .map((u) => `$${u} → ${factorPhrase(u / actualPaid(props.plan), props.lang, "value")}`)
         .join(" · ");
-      return props.t.paidNote.replace("{paid}", String(props.plan.priceMonthly)).replace("{rows}", rows);
+      return props.t.paidNote.replace("{paid}", String(actualPaid(props.plan))).replace("{rows}", rows);
     }
     const rows = usages
       .map((u) => `$${u} → ${factorPhrase(props.plan.creditsMonthly / u, props.lang, "price")}`)
@@ -339,15 +342,14 @@ export default function PriceTable(props: PriceTableProps) {
                             .replace("{pct}", String(usagePct(usage())))
                             .replace("{usage}", String(usage()))
                             .replace("{credit}", String(props.plan.creditsMonthly))
-                            .replace("{mult}", formatMult(usage() / props.plan.priceMonthly, props.lang))
-                            .replace("{paid}", String(props.plan.priceMonthly))}
+                            .replace("{mult}", formatMult(usage() / actualPaid(props.plan), props.lang))
+                            .replace("{paid}", String(actualPaid(props.plan)))}
                           class="inline-block"
                         >
                           <span
                             class={`badge badge-sm ${usageBadge(usage())}`}
-                            classList={{ "font-bold": usage() / props.plan.priceMonthly > 6 }}
                           >
-                            ${usage()} · {formatMult(usage() / props.plan.priceMonthly, props.lang)}×
+                            ${usage()} · {formatMult(usage() / actualPaid(props.plan), props.lang)}×
                           </span>
                         </Tooltip>
                       )}

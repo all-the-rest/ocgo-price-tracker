@@ -79,7 +79,7 @@ export const i18n = {
     colUsage: "Inkl. Nutzung",
     usageUnlimited: "Unbegrenzte Nutzung (kostenloses Modell)",
     usageTooltip:
-      "Inkl. Nutzung: ${usage} = {mult}× vom ${paid}/Monat, den du zahlst ({pct}% vom ${credit}-Guthaben). Farben (Faktor zum Monatspreis): ≤ 1,5× rot · unter 6× gelb · ab 6× grün · über 6× grün + fett",
+      "Inkl. Nutzung: ${usage} = {mult}× vom ${paid}/Monat, den du zahlst ({pct}% vom ${credit}-Guthaben). Farben (Anteil am Guthaben): dunkelrot unter dem gezahlten Preis · bis 25 % rot · unter 100 % gelb · 100 % grün · über 100 % dunkelgrün",
     per1m: "$/1M Tokens",
     colWeighted: "≈ $/Anfrage",
     perReq: "pro Anfrage",
@@ -186,7 +186,7 @@ export const i18n = {
     colUsage: "Included usage",
     usageUnlimited: "Unlimited usage (free model)",
     usageTooltip:
-      "Included usage: ${usage} = {mult}× of the ${paid}/mo you pay ({pct}% of the ${credit} credit). Colors (factor over monthly price): ≤ 1.5× red · below 6× yellow · from 6× green · above 6× green + bold",
+      "Included usage: ${usage} = {mult}× of the ${paid}/mo you pay ({pct}% of the ${credit} credit). Colors (share of the credit): dark red below what you paid · up to 25% red · below 100% yellow · 100% green · above 100% dark green",
     per1m: "$/1M tokens",
     colWeighted: "≈ $/request",
     perReq: "per request",
