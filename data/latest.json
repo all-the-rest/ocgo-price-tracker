@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-25T13:09:05.783Z",
+  "fetchedAt": "2026-10-27T07:03:26.575Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -401,6 +401,37 @@
       "contextWindow": 1048576,
       "id": "opencode-go/beam-free",
       "provider": "Beam"
+    },
+    {
+      "name": "Iceman Contributor Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": {
+        "go": null,
+        "go-plus": null
+      },
+      "pattern": null,
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": true,
+        "retentionDays": false,
+        "validUntil": null
+      },
+      "contextWindow": 262144,
+      "id": "opencode-go/iceman-contributor-free",
+      "provider": null
     },
     {
       "name": "MiMo V2.6 Flash",
