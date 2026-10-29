@@ -54,13 +54,13 @@ test("allowance badge colors use paid guard and percent of plan credits", () => 
   assert.equal(GO.creditsMonthly, 60);
   let html = render(GO, [8, 10, 15, 20, 30, 60, 80]);
   const cases = [
-    [8, "badge-error"],
-    [10, "bg-error/20 text-error border border-error"],
-    [15, "bg-error/20 text-error border border-error"],
-    [20, "badge-warning"],
-    [30, "badge-warning"],
-    [60, "bg-success/20 text-success border border-success"],
-    [80, "badge-success"],
+    [8, "bg-error text-base-content border border-error"],
+    [10, "bg-error/75 text-base-content border border-error"],
+    [15, "bg-error/75 text-base-content border border-error"],
+    [20, "bg-warning text-base-content border border-warning"],
+    [30, "bg-warning text-base-content border border-warning"],
+    [60, "bg-success/60 text-base-content border border-success"],
+    [80, "bg-green-800 text-green-50 border border-green-800"],
   ];
   for (const [amount, expected] of cases) assert.equal(allowanceBadgeClass(html, `Allowance ${amount}`), expected, `Go $${amount}`);
 
@@ -68,9 +68,9 @@ test("allowance badge colors use paid guard and percent of plan credits", () => 
   assert.equal(PLUS.creditsMonthly, 240);
   html = render(PLUS, [60, 90, 240]);
   for (const [amount, expected] of [
-    [60, "bg-error/20 text-error border border-error"],
-    [90, "badge-warning"],
-    [240, "bg-success/20 text-success border border-success"],
+    [60, "bg-error/75 text-base-content border border-error"],
+    [90, "bg-warning text-base-content border border-warning"],
+    [240, "bg-success/60 text-base-content border border-success"],
   ]) {
     assert.equal(allowanceBadgeClass(html, `Allowance ${amount}`), expected, `Go Plus $${amount}`);
   }

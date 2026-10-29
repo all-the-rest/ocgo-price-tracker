@@ -23,6 +23,17 @@ const jsonLdOf = (html) => {
 test("Prerender: englische und deutsche HTML-Datei vorhanden", { skip }, () => {
   assert.ok(existsSync(join(DIST, "index.html")), "dist/index.html fehlt");
   assert.ok(existsSync(join(DIST, "de", "index.html")), "dist/de/index.html fehlt");
+  assert.ok(existsSync(join(DIST, "allowances", "index.html")), "dist/allowances/index.html fehlt");
+  assert.ok(existsSync(join(DIST, "de", "allowances", "index.html")), "dist/de/allowances/index.html fehlt");
+});
+
+test("Allowance-Seiten werden vorgerendert und haben sprachspezifische Metadaten", { skip }, () => {
+  const en = read("allowances", "index.html");
+  const de = read("de", "allowances", "index.html");
+  assert.match(en, /Monthly allowance per model/);
+  assert.match(de, /Monatliche Nutzung pro Modell/);
+  assert.match(en, /canonical" href="https:\/\/ocgo-pricing\.all-the\.rest\/allowances\//);
+  assert.match(de, /canonical" href="https:\/\/ocgo-pricing\.all-the\.rest\/de\/allowances\//);
 });
 
 test("Prerender: Inhalt steckt in #root, nicht nur im JS", { skip }, () => {

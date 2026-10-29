@@ -106,6 +106,18 @@ async function main() {
       fail(`/de/: ${e instanceof Error ? e.message : String(e)}`);
     }
 
+    for (const route of ["/allowances/", "/de/allowances/"]) {
+      try {
+        const res = await fetch(`${BASE}${route}`);
+        if (!res.ok) fail(`GET ${route} → HTTP ${res.status}`);
+        else {
+          const page = await res.text();
+          if (!page.includes("allowance")) fail(`${route} enthält keine vorgerenderte Allowance-Seite`);
+          else ok(`GET ${route} → 200, Allowance-Seite vorgerendert`);
+        }
+      } catch (e) { fail(`${route}: ${e instanceof Error ? e.message : String(e)}`); }
+    }
+
     // SEO-Dateien.
     for (const file of ["robots.txt", "sitemap.xml"]) {
       try {

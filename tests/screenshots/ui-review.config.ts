@@ -72,6 +72,13 @@ export const uiReviewConfig: UiReviewConfig = {
       expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
     },
     {
+      name: "home-go-teams",
+      path: "/?plan=go-teams",
+      states: ["filled"],
+      note: "Go Teams view — $65 SOLL credit (Go $60 + $5 model uplift) is the 100% reference.",
+      expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
+    },
+    {
       name: "home-de-go-plus",
       path: "/?lang=de&plan=go-plus",
       states: ["filled"],
@@ -86,6 +93,20 @@ export const uiReviewConfig: UiReviewConfig = {
       elements: ["#privacy", "#changelog"],
       note: "Go-Plus im Dark-Mode — prüft Plan-Umschaltung und dunkles Theme zusammen.",
       expectedTitle: "OpenCode Go Pricing & Models (2026) — Credit Multiplier & Request Costs",
+    },
+    {
+      name: "allowances",
+      path: "/allowances/",
+      states: ["filled"],
+      note: "Per-model plan limits and estimated request volume.",
+      expectedTitle: "Monthly Model Allowances — OpenCode Go",
+    },
+    {
+      name: "allowances-de",
+      path: "/de/allowances/",
+      states: ["filled"],
+      note: "Deutsche Variante der planübergreifenden Modelllimits.",
+      expectedTitle: "Monatliche Modellnutzung — OpenCode Go",
     },
   ],
 };

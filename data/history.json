@@ -157746,7 +157746,7 @@
           "id": "go-teams",
           "name": "Go Teams",
           "priceMonthly": 20,
-          "creditsMonthly": 120,
+          "creditsMonthly": 65,
           "sourceUrl": "https://opencode.ai/v2/docs/console/go/"
         }
       ],

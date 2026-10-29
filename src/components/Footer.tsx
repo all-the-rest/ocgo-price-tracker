@@ -9,6 +9,8 @@ interface FooterProps {
   t: Translation;
   data: PriceData;
   lang: "de" | "en";
+  /** Aktiver Plan — der Footer-Hinweis nennt dessen Guthaben. */
+  planId: string;
 }
 
 function scrollToSection(id: string, e: MouseEvent) {
@@ -17,7 +19,7 @@ function scrollToSection(id: string, e: MouseEvent) {
 }
 
 export default function Footer(props: FooterProps) {
-  const plan = () => resolvePlan(props.data);
+  const plan = () => resolvePlan(props.data, props.planId);
   return (
     <footer class="mx-auto max-w-6xl px-4 pb-10">
       <div class="flex flex-col gap-2 border-t border-base-300 pt-4 text-xs text-base-content/70">

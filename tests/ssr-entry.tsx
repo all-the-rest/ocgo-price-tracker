@@ -3,6 +3,7 @@ import PriceTable from "../src/components/PriceTable";
 import PrivacyTable from "../src/components/PrivacyTable";
 import Changelog from "../src/components/Changelog";
 import Footer from "../src/components/Footer";
+import FreeModelsTable from "../src/components/FreeModelsTable";
 import type { Basis, Model, FreeModel, ChangelogEntry, Plan, PlanId, PriceData } from "../src/types";
 import type { SortField, PrivacySortState } from "../src/sort";
 import { i18n, type Lang } from "../src/i18n";
@@ -56,8 +57,8 @@ export function renderPriceTable(models: Model[], opts: RenderOptions): string {
 }
 
 /** Rendert den echten Footer serverseitig (Feiertagskalender-Zeile, §7a). */
-export function renderFooter(data: PriceData, lang: Lang): string {
-  return renderToString(() => <Footer t={i18n[lang]} data={data} lang={lang} />);
+export function renderFooter(data: PriceData, lang: Lang, planId: PlanId = "go"): string {
+  return renderToString(() => <Footer t={i18n[lang]} data={data} lang={lang} planId={planId} />);
 }
 
 /** Rendert die echte Changelog-Komponente serverseitig (für Zeit/Anker-Tests). */export function renderChangelog(
@@ -68,6 +69,23 @@ export function renderFooter(data: PriceData, lang: Lang): string {
 ): string {
   return renderToString(() => (
     <Changelog entries={entries} t={i18n[lang]} lang={lang} plans={plans} planId={planId} />
+  ));
+}
+
+export function renderFreeModelsTable(freeModels: FreeModel[], plans: Plan[], lang: Lang = "en"): string {
+  return renderToString(() => (
+    <FreeModelsTable
+      freeModels={freeModels}
+      plans={plans}
+      t={i18n[lang]}
+      lang={lang}
+      sort={{ field: "model", dir: 1 }}
+      setSort={() => {}}
+      caps={[]}
+      setCaps={() => {}}
+      showTraining={true}
+      setShowTraining={() => {}}
+    />
   ));
 }
 

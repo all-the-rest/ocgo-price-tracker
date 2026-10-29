@@ -109,7 +109,9 @@ export function renderChange(c, planNames = {}) {
       return `- **${c.name ?? c.model}** — new free model`;
     case "plan_added":
       // Plan-Name bevorzugt aus data/latest.json (i18n-frei, rein englisch).
-      return `- **${planNames[c.plan] ?? c.name}** — new plan: ${fmtUsage(c.priceMonthly)}/month, up to ${fmtUsage(c.creditsMonthly)} included usage per model`;
+      return c.creditsMonthly == null
+        ? `- **${planNames[c.plan] ?? c.name}** — new plan: ${fmtUsage(c.priceMonthly)}/month; no total credit pool documented`
+        : `- **${planNames[c.plan] ?? c.name}** — new plan: ${fmtUsage(c.priceMonthly)}/month; monthly target credit ${fmtUsage(c.creditsMonthly)}`;
     case "free_removed": {
       const days = Math.max(
         0,

@@ -101,13 +101,16 @@ export default function Changelog(props: ChangelogProps) {
     );
   };
 
+  const planName = (id: string): string =>
+    planLabel(id, props.t, props.plans.find((plan) => plan.id === id)?.name);
+
   /** Nutzung als JSX: Plan-Map mit Plan-Label je Eintrag. */
   const usageNode = (usage: UsageMap, bold: boolean) => (
     <>
       {orderedUsage(usage).map(([id, v], i) => (
         <>
           {i > 0 && " / "}
-          {planLabel(id, props.t)} {usageValue(v, bold)}
+          {planName(id)} {usageValue(v, bold)}
         </>
       ))}
     </>
@@ -139,7 +142,7 @@ export default function Changelog(props: ChangelogProps) {
   const usageString = (usage: UsageMap): string => {
     const rows = orderedUsage(usage);
     if (rows.length === 0) return "∞";
-    return rows.map(([id, v]) => `${planLabel(id, props.t)} ${fmtUsageVal(v)}`).join(" / ");
+    return rows.map(([id, v]) => `${planName(id)} ${fmtUsageVal(v)}`).join(" / ");
   };
 
   // Richtung des Preis-Badges: rohe Preissumme (plan-unabhängig). Die Changelog-
@@ -231,7 +234,7 @@ export default function Changelog(props: ChangelogProps) {
               {(p, i) => (
                 <span>
                   {i() > 0 ? ", " : " "}
-                  {planLabel(p.plan, props.t)}{" "}
+                  {planName(p.plan)}{" "}
                   <strong class="font-bold">{fmtUsageVal(p.from)}</strong> →{" "}
                   <strong class="font-bold">{fmtUsageVal(p.to)}</strong>
                 </span>
@@ -292,14 +295,14 @@ export default function Changelog(props: ChangelogProps) {
         );
       }
       case "plan_added": {
-        // Preis und Guthaben im Locale der Seite (z. B. $40 / $240).
+        // Monatspreis und SOLL-Guthaben im Locale der Seite (kein Modelllimit).
         const nf = new Intl.NumberFormat(props.lang === "de" ? "de-DE" : "en-US");
         return (
           <span>
-            {props.t.chgPlanAdded
-              .replace("{plan}", planLabel(c.plan, props.t))
+            {(c.creditsMonthly === null ? props.t.chgPlanAddedNoCredit : props.t.chgPlanAdded)
+              .replace("{plan}", planLabel(c.plan, props.t, props.plans.find((plan) => plan.id === c.plan)?.name ?? c.name))
               .replace("{price}", `$${nf.format(c.priceMonthly)}`)
-              .replace("{credits}", `$${nf.format(c.creditsMonthly)}`)}
+              .replace("{credits}", c.creditsMonthly === null ? "" : `$${nf.format(c.creditsMonthly)}`)}
           </span>
         );
       }

@@ -16,6 +16,6 @@ export { generateHydrationScript };
  * und Filter erst NACH der Hydration an, damit Server- und Client-Markup
  * übereinstimmen (siehe `src/App.tsx`).
  */
-export function renderApp(lang: Lang = "en"): string {
-  return renderToString(() => <App initialLang={lang} />);
+export function renderApp(lang: Lang = "en", allowance = false): string {
+  return renderToString(() => <App initialLang={lang} initialAllowance={allowance} />);
 }

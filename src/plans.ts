@@ -3,10 +3,9 @@ import type { Plan, PlanId, PriceData } from "./types";
 
 export const DEFAULT_PLAN_ID: PlanId = "go";
 
-export const TAB_PLAN_IDS: readonly PlanId[] = ["go", "go-plus"];
-
-export function isTabPlan(id: string | null): id is PlanId {
-  return id !== null && (TAB_PLAN_IDS as readonly string[]).includes(id);
+/** Accept a URL plan only when it exists in the currently scraped catalog. */
+export function resolvePlanParam(id: string | null, plans: readonly Plan[]): PlanId | null {
+  return id !== null && plans.some((plan) => plan.id === id) ? id : null;
 }
 
 const PLAN_LABEL_KEY: Record<string, keyof Translation> = {
@@ -14,9 +13,9 @@ const PLAN_LABEL_KEY: Record<string, keyof Translation> = {
   "go-plus": "planGoPlus",
 };
 
-export function planLabel(id: string, t: Translation): string {
+export function planLabel(id: string, t: Translation, name?: string): string {
   const key = PLAN_LABEL_KEY[id];
-  return key ? t[key] : id;
+  return key ? t[key] : (name ?? id);
 }
 
 /**

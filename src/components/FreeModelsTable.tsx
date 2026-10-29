@@ -69,7 +69,7 @@ export default function FreeModelsTable(props: FreeModelsTableProps) {
         <p class="mt-1 text-sm text-base-content/70">
           {props.t.freeModelsPlansNote.replace(
             "{plans}",
-            props.plans.map((p) => planLabel(p.id, props.t)).join(", "),
+            props.plans.map((p) => planLabel(p.id, props.t, p.name)).join(", "),
           )}
         </p>
         <CapabilityFilter

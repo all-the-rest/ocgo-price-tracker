@@ -2,7 +2,8 @@ export type PriceField = "input" | "output" | "cachedRead" | "cachedWrite";
 
 export type Basis = "list" | "full" | "paid";
 
-export type PlanId = "go" | "go-plus";
+/** Plan IDs are sourced dynamically from the pricing documentation. */
+export type PlanId = string;
 
 export type Modality = "text" | "audio" | "image" | "video" | "pdf";
 
@@ -39,7 +40,7 @@ export interface PricingType {
 }
 
 /** Plan-Id → Nutzung in $ (`null` = unbegrenzt / kostenlose Zeile). */
-export type UsageMap = Record<PlanId, number | null>;
+export type UsageMap = Record<string, number | null>;
 
 export interface RequestPattern {
   input: number;
@@ -72,7 +73,7 @@ export interface Model {
   cachedRead: number | null;
   cachedWrite: number | null;
   /** Nutzung je Plan (Plan-Id → $, `null` = unbegrenzt/kostenlose Zeile). */
-  usage: Record<PlanId, number | null>;
+  usage: Record<string, number | null>;
   pattern: RequestPattern | null;
   capabilities: Capabilities | null;
   /** Kontextfenster in Tokens (aus models.dev); null = unbekannt. */
@@ -119,16 +120,16 @@ export type PeakRules = Record<string, PeakRule>;
 export type HolidayCalendars = Record<string, HolidayCalendar>;
 
 /**
- * Ein Abonnement-Plan (analog cc-price-tracker `Plan`). OpenCode Go hat zwei
- * Abonnemente (`go`, `go-plus`); Tokenpreise sind identisch, die inkludierte
+ * Ein Abonnement-Plan (analog cc-price-tracker `Plan`). Pläne werden aus der
+ * OpenCode-Dokumentation geladen; Tokenpreise sind identisch, die inkludierte
  * Nutzung pro Modell unterscheidet sich.
  */
 export interface Plan {
   id: PlanId;
   name: string;
   priceMonthly: number;
-  /** Höchste endliche Nutzung des Plans — Basis für „volles Monatsguthaben“. */
-  creditsMonthly: number;
+  /** Monatliches SOLL-Guthaben des Plans; `null` wenn kein Bezugspunkt bekannt. */
+  creditsMonthly: number | null;
   sourceUrl: string;
 }
 
@@ -170,7 +171,7 @@ export type Change =
   | { type: "free_added"; model: string; name?: string }
   | { type: "free_removed"; model: string; name?: string; availableFrom: string; until: string }
   // Ein Abonnement ist neu hinzugekommen: genau ein Event pro Plan.
-  | { type: "plan_added"; plan: PlanId; name: string; priceMonthly: number; creditsMonthly: number };
+  | { type: "plan_added"; plan: PlanId; name: string; priceMonthly: number; creditsMonthly: number | null };
 
 export interface ChangelogEntry {
   id: string;

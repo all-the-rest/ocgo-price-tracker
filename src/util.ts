@@ -10,11 +10,11 @@ export function fmt(n: number | null | undefined): string {
  * `{creditNum}`/`{costNum}` (nackte Zahlen) in i18n-Texten durch die tatsächlich
  * gefetchten Monatsguthaben/-preis-Werte.
  */
-export function fmtPricing(tpl: string, credit: number, cost: number): string {
+export function fmtPricing(tpl: string, credit: number | null, cost: number): string {
   return tpl
-    .replaceAll("{credit}", "$" + credit)
+    .replaceAll("{credit}", credit === null ? "–" : "$" + credit)
     .replaceAll("{cost}", "$" + cost)
-    .replaceAll("{creditNum}", String(credit))
+    .replaceAll("{creditNum}", credit === null ? "–" : String(credit))
     .replaceAll("{costNum}", String(cost));
 }
 

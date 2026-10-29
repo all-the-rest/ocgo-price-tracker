@@ -4,6 +4,7 @@ dist/
 *.log
 tests/.ssr/
 tests/.ssr-allowance/
+tests/.ssr-allowance-page/
 tests/.ssr-peak/
 .ssr-build/
 test-results/

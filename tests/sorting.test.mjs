@@ -120,6 +120,30 @@ test("Changelog: Run-id rendert die Uhrzeit (MEZ/MESZ), Anker = entry.id, mehrer
   assert.doesNotMatch($("#2026-08-26 h3").text(), /\d{1,2}:\d{2}/);
 });
 
+test("dynamische Plannamen erscheinen in Changelog und Free-Model-Hinweis", () => {
+  const customPlan = { ...PLAN, id: "team", name: "Team Subscription" };
+  const html = ssr.renderChangelog(
+    [{
+      id: "2026-10-29T10-00-00Z",
+      date: "2026-10-29",
+      changes: [
+        { type: "model_added", model: "Custom", pricing: { input: 1, output: 2, cachedRead: 0.1, cachedWrite: null, usage: { team: 15 } } },
+        { type: "usage_changed", model: "Custom", plans: [{ plan: "team", from: 15, to: 30 }] },
+        { type: "plan_added", plan: "team", name: "Team Subscription", priceMonthly: 10, creditsMonthly: 60 },
+      ],
+    }],
+    [customPlan], "en", "team"
+  );
+  assert.match(html, /Team Subscription \$15/);
+  assert.match(cheerio.load(html)("li").eq(1).text(), /Team Subscription\s+\$15 → \$30/);
+
+  const freeHtml = ssr.renderFreeModelsTable(
+    [{ id: "free", fullId: "opencode/free", availableFrom: "2026-10-29", privacy: null }],
+    [customPlan]
+  );
+  assert.match(freeHtml, /Team Subscription/);
+});
+
 test("Changelog: usage_changed rendert die plans-Form mit Plan-Labels (nur aktiver Plan)", () => {
   const html = ssr.renderChangelog(
     [
@@ -400,7 +424,7 @@ test("Changelog: plan_added erscheint nur im Tab des neuen Plans (Plan-Label)", 
     .load(ssr.renderChangelog([entry], PLANS, "de", "go-plus"))
     .text()
     .replace(/\s+/g, " ");
-  assert.match(plus, /Go Plus: neuer Tarif — \$40 pro Monat, bis \$240 enthaltene Nutzung pro Modell/);
+  assert.match(plus, /Go Plus: neuer Tarif — \$40 pro Monat; monatliches SOLL-Guthaben \$240/);
 
   const goHtml = ssr.renderChangelog([entry], PLANS, "de", "go");
   assert.equal(

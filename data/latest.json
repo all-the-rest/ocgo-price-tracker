@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-29T05:05:22.282Z",
+  "fetchedAt": "2026-10-29T09:05:15.551Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -23,7 +23,7 @@
       "id": "go-teams",
       "name": "Go Teams",
       "priceMonthly": 20,
-      "creditsMonthly": 120,
+      "creditsMonthly": 65,
       "sourceUrl": "https://opencode.ai/v2/docs/console/go/"
     }
   ],

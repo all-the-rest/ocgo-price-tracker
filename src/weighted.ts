@@ -12,13 +12,51 @@ export function usageOf(m: Model, plan: Plan): number | null {
   return m.usage[plan.id] ?? null;
 }
 
+type UsageColor = "below-paid" | "low" | "partial" | "at-reference" | "above-reference" | "unknown";
+
+function usageColor(usage: number, plan: Plan): UsageColor {
+  // 100 % = monatliches SOLL-Guthaben des Plans (Go $60, Go Plus $240,
+  // Go Teams $65 = Go-Guthaben + einmaliger $5-Aufpreis als Vergleichsbasis).
+  const reference = plan.creditsMonthly;
+  if (reference == null) return "unknown";
+  if (usage < actualPaid(plan)) return "below-paid";
+  if (reference <= 0) return "above-reference";
+  const share = usage / reference;
+  if (share <= 0.25 + 1e-6) return "low";
+  if (share < 1 - 1e-6) return "partial";
+  if (share <= 1 + 1e-6) return "at-reference";
+  return "above-reference";
+}
+
+/** Shared semantic badge palette; all label foregrounds remain theme-readable. */
+export function usageBadgeClass(usage: number, plan: Plan): string {
+  const color = usageColor(usage, plan);
+  if (color === "below-paid") return "bg-error text-base-content border border-error";
+  if (color === "low") return "bg-error/75 text-base-content border border-error";
+  if (color === "partial") return "bg-warning text-base-content border border-warning";
+  if (color === "at-reference") return "bg-success/60 text-base-content border border-success";
+  if (color === "above-reference") return "bg-green-800 text-green-50 border border-green-800";
+  return "bg-base-content/30 text-base-content border border-base-content/30";
+}
+
+/** Solid, visible fill counterpart to the shared badge color semantics. */
+export function usageBarClass(usage: number, plan: Plan): string {
+  const color = usageColor(usage, plan);
+  if (color === "below-paid") return "bg-error";
+  if (color === "low") return "bg-error/75";
+  if (color === "partial") return "bg-warning";
+  if (color === "at-reference") return "bg-success/60";
+  if (color === "above-reference") return "bg-green-800";
+  return "bg-base-content/30";
+}
+
 /**
  * Multiplikator für die Preisbasis „volles Monatsguthaben“:
  * `plan.creditsMonthly / Nutzung`; `null` bei unbegrenzter Nutzung.
  */
 export function multiplierOf(m: Model, plan: Plan): number | null {
   const usage = usageOf(m, plan);
-  return usage === null ? null : plan.creditsMonthly / usage;
+  return usage === null || plan.creditsMonthly === null ? null : plan.creditsMonthly / usage;
 }
 
 /**
@@ -42,6 +80,7 @@ export function fieldPrice(m: Model, f: PriceField, basis: Basis, plan: Plan): n
   const raw = m[f];
   if (basis === "list") return raw;
   if (raw === null) return null;
+  if (basis === "full" && plan.creditsMonthly === null) return null;
   if (basis === "paid") {
     const usage = usageOf(m, plan);
     return usage === null ? null : raw * (actualPaid(plan) / usage);

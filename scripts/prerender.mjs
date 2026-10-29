@@ -77,9 +77,10 @@ function buildJsonLd(lang) {
   return JSON.stringify(graph).replace(/</g, "\\u003c");
 }
 
-function seoHead(lang) {
-  const altEn = `${SITE}/`;
-  const altDe = `${SITE}/de/`;
+function seoHead(lang, allowance = false) {
+  const suffix = allowance ? "allowances/" : "";
+  const altEn = `${SITE}/${suffix}`;
+  const altDe = `${SITE}/de/${suffix}`;
   return [
     `<link rel="alternate" hreflang="en" href="${altEn}" />`,
     `<link rel="alternate" hreflang="de" href="${altDe}" />`,
@@ -89,8 +90,13 @@ function seoHead(lang) {
   ].join("\n    ");
 }
 
-function setMeta(html, lang) {
-  const meta = META[lang];
+function setMeta(html, lang, allowance = false) {
+  const meta = allowance ? {
+    ...META[lang],
+    title: lang === "de" ? "Monatliche Modellnutzung — OpenCode Go" : "Monthly Model Allowances — OpenCode Go",
+    description: lang === "de" ? "Monatliche Nutzungslimits und geschätzte Anfragen je Modell und OpenCode-Go-Abo vergleichen." : "Compare monthly model-specific usage caps and estimated requests across OpenCode Go plans.",
+    canonical: `${SITE}/${lang === "de" ? "de/" : ""}allowances/`,
+  } : META[lang];
   let out = html
     .replace(/<html lang="[^"]*"/, `<html lang="${lang}"`)
     .replace(/<title>[\s\S]*?<\/title>/, `<title>${meta.title}</title>`);
@@ -118,13 +124,11 @@ function writeRobots() {
 }
 
 function writeSitemap() {
-  const alternates =
-    `<xhtml:link rel="alternate" hreflang="en" href="${SITE}/" />` +
-    `<xhtml:link rel="alternate" hreflang="de" href="${SITE}/de/" />` +
-    `<xhtml:link rel="alternate" hreflang="x-default" href="${SITE}/" />`;
-  const locs = [`${SITE}/`, `${SITE}/de/`];
-  const body = locs
-    .map((loc) => `  <url>\n    <loc>${loc}</loc>\n    ${alternates}\n  </url>`)
+  const pairs = [[`${SITE}/`, `${SITE}/de/`], [`${SITE}/allowances/`, `${SITE}/de/allowances/`]];
+  const body = pairs.flatMap(([en, de]) => [en, de].map((loc) =>
+    `  <url>\n    <loc>${loc}</loc>\n    <xhtml:link rel="alternate" hreflang="en" href="${en}" />` +
+      `\n    <xhtml:link rel="alternate" hreflang="de" href="${de}" />` +
+      `\n    <xhtml:link rel="alternate" hreflang="x-default" href="${en}" />\n  </url>`))
     .join("\n");
   writeFileSync(
     join(DIST, "sitemap.xml"),
@@ -167,10 +171,10 @@ async function main() {
 
   const hydrationScript = mod.generateHydrationScript();
 
-  const renderFile = (lang) => {
-    let html = setMeta(template, lang);
-    html = html.replace("</head>", `    ${hydrationScript}\n    ${seoHead(lang)}\n  </head>`);
-    const body = mod.renderApp(META[lang].lang);
+  const renderFile = (lang, allowance = false) => {
+    let html = setMeta(template, lang, allowance);
+    html = html.replace("</head>", `    ${hydrationScript}\n    ${seoHead(lang, allowance)}\n  </head>`);
+    const body = mod.renderApp(META[lang].lang, allowance);
     if (!html.includes('<div id="root"></div>')) {
       throw new Error("index.html enthält keinen leeren #root-Container");
     }
@@ -180,6 +184,10 @@ async function main() {
   mkdirSync(join(DIST, "de"), { recursive: true });
   writeFileSync(join(DIST, "index.html"), renderFile("en"));
   writeFileSync(join(DIST, "de", "index.html"), renderFile("de"));
+  mkdirSync(join(DIST, "allowances"), { recursive: true });
+  mkdirSync(join(DIST, "de", "allowances"), { recursive: true });
+  writeFileSync(join(DIST, "allowances", "index.html"), renderFile("en", true));
+  writeFileSync(join(DIST, "de", "allowances", "index.html"), renderFile("de", true));
 
   writeRobots();
   writeSitemap();

@@ -1437,14 +1437,28 @@ export function parsePeakRanges(text) {
  * Tokenpreise sind laut Doku in allen Plänen identisch: die Preise des ersten
  * Plans sind die Datenquelle, alle weiteren Tabellen werden dagegen geprüft
  * (Abweichung → ScrapeError). Pro Modell entsteht eine `usage`-Map Plan-Id →
- * Nutzung in $ (`null` = unbegrenzt). `creditsMonthly` je Plan = höchste
- * endliche Nutzung dieses Plans (das „volle Monatsguthaben“).
+ * Nutzung in $ (`null` = unbegrenzt). `creditsMonthly` ist das monatliche
+ * SOLL-Guthaben des Plans (100 %-Bezugspunkt für die Nutzungsfarben):
+ * Go/Go Plus = 6 × Monatspreis, Go Teams = Go-Guthaben + $5 Modell-Aufpreis.
  */
+export function creditsMonthlyForPlan(plan, goPlan) {
+  // Go $10 → $60; Go Plus $40 → $240 (= 4× Go).
+  if (plan.id === "go" || plan.id === "go-plus") return plan.priceMonthly * 6;
+  // Go Teams: jedes Mitglied bekommt die Go-Limits plus $5/Monat je Modell.
+  // Das SOLL-Guthaben ist damit Go-Guthaben + $5 ($65) und dient als 100 %.
+  if (plan.id === "go-teams") {
+    const goCredits = goPlan?.creditsMonthly ?? (Number.isFinite(goPlan?.priceMonthly) ? goPlan.priceMonthly * 6 : null);
+    return goCredits == null ? null : goCredits + 5;
+  }
+  return null;
+}
+
 function parsePageData($) {
   const plans = parsePlanTable($);
   const planTables = extractPlanTableMap($, plans);
 
   const rowsByPlan = new Map();
+  const goPlan = plans.find((plan) => plan.id === "go");
   for (const plan of plans) {
     const table = planTables.get(plan.id);
     rowsByPlan.set(plan.id, parseModels($, table, mapColumns($, table)));
@@ -1562,23 +1576,21 @@ function parsePageData($) {
     }
   }
 
-  // creditsMonthly = volles Monatsguthaben des Plans. Die Quelle nennt den
-  // Wert nicht mehr (die alte Prosa "Nutzung im Wert von $X" / "das
-  // X-fache dieses Betrags" ist seit 2026-09-28 aus der Doku verschwunden);
-  // das höchste finite Modell-Limit ("Ausreißer-Tiers", z. B. DeepSeek V4.1
-  // Flash mit $80 bei Go) ist keine verlässliche Basis (würde das Guthaben
-  // von $60 auf $80 anheben). Deshalb stabiler Nominalwert 6 × Monatspreis
-  // (Go: 6 × $10 = $60, Go Plus: 6 × $40 = $240) — konsistent mit dem
-  // historischen "6x"-Wert und mit scraper-seitig parsebarem priceMonthly.
+  // Go/Go Plus retain their documented 6× monthly credit basis; Go Teams'
+  // SOLL credit is Go's credit plus the documented $5/model uplift ($65).
+  // Other plans remain unknown unless a source-backed rule is added.
+  const goPlanCredits = goPlan ? creditsMonthlyForPlan(goPlan) : null;
+  if (goPlan) goPlan.creditsMonthly = goPlanCredits;
   for (const plan of plans) {
-    const values = models.map((m) => m.usage[plan.id]).filter((v) => typeof v === "number");
-    if (values.length === 0) {
-      throw new ScrapeError(`Plan "${plan.id}" hat keine endliche Nutzung — creditsMonthly nicht bestimmbar`);
-    }
     if (!Number.isFinite(plan.priceMonthly) || plan.priceMonthly <= 0) {
-      throw new ScrapeError(`Plan "${plan.id}" hat keinen parsebaren Monatspreis — creditsMonthly nicht bestimmbar`);
+      throw new ScrapeError(`Plan "${plan.id}" hat keinen parsebaren Monatspreis`);
     }
-    plan.creditsMonthly = plan.priceMonthly * 6;
+    if (plan !== goPlan) {
+      plan.creditsMonthly = creditsMonthlyForPlan(plan, {
+        ...goPlan,
+        creditsMonthly: goPlanCredits,
+      });
+    }
     plan.sourceUrl = SOURCE_URL;
   }
 
@@ -1595,8 +1607,8 @@ export function parseHtml(html) {
 }
 
 /**
- * Extrahiert die Pläne (inkl. `creditsMonthly` = 6 × Monatspreis des
- * Plans) aus dem HTML einer OpenCode-Go-Dokumentationsseite.
+ * Extrahiert die Pläne aus dem HTML einer OpenCode-Go-Dokumentationsseite;
+ * only plans with a source-backed total monthly credit get `creditsMonthly`.
  */
 export function parsePlans(html) {
   const $ = cheerio.load(html);
@@ -2359,7 +2371,7 @@ const PlanSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   priceMonthly: z.number().positive(),
-  creditsMonthly: z.number().positive(),
+  creditsMonthly: z.number().positive().nullable(),
   sourceUrl: z.string().url(),
 });
 
@@ -2576,7 +2588,7 @@ const ChangeSchema = z.discriminatedUnion("type", [
     plan: z.string().min(1),
     name: z.string().min(1),
     priceMonthly: z.number().positive(),
-    creditsMonthly: z.number().positive(),
+    creditsMonthly: z.number().positive().nullable(),
   }),
 ]);
 

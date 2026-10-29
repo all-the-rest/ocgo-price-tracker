@@ -4,7 +4,7 @@ import { i18n, type Lang } from "./i18n";
 import { BUILD_TIME_ISO } from "./buildInfo";
 import { VALID_SORT, type FreeSortState, type PrivacySortState, type SortState } from "./sort";
 import { CAP_IDS, type CapId } from "./capabilities";
-import { DEFAULT_PLAN_ID, TAB_PLAN_IDS, allPlans, isTabPlan, resolvePlan } from "./plans";
+import { DEFAULT_PLAN_ID, allPlans, resolvePlan, resolvePlanParam } from "./plans";
 import Header from "./components/Header";
 import Hero from "./components/Hero";
 import PlanTabs from "./components/PlanTabs";
@@ -15,6 +15,7 @@ import Changelog from "./components/Changelog";
 import Legal from "./components/Legal";
 import Footer from "./components/Footer";
 import ShareDialog from "./components/ShareDialog";
+import AllowancePage from "./components/AllowancePage";
 import dataJson from "../data/latest.json";
 import changelogJson from "./data/changelog.json";
 
@@ -40,11 +41,12 @@ function readParams(): {
   theme: "dark" | "light" | null;
   cap: CapId[] | null;
   fcap: CapId[] | null;
+  allowancePlan: PlanId | null;
 } {
   const p =
     typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
   const planRaw = p.get("plan");
-  const plan = isTabPlan(planRaw) ? planRaw : null;
+  const plan = resolvePlanParam(planRaw, data.plans ?? []);
   const [f, d] = (p.get("sort") ?? "").split(":");
   const sort =
     VALID_SORT.includes(f as SortState["field"]) && (d === "asc" || d === "desc")
@@ -73,7 +75,8 @@ function readParams(): {
       : Array.from(new Set(raw.split(",").filter((x): x is CapId => (CAP_IDS as readonly string[]).includes(x))));
   const cap = parseCaps(p.get("cap"));
   const fcap = parseCaps(p.get("fcap"));
-  return { plan, sort, fsort, psort, basis, lang, theme, cap, fcap };
+  const allowancePlan = resolvePlanParam(p.get("allowancePlan"), data.plans ?? []);
+  return { plan, sort, fsort, psort, basis, lang, theme, cap, fcap, allowancePlan };
 }
 
 function prefersDarkSystem(): boolean {
@@ -124,6 +127,7 @@ function initialDark(): boolean {
 interface AppProps {
   /** Beim Prerender erzwungene Sprache (Server). Client leitet sie aus dem Pfad ab. */
   initialLang?: Lang;
+  initialAllowance?: boolean;
 }
 
 export default function App(props: AppProps = {}) {
@@ -144,6 +148,7 @@ export default function App(props: AppProps = {}) {
   };
   const [basis, setBasis] = createSignal<Basis>("full");
   const [planId, setPlanId] = createSignal<PlanId>(DEFAULT_PLAN_ID);
+  const [allowancePlanId, setAllowancePlanId] = createSignal<PlanId>((data.plans ?? [])[0]?.id ?? DEFAULT_PLAN_ID);
   const [sort, setSort] = createSignal<SortState>({ field: "requests", dir: -1 });
   const [freeSort, setFreeSort] = createSignal<FreeSortState>({ field: "availableFrom", dir: -1 });
   const [privacySort, setPrivacySort] = createSignal<PrivacySortState>({ field: "tier", dir: 1 });
@@ -153,7 +158,10 @@ export default function App(props: AppProps = {}) {
   const [showFreeTraining, setShowFreeTraining] = createSignal(true);
 
   const t = () => i18n[lang()];
-
+  const allowancePage = () => props.initialAllowance ?? /\/allowances\/?$/.test(typeof window === "undefined" ? "/" : window.location.pathname);
+  createEffect(() => {
+    if (allowancePage()) document.title = t().allowanceDocumentTitle;
+  });
   onMount(() => {
     // Gespeicherte Sprache, `?lang=…` und alle weiteren Query-Parameter erst
     // nach der Hydration anwenden — vorher rendert der Client exakt das
@@ -174,6 +182,7 @@ export default function App(props: AppProps = {}) {
     else if (pathLang() === "en" && stored) setLang(stored);
     else if (pathLang() === "en" && browserDe) setLang("de");
     if (p.plan) setPlanId(p.plan);
+    if (p.allowancePlan) setAllowancePlanId(p.allowancePlan);
     if (p.basis) setBasis(p.basis);
     if (p.sort) setSort(p.sort);
     if (p.fsort) setFreeSort(p.fsort);
@@ -183,11 +192,15 @@ export default function App(props: AppProps = {}) {
     _setDark(resolveInitialDark(p.theme, storedTheme));
   });
 
-  // Sichtbare Pläne für die Tabs (`go`, `go-plus`); der Plan steuert die
+  // Sichtbare Pläne für die Tabs stammen direkt aus dem Scrape; der Plan steuert die
   // plan-abhängige Rechnung in Tabelle/Share-Card. URL (`?plan=`) ist die
   // Quelle der Wahrheit — kein localStorage.
-  const tabPlans = () => (data.plans ?? []).filter((p) => (TAB_PLAN_IDS as readonly string[]).includes(p.id));
+  const tabPlans = () => data.plans ?? [];
   const plan = () => resolvePlan(data, planId());
+
+  createEffect(() => {
+    if (plan().creditsMonthly === null && basis() === "full") setBasis("list");
+  });
 
   createEffect(() => {
     document.documentElement.lang = lang();
@@ -222,6 +235,8 @@ export default function App(props: AppProps = {}) {
     const p = new URLSearchParams(window.location.search);
     if (planId() === DEFAULT_PLAN_ID) p.delete("plan");
     else p.set("plan", planId());
+    if (allowancePlanId() === (data.plans ?? [])[0]?.id) p.delete("allowancePlan");
+    else p.set("allowancePlan", allowancePlanId());
     const s = sort();
     if (s.field === "cost" && s.dir === 1) p.delete("sort");
     else p.set("sort", `${s.field}:${s.dir === 1 ? "asc" : "desc"}`);
@@ -247,23 +262,14 @@ export default function App(props: AppProps = {}) {
     history.replaceState(null, "", url);
   });
 
-  const resetAll = () => {
-    setPlanId(DEFAULT_PLAN_ID);
-    setSort({ field: "cost", dir: 1 });
-    setFreeSort({ field: "availableFrom", dir: -1 });
-    setPrivacySort({ field: "tier", dir: 1 });
-    setBasis(defaultBasis);
-    setLang(defaultLang);
-    setCaps([]);
-    setFreeCaps([]);
-    history.replaceState(null, "", langPath(defaultLang));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
   return (
     <div class="min-h-screen w-full bg-base-100 text-base-content">
-      <Header lang={lang()} setLang={setLang} dark={dark()} setDark={setDark} onReset={resetAll} t={t()} />
+      <Header lang={lang()} setLang={setLang} dark={dark()} setDark={setDark} t={t()} />
       <main class="mx-auto max-w-6xl px-4 py-8">
+        <Show when={allowancePage()}>
+          <AllowancePage models={data.models} plans={allPlans(data)} lang={lang()} t={t()} selectedPlan={allowancePlanId()} onSelectPlan={setAllowancePlanId} />
+        </Show>
+        <Show when={!allowancePage()}>
         <Hero
           t={t()}
           modelCount={data.models.length}
@@ -326,8 +332,9 @@ export default function App(props: AppProps = {}) {
           planId={planId()}
         />
         <Legal t={t()} />
+        </Show>
       </main>
-      <Footer t={t()} data={data} lang={lang()} />
+      <Footer t={t()} data={data} lang={lang()} planId={planId()} />
     </div>
   );
 }

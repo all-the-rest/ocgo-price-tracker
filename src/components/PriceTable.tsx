@@ -4,7 +4,7 @@ import { HEADING_IDS } from "../headings";
 import Heading from "./Heading";
 import type { Basis, HolidayCalendars, Model, PeakRules, Plan } from "../types";
 import { fmt, fmtContextWindow, fmtPricing } from "../util";
-import { fieldPrice, formatTokens, formatReqPerMonth, requestCost, requestsPerMonth, usageOf } from "../weighted";
+import { fieldPrice, formatTokens, formatReqPerMonth, requestCost, requestsPerMonth, usageOf, usageBadgeClass } from "../weighted";
 import { actualPaid } from "../fees";
 import { CapabilityBadges, CapabilityFilter, capsOf, type CapId } from "../capabilities";
 import { setupDragScroll } from "../dragscroll";
@@ -135,19 +135,7 @@ export default function PriceTable(props: PriceTableProps) {
   };
 
   // Anteil am Credit-Claim (`plan.creditsMonthly`); zuerst gegen tatsächlich gezahlten Preis prüfen.
-  const usageBadge = (usage: number) => {
-    const paid = actualPaid(props.plan);
-    if (usage < paid) return "badge-error";
-    const claim = props.plan.creditsMonthly;
-    if (claim == null || claim <= 0) return "badge-success";
-    const share = usage / claim;
-    if (share <= 0.25 + 1e-6) return "bg-error/20 text-error border border-error";
-    if (share < 1 - 1e-6) return "badge-warning";
-    if (share <= 1 + 1e-6) return "bg-success/20 text-success border border-success";
-    return "badge-success";
-  };
-
-  const usagePct = (usage: number) => Math.round((usage / props.plan.creditsMonthly) * 100);
+  const usagePct = (usage: number) => props.plan.creditsMonthly === null ? null : Math.round((usage / props.plan.creditsMonthly) * 100);
 
   const factorNote = createMemo(() => {
     if (props.basis === "list") return "";
@@ -160,10 +148,12 @@ export default function PriceTable(props: PriceTableProps) {
         .join(" · ");
       return props.t.paidNote.replace("{paid}", String(actualPaid(props.plan))).replace("{rows}", rows);
     }
+    const creditsMonthly = props.plan.creditsMonthly;
+    if (creditsMonthly === null) return props.t.fullBasisUnknown;
     const rows = usages
-      .map((u) => `$${u} → ${factorPhrase(props.plan.creditsMonthly / u, props.lang, "price")}`)
+      .map((u) => `$${u} → ${factorPhrase(creditsMonthly / u, props.lang, "price")}`)
       .join(" · ");
-    return props.t.factorNote.replace("{credit}", String(props.plan.creditsMonthly)).replace("{rows}", rows);
+    return props.t.factorNote.replace("{credit}", String(creditsMonthly)).replace("{rows}", rows);
   });
 
   const priceCell = (n: number | null | undefined) => {
@@ -200,9 +190,10 @@ export default function PriceTable(props: PriceTableProps) {
           <button
             class="join-item btn btn-sm text-xs sm:text-sm whitespace-nowrap"
             classList={{ "btn-active": props.basis === "full", "btn-primary": props.basis === "full" }}
+            disabled={props.plan.creditsMonthly === null}
             onClick={() => props.setBasis("full")}
           >
-            {fmtPricing(props.t.basisFull, props.plan.creditsMonthly, props.plan.priceMonthly)}
+            {props.plan.creditsMonthly === null ? props.t.basisFullUnavailable : fmtPricing(props.t.basisFull, props.plan.creditsMonthly, props.plan.priceMonthly)}
           </button>
           <button
             class="join-item btn btn-sm text-xs sm:text-sm whitespace-nowrap"
@@ -332,22 +323,22 @@ export default function PriceTable(props: PriceTableProps) {
                       when={usageOf(m, props.plan)}
                       fallback={
                         <Tooltip tip={props.t.usageUnlimited} class="inline-block">
-                          <span class="badge badge-sm badge-success font-bold">∞</span>
+                          <span class="badge badge-sm badge-success font-bold text-base-content">∞</span>
                         </Tooltip>
                       }
                     >
                       {(usage) => (
                         <Tooltip
-                          tip={props.t.usageTooltip
-                            .replace("{pct}", String(usagePct(usage())))
+                          tip={(props.plan.creditsMonthly === null ? props.t.usageTooltipNoCredit : props.t.usageTooltip)
+                            .replace("{pct}", String(usagePct(usage()) ?? props.t.noValue))
                             .replace("{usage}", String(usage()))
-                            .replace("{credit}", String(props.plan.creditsMonthly))
+                            .replace("{credit}", String(props.plan.creditsMonthly ?? props.t.noValue))
                             .replace("{mult}", formatMult(usage() / actualPaid(props.plan), props.lang))
                             .replace("{paid}", String(actualPaid(props.plan)))}
                           class="inline-block"
                         >
                           <span
-                            class={`badge badge-sm ${usageBadge(usage())}`}
+                            class={`badge badge-sm ${usageBadgeClass(usage(), props.plan)}`}
                           >
                             ${usage()} · {formatMult(usage() / actualPaid(props.plan), props.lang)}×
                           </span>

@@ -190,18 +190,26 @@ test("release notes: free_added nutzt Namen, free_removed mit Tagen + verfügbar
   );
 });
 
-test("release notes: plan_added nennt Plannamen, Monatspreis und Guthaben", () => {
+test("release notes: plan_added nennt SOLL-Guthaben, nicht ein Modellmaximum", () => {
   assert.equal(
     renderChange(
       { type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 },
       { go: "Go", "go-plus": "Go Plus" }
     ),
-    "- **Go Plus** — new plan: $40/month, up to $240 included usage per model"
+    "- **Go Plus** — new plan: $40/month; monthly target credit $240"
   );
   // Ohne auflösbaren Plannamen fällt der Release-Text auf den Event-Namen zurück.
   assert.equal(
     renderChange({ type: "plan_added", plan: "go-plus", name: "Go Plus", priceMonthly: 40, creditsMonthly: 240 }),
-    "- **Go Plus** — new plan: $40/month, up to $240 included usage per model"
+    "- **Go Plus** — new plan: $40/month; monthly target credit $240"
+  );
+  assert.equal(
+    renderChange({ type: "plan_added", plan: "go-teams", name: "Go Teams", priceMonthly: 20, creditsMonthly: 65 }),
+    "- **Go Teams** — new plan: $20/month; monthly target credit $65"
+  );
+  assert.equal(
+    renderChange({ type: "plan_added", plan: "go-teams", name: "Go Teams", priceMonthly: 20, creditsMonthly: null }),
+    "- **Go Teams** — new plan: $20/month; no total credit pool documented"
   );
 });
 
@@ -267,7 +275,8 @@ function assertCovered(notes, c) {
     case "plan_added":
       has(c.name);
       has(String(c.priceMonthly));
-      has(String(c.creditsMonthly));
+      if (c.creditsMonthly == null) has("no total credit pool documented");
+      else has(String(c.creditsMonthly));
       return;
     case "free_removed": {
       has(c.name ?? c.model);

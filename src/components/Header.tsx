@@ -6,7 +6,6 @@ interface HeaderProps {
   setLang: (l: Lang) => void;
   dark: boolean;
   setDark: (v: boolean) => void;
-  onReset: () => void;
   t: Translation;
 }
 
@@ -15,14 +14,15 @@ export default function Header(props: HeaderProps) {
   // in der Desktop-Zeile (≥ md) als auch im Mobile-Burger (< md) gerendert,
   // damit die beiden Darstellungen nicht auseinanderlaufen.
   const crossLinks = () => [
-    { href: "https://ai-10-usd.all-the.rest/", label: props.t.sourceAi10, badge: "comparison" },
+    { href: props.lang === "de" ? "/de/allowances/" : "/allowances/", label: props.t.allowanceNav, internal: true },
+    { href: "https://ai-10-usd.all-the.rest/", label: props.t.sourceAi10, internal: false },
   ];
 
   return (
     <header class="navbar sticky top-0 z-10 bg-base-200 px-6 shadow-sm">
       <div class="navbar-start">
         {/* Mobile (< md): Burger ganz links, Menü öffnet sich nach rechts. */}
-        <div class="dropdown dropdown-start md:hidden">
+        <div class="dropdown dropdown-start xl:hidden">
           <div
             tabindex="0"
             role="button"
@@ -44,13 +44,13 @@ export default function Header(props: HeaderProps) {
           </div>
           <ul
             tabindex="0"
-            class="menu dropdown-content z-20 mt-2 w-60 max-w-[90vw] rounded-box bg-base-100 p-2 shadow-lg"
+            class="menu dropdown-content z-20 mt-2 w-64 max-w-[90vw] rounded-box bg-base-100 p-2 shadow-lg"
           >
             <For each={crossLinks()}>
               {(link) => (
                 <li>
-                  <a href={link.href} target="_blank" rel="noreferrer">
-                    {link.label} <span aria-hidden="true">↗</span>
+                    <a class={link.internal ? "btn btn-primary btn-sm w-full justify-start whitespace-nowrap text-primary-content" : "link link-hover inline-flex items-center gap-1 whitespace-nowrap"} href={link.href} target={link.href.startsWith("http") ? "_blank" : undefined} rel={link.href.startsWith("http") ? "noreferrer" : undefined}>
+                    {link.label} {!link.internal && <span aria-hidden="true">↗</span>}
                   </a>
                 </li>
               )}
@@ -58,15 +58,11 @@ export default function Header(props: HeaderProps) {
           </ul>
         </div>
         <a
-          href="./"
+          href={props.lang === "de" ? "/de/" : "/"}
           class="inline-flex items-center"
           aria-label={
             props.lang === "de" ? "Preis-Tracking für OpenCode Go — Start" : "Price Tracking for OpenCode Go — Home"
           }
-          onClick={(e) => {
-            e.preventDefault();
-            props.onReset();
-          }}
         >
           <svg
             class="h-5 w-5 text-primary"
@@ -88,39 +84,38 @@ export default function Header(props: HeaderProps) {
       </div>
       <div class="navbar-end gap-2 sm:gap-4">
         {/* Desktop (≥ md): Cross-Links inline */}
-        <div class="hidden items-center gap-4 md:flex">
+        <div class="hidden items-center gap-3 xl:flex">
           <For each={crossLinks()}>
             {(link) => (
               <a
-                class="link link-hover inline-flex items-center gap-1"
+                class={link.internal ? "btn btn-primary btn-sm whitespace-nowrap text-primary-content" : "link link-hover inline-flex items-center gap-1 whitespace-nowrap"}
                 href={link.href}
-                target="_blank"
-                rel="noreferrer"
+                target={link.href.startsWith("http") ? "_blank" : undefined}
+                rel={link.href.startsWith("http") ? "noreferrer" : undefined}
               >
                 {link.label}
-                <span class="badge badge-ghost badge-xs whitespace-nowrap">{link.badge}</span>
-                <span aria-hidden="true">↗</span>
+                {!link.internal && <span aria-hidden="true">↗</span>}
               </a>
             )}
           </For>
         </div>
         <div class="join">
           <button
-            class="join-item btn btn-sm"
+            class="join-item btn btn-sm text-base-content"
             classList={{ "btn-active": props.lang === "de" }}
             onClick={() => props.setLang("de")}
           >
             DE
           </button>
           <button
-            class="join-item btn btn-sm"
+            class="join-item btn btn-sm text-base-content"
             classList={{ "btn-active": props.lang === "en" }}
             onClick={() => props.setLang("en")}
           >
             EN
           </button>
         </div>
-        <label class="swap swap-rotate p-1">
+        <label class="swap swap-rotate p-1 text-base-content">
           <input
             type="checkbox"
             class="theme-controller"

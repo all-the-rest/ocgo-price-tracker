@@ -360,3 +360,46 @@ Regeln selbst stehen weiterhin in `AGENTS.md`.
 
 - **5/95-Gewichtung in `requestCost`** (5 % Input-Preis + 95 % Cached-Write-Preis für Input-Tokens):
   basiert auf beobachteter Nutzung (Luna ~28/72, Qwen3.8 Max ~0/100 Input/Cached-Write).
+
+## Entscheidungen 2026-10-29 — Go Teams: $65 als SOLL-Guthaben (100 %)
+Anlass: Nutzer-Vorgabe „konsistent $65 für Go Teams als 100% nehmen“ und „der monatliche SOLL Pool
+ist mit $5 mehr als Go (60) exakt definiert, Go Plus SOLL ist 4x Mal Go“. Die OpenCode-Doku nennt
+für Go Teams weiterhin nur Go-Limits + $5/Modell/Monat, kein gemeinsames Pool-Guthaben — die
+$65-Basis ist eine **Anzeige-/Vergleichsentscheidung**, keine Quellenbehauptung.
+
+- [x] `creditsMonthly` ist das **SOLL-Guthaben** und der einzige 100 %-Bezugspunkt: Go 60,
+  Go Plus 240 (4× Go), Go Teams 65 (Go 60 + $5). Herleitung in `creditsMonthlyForPlan(plan, goPlan)`.
+- [x] **`usageColorReferenceMonthly` entfernt** (Scraper, zod `PlanSchema`, `src/types.ts`,
+  `usageColor` in `src/weighted.ts`, Hero, PriceTable, Tests). Eine Zahl, eine Bedeutung.
+- [x] **„Volles Guthaben“ für Go Teams verfügbar:** `fieldPrice(..., "full")` nutzt
+  `creditsMonthly/Nutzung`; der Umschalter ist nur noch bei `creditsMonthly: null` deaktiviert.
+- [x] **Satz „Go $60 + $5 pro Modell (Referenz, kein Gesamtpool)“ entfernt** — Hero zeigt `$65`
+  wie die anderen Beträge (`statsCreditTitle`/`statsCreditValue`), keine Sonderbeschriftung.
+- [x] **Label-Hintergrund == Balkenfarbe** (beide aus `usageBadgeClass`/`usageBarClass`), kein
+  weißer Text, Go Teams nie neutral; DeepSeek bleibt über 65 dunkelgrün.
+- [x] **Neue Vergleichsseite `/allowances/`** (de `/de/allowances/`) inkl. `allowancePlan`-Param,
+  Header-Button mit `text-primary-content` (lesbar auf `primary`).
+- [x] **Daten/Historie konsistent gezogen:** `plans[].creditsMonthly` (Go Teams 65) in
+  `data/latest.json`, `data/history.json` (auch dem Vorlauf-Snapshot dieses Tages) und im
+  `plan_added`-Event des noch unveröffentlichten Changelog-Eintrags.
+- [x] **Release-Notizen ohne Promo-Link:** `[View the latest prices](…)` aus
+  `scripts/release-notes.mjs` entfernt (AGENTS.md: nur englische Fakten, keine Site-Links) — die
+  Release `2026-10-29T05-05-22Z` wird per `ensure-release.mjs --all` bzw. `gh release edit` nachgezogen.
+- [x] **Tests ohne Zahlen-Pins auf generierte Daten:** Go-Teams-Historie prüft `go.creditsMonthly + 5`
+  strukturell; Katalog-Beispiele (MiMo/DeepSeek) und „gelb/dunkelgrün vorhanden“ entfernt, stattdessen
+  Invarianten (Label-Hintergrund == Balken, endliche Werte nie neutral, Intro-Zahlen data-driven).
+- [x] `Footer` bekommt `planId` — der Guthaben-Hinweis nennt den aktiven Plan statt immer Go.
+- [x] `tests/.ssr-allowance-page/` in `.gitignore`; toter Helper `isTabPlan` entfernt;
+  `AllowancePage` ohne Non-Null-Assertions (`selected()`-Fallback).
+- [x] Changelog/Release-Text für `plan_added` nennt `creditsMonthly` als **monatliches SOLL-Guthaben**,
+  nicht als pro-Modell-Maximum (Go Teams kann Modell-Limits über $65 haben); UI-Intro präzisiert,
+  dass der $5-Zuschlag einmalig in die SOLL-Basis eingeht. Inhaltlich doppelter History-Snapshot
+  `2026-10-29T09:05:15.551Z` entfernt.
+
+### Verworfen
+- **Go Teams ohne Gesamtguthaben** (`creditsMonthly: null`, Vollbasis deaktiviert, Hero zeigt
+  „Nicht dokumentiert“): vom Nutzer verworfen — der SOLL-Pool gilt als bekannt.
+- **`usageColorReferenceMonthly` als reine Farbreferenz** neben `creditsMonthly`: zwei Zahlen für
+  denselben Sachverhalt, genau die Inkonsistenz, die der Nutzer beseitigt haben wollte.
+- **$65 als Quellenfaktum dokumentieren:** die Doku belegt nur Go-Limits + $5/Modell; die
+  Formulierung bleibt „SOLL-/Vergleichsbasis“.

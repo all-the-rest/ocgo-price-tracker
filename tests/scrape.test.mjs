@@ -7,6 +7,7 @@ import * as cheerio from "cheerio";
 import {
   parseHtml,
   parsePlans,
+  creditsMonthlyForPlan,
   parsePlanTable,
   parsePlanPrice,
   planIdFromLabel,
@@ -253,10 +254,18 @@ test("parsePlans: Go (10/80) und Go Plus (40/240) aus der Fixture", () => {
   ]);
 });
 
-test("creditsMonthly = 6 × Monatspreis des Plans", () => {
+test("only Go and Go Plus have the supported 6× credit basis", () => {
   const plans = parsePlans(fixture);
   assert.equal(plans.find((p) => p.id === "go").creditsMonthly, 60);
   assert.equal(plans.find((p) => p.id === "go-plus").creditsMonthly, 240);
+  assert.equal(creditsMonthlyForPlan({ id: "new-unknown-plan", priceMonthly: 99 }, { id: "go", priceMonthly: 10 }), null);
+});
+
+test("Go Teams SOLL credit is Go monthly credits plus the per-model uplift", () => {
+  const go = { id: "go", priceMonthly: 10 };
+  const goCredits = creditsMonthlyForPlan(go);
+  const teams = creditsMonthlyForPlan({ id: "go-teams", priceMonthly: 20 }, { ...go, creditsMonthly: goCredits });
+  assert.equal(teams, goCredits + 5);
 });
 
 test("parsePlanPrice/planIdFromLabel: Formate und Normalisierung", () => {
@@ -2459,8 +2468,15 @@ test("parseEnglishDate: englisches Datum → ISO, ungültige Eingaben → null",
 test("data/latest.json: usage-Schlüssel == Plan-Ids, Free-Modelle ohne Plan-Feld", () => {
   const data = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), "..", "data", "latest.json"), "utf8"));
   const planIds = data.plans.map((p) => p.id);
-  assert.deepEqual(planIds, ["go", "go-plus"]);
+  assert.ok(planIds.length > 0, "Planliste darf nicht leer sein");
+  assert.equal(new Set(planIds).size, planIds.length, "Plan-IDs müssen eindeutig sein");
   assert.ok(data.models.length > 0, "Katalog darf nicht leer sein");
+  const go = data.plans.find((plan) => plan.id === "go");
+  const teams = data.plans.find((plan) => plan.id === "go-teams");
+  if (teams) {
+    assert.ok(go, "Go Teams SOLL credit derives from the Go credit");
+    assert.equal(teams.creditsMonthly, go.creditsMonthly + 5, "Go Teams SOLL credit = Go credit + $5 model uplift");
+  }
   for (const m of data.models) {
     assert.deepEqual(Object.keys(m.usage).slice().sort(), planIds.slice().sort(), `${m.name}: usage-Schlüssel`);
   }
