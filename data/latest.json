@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-27T07:03:26.575Z",
+  "fetchedAt": "2026-10-29T05:05:22.282Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -17,6 +17,13 @@
       "name": "Go Plus",
       "priceMonthly": 40,
       "creditsMonthly": 240,
+      "sourceUrl": "https://opencode.ai/v2/docs/console/go/"
+    },
+    {
+      "id": "go-teams",
+      "name": "Go Teams",
+      "priceMonthly": 20,
+      "creditsMonthly": 120,
       "sourceUrl": "https://opencode.ai/v2/docs/console/go/"
     }
   ],
@@ -90,7 +97,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 180
+        "go-plus": 180,
+        "go-teams": 65
       },
       "pattern": {
         "input": 1000,
@@ -127,7 +135,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 15,
-        "go-plus": 120
+        "go-plus": 120,
+        "go-teams": 20
       },
       "pattern": {
         "input": 700,
@@ -162,7 +171,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 180
+        "go-plus": 180,
+        "go-teams": 65
       },
       "pattern": {
         "input": 700,
@@ -197,7 +207,8 @@
       "cachedWrite": 2,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 1050,
@@ -234,7 +245,8 @@
       "cachedWrite": 3,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 1050,
@@ -271,7 +283,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 180
+        "go-plus": 180,
+        "go-teams": 65
       },
       "pattern": {
         "input": 870,
@@ -308,7 +321,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 240
+        "go-plus": 240,
+        "go-teams": 65
       },
       "pattern": {
         "input": 920,
@@ -343,7 +357,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 1000,
@@ -380,7 +395,8 @@
       "cachedWrite": 0,
       "usage": {
         "go": null,
-        "go-plus": null
+        "go-plus": null,
+        "go-teams": null
       },
       "pattern": null,
       "capabilities": {
@@ -411,7 +427,8 @@
       "cachedWrite": 0,
       "usage": {
         "go": null,
-        "go-plus": null
+        "go-plus": null,
+        "go-teams": null
       },
       "pattern": null,
       "capabilities": {
@@ -442,7 +459,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 120
+        "go-plus": 120,
+        "go-teams": 65
       },
       "pattern": {
         "input": 830,
@@ -480,7 +498,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 790,
@@ -518,7 +537,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 120
+        "go-plus": 120,
+        "go-teams": 65
       },
       "pattern": {
         "input": 830,
@@ -556,7 +576,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 790,
@@ -591,7 +612,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 20,
-        "go-plus": 80
+        "go-plus": 80,
+        "go-teams": 25
       },
       "pattern": {
         "input": 500,
@@ -621,14 +643,53 @@
     },
     {
       "name": "MiniMax M3",
-      "tier": null,
+      "tier": "≤ 512K tokens",
       "input": 0.3,
       "output": 1.2,
       "cachedRead": 0.06,
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 180
+        "go-plus": 180,
+        "go-teams": 65
+      },
+      "pattern": {
+        "input": 510,
+        "cachedRead": 56000,
+        "output": 190
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 512000,
+      "id": "opencode-go/minimax-m3",
+      "provider": "MiniMax"
+    },
+    {
+      "name": "MiniMax M3",
+      "tier": "> 512K tokens",
+      "input": 0.6,
+      "output": 2.4,
+      "cachedRead": 0.12,
+      "cachedWrite": null,
+      "usage": {
+        "go": 60,
+        "go-plus": 180,
+        "go-teams": 65
       },
       "pattern": {
         "input": 510,
@@ -665,7 +726,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 120
+        "go-plus": 120,
+        "go-teams": 65
       },
       "pattern": {
         "input": 620,
@@ -704,7 +766,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 120
+        "go-plus": 120,
+        "go-teams": 65
       },
       "pattern": {
         "input": 620,
@@ -743,7 +806,8 @@
       "cachedWrite": 2.5,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 420,
@@ -779,7 +843,8 @@
       "cachedWrite": 0.2,
       "usage": {
         "go": 30,
-        "go-plus": 90
+        "go-plus": 90,
+        "go-teams": 35
       },
       "pattern": {
         "input": 600,
@@ -816,7 +881,8 @@
       "cachedWrite": 0.5,
       "usage": {
         "go": 60,
-        "go-plus": 180
+        "go-plus": 180,
+        "go-teams": 65
       },
       "pattern": {
         "input": 500,
@@ -853,7 +919,8 @@
       "cachedWrite": 1.5,
       "usage": {
         "go": 60,
-        "go-plus": 180
+        "go-plus": 180,
+        "go-teams": 65
       },
       "pattern": {
         "input": 500,
@@ -890,7 +957,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 80,
-        "go-plus": 160
+        "go-plus": 160,
+        "go-teams": 85
       },
       "pattern": {
         "input": 410,
@@ -926,7 +994,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 80,
-        "go-plus": 160
+        "go-plus": 160,
+        "go-teams": 85
       },
       "pattern": {
         "input": 410,
@@ -962,7 +1031,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 750,
@@ -997,7 +1067,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 750,
@@ -1032,7 +1103,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 30,
-        "go-plus": 120
+        "go-plus": 120,
+        "go-teams": 35
       },
       "pattern": {
         "input": 830,
@@ -1067,7 +1139,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 60,
-        "go-plus": 240
+        "go-plus": 240,
+        "go-teams": 65
       },
       "pattern": {
         "input": 830,
@@ -1102,7 +1175,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 390,
@@ -1139,7 +1213,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 390,
@@ -1176,7 +1251,8 @@
       "cachedWrite": 0.125,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 1000,
@@ -1213,7 +1289,8 @@
       "cachedWrite": 0.25,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 1000,
@@ -1250,7 +1327,8 @@
       "cachedWrite": 0.25,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 1000,
@@ -1287,7 +1365,8 @@
       "cachedWrite": 0.5,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 1000,
@@ -1324,7 +1403,8 @@
       "cachedWrite": 0.125,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 1100,
@@ -1361,7 +1441,8 @@
       "cachedWrite": 0.625,
       "usage": {
         "go": 15,
-        "go-plus": 60
+        "go-plus": 60,
+        "go-teams": 20
       },
       "pattern": {
         "input": 1100,
@@ -1398,7 +1479,8 @@
       "cachedWrite": null,
       "usage": {
         "go": 30,
-        "go-plus": 120
+        "go-plus": 120,
+        "go-teams": 35
       },
       "pattern": {
         "input": 800,
