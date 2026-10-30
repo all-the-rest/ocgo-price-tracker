@@ -27,7 +27,7 @@ jobs:
           fetch-depth: 0
 
       - name: Ratchet gates
-        uses: all-the-rest/ratchet-cli@v1
+        uses: all-the-rest/ratchet-cli@0db64e280b024cf5a71c5c8a780dff8b9abf732f
         with:
           mode: validate
           version: v0.6.2
