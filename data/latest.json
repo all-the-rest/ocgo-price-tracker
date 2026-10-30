@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-29T09:05:15.551Z",
+  "fetchedAt": "2026-10-30T17:01:54.136Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -956,9 +956,9 @@
       "cachedRead": 0.003,
       "cachedWrite": null,
       "usage": {
-        "go": 80,
-        "go-plus": 160,
-        "go-teams": 85
+        "go": 100,
+        "go-plus": 200,
+        "go-teams": 105
       },
       "pattern": {
         "input": 410,
@@ -993,9 +993,9 @@
       "cachedRead": 0.006,
       "cachedWrite": null,
       "usage": {
-        "go": 80,
-        "go-plus": 160,
-        "go-teams": 85
+        "go": 100,
+        "go-plus": 200,
+        "go-teams": 105
       },
       "pattern": {
         "input": 410,
