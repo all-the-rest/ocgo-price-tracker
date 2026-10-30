@@ -1,0 +1,34 @@
+# Agent-rule gates — the canonical set, shipped as the `agent-rules` preset.
+#
+# The rules live in the ratchet binary, not in this repository: the version
+# below is the one the project was migrated on, and it pins what "the rules"
+# means here. Bump it when the preset changes; the baseline diff shows the
+# effect.
+name: Agent gates
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # The history is the count of `unverified-commits`; a shallow clone
+          # would make that gate vacuous.
+          fetch-depth: 0
+
+      - name: Ratchet gates
+        uses: all-the-rest/ratchet-cli@v1
+        with:
+          mode: validate
+          version: v0.6.1
+          tier: fast
