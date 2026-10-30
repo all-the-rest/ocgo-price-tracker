@@ -20,14 +20,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The history is the count of `unverified-commits`; a shallow clone
           # would make that gate vacuous.
           fetch-depth: 0
 
       - name: Ratchet gates
-        uses: all-the-rest/ratchet-cli@0db64e280b024cf5a71c5c8a780dff8b9abf732f
+        uses: all-the-rest/ratchet-cli@0db64e280b024cf5a71c5c8a780dff8b9abf732f # v0.6.2
         with:
           mode: validate
           version: v0.6.2
