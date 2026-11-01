@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-30T17:01:54.136Z",
+  "fetchedAt": "2026-11-01T05:06:53.374Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -979,7 +979,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-10-31"
+        "validUntil": "2026-11-30"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4.1-flash",
@@ -1016,7 +1016,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-10-31"
+        "validUntil": "2026-11-30"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4.1-flash",
@@ -1052,7 +1052,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-10-31"
+        "validUntil": "2026-11-30"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-pro",
@@ -1088,7 +1088,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-10-31"
+        "validUntil": "2026-11-30"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-pro",
