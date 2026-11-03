@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-01T05:06:53.374Z",
+  "fetchedAt": "2026-11-03T02:31:40.764Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1726,6 +1726,29 @@
       "provider": "Nemotron",
       "fullId": "opencode/nemotron-3.5-super-vl-free",
       "name": "Nemotron 3.5 Super VL Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "pulse-alpha-free",
+      "availableFrom": "2026-11-03",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": null,
+      "fullId": "opencode/pulse-alpha-free",
+      "name": "Pulse Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
