@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-03T02:31:40.764Z",
+  "fetchedAt": "2026-11-05T00:58:28.644Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1095,6 +1095,43 @@
       "provider": "DeepSeek"
     },
     {
+      "name": "Hy4",
+      "tier": null,
+      "input": 0.834,
+      "output": 2.501,
+      "cachedRead": 0.042,
+      "cachedWrite": null,
+      "usage": {
+        "go": 60,
+        "go-plus": 240,
+        "go-teams": 65
+      },
+      "pattern": {
+        "input": 830,
+        "cachedRead": 71500,
+        "output": 295
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1048576,
+      "id": "opencode-go/hy4",
+      "provider": "Tencent"
+    },
+    {
       "name": "Hy4 preview",
       "tier": null,
       "input": 0.834,
@@ -1551,6 +1588,31 @@
       "provider": "OpenCode Stealth",
       "fullId": "opencode/big-pickle",
       "name": "Big Pickle",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "crouton-alpha-free",
+      "availableFrom": "2026-11-05",
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": null,
+      "fullId": "opencode/crouton-alpha-free",
+      "name": "Crouton Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
