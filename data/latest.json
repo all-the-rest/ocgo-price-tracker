@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-06T05:03:50.682Z",
+  "fetchedAt": "2026-11-06T17:03:56.597Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -385,6 +385,41 @@
       "contextWindow": 1000000,
       "id": "opencode-go/step-5-preview",
       "provider": "StepFun"
+    },
+    {
+      "name": "Crouton Alpha Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": {
+        "go": null,
+        "go-plus": null,
+        "go-teams": null
+      },
+      "pattern": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": 30,
+        "validUntil": null
+      },
+      "contextWindow": 1048576,
+      "id": "opencode-go/crouton-alpha-free",
+      "provider": null
     },
     {
       "name": "Beam Free",
