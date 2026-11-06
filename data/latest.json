@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-05T00:58:28.644Z",
+  "fetchedAt": "2026-11-06T05:03:50.682Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1611,7 +1611,7 @@
       },
       "contextWindow": 1048576,
       "provider": null,
-      "fullId": "opencode/crouton-alpha-free",
+      "fullId": "opencode-go/crouton-alpha-free",
       "name": "Crouton Alpha Free",
       "privacy": {
         "training": true,
