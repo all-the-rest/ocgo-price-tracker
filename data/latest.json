@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-07T00:11:54.973Z",
+  "fetchedAt": "2026-11-07T05:04:26.654Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1747,6 +1747,29 @@
       }
     },
     {
+      "id": "inkling-2-small-free",
+      "availableFrom": "2026-11-07",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": "Ling",
+      "fullId": "opencode/inkling-2-small-free",
+      "name": "Inkling 2 Small Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
       "id": "jev-1.13-free",
       "availableFrom": "2026-09-19",
       "capabilities": null,
@@ -1845,29 +1868,6 @@
       "provider": "Nemotron",
       "fullId": "opencode/nemotron-3.5-super-vl-free",
       "name": "Nemotron 3.5 Super VL Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "pulse-alpha-free",
-      "availableFrom": "2026-11-03",
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1048576,
-      "provider": null,
-      "fullId": "opencode/pulse-alpha-free",
-      "name": "Pulse Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
