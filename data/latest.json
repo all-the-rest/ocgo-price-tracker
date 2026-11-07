@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-06T17:03:56.597Z",
+  "fetchedAt": "2026-11-07T00:11:54.973Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -1721,6 +1721,28 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "iceman-free",
+      "availableFrom": "2026-11-07",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 262144,
+      "provider": null,
+      "fullId": "opencode/iceman-free",
+      "name": "Iceman Free",
+      "privacy": {
+        "training": true,
         "validUntil": null
       }
     },
