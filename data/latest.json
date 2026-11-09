@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-07T05:04:26.654Z",
+  "fetchedAt": "2026-11-09T13:01:53.146Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -484,6 +484,39 @@
       "contextWindow": 262144,
       "id": "opencode-go/iceman-contributor-free",
       "provider": null
+    },
+    {
+      "name": "LongCat 2.5 Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": {
+        "go": null,
+        "go-plus": null,
+        "go-teams": null
+      },
+      "pattern": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "id": "opencode-go/longcat-2.5-free",
+      "provider": "Meituan"
     },
     {
       "name": "MiMo V2.6 Flash",
@@ -1778,6 +1811,30 @@
       "fullId": "opencode/jev-1.13-free",
       "privacy": {
         "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "longcat-2.5-free",
+      "availableFrom": "2026-11-09",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1000000,
+      "provider": "Meituan",
+      "fullId": "opencode-go/longcat-2.5-free",
+      "name": "LongCat 2.5 Free",
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
         "validUntil": null
       }
     },
