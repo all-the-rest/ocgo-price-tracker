@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-09T13:01:53.146Z",
+  "fetchedAt": "2026-11-10T02:50:14.616Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -385,41 +385,6 @@
       "contextWindow": 1000000,
       "id": "opencode-go/step-5-preview",
       "provider": "StepFun"
-    },
-    {
-      "name": "Crouton Alpha Free",
-      "tier": null,
-      "input": 0,
-      "output": 0,
-      "cachedRead": 0,
-      "cachedWrite": 0,
-      "usage": {
-        "go": null,
-        "go-plus": null,
-        "go-teams": null
-      },
-      "pattern": null,
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video",
-          "pdf"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": 30,
-        "validUntil": null
-      },
-      "contextWindow": 1048576,
-      "id": "opencode-go/crouton-alpha-free",
-      "provider": null
     },
     {
       "name": "Beam Free",
@@ -1662,31 +1627,6 @@
       }
     },
     {
-      "id": "crouton-alpha-free",
-      "availableFrom": "2026-11-05",
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video",
-          "pdf"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1048576,
-      "provider": null,
-      "fullId": "opencode-go/crouton-alpha-free",
-      "name": "Crouton Alpha Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
       "id": "deepseek-v4.1-flash-free",
       "availableFrom": "2026-10-15",
       "capabilities": {
@@ -1860,6 +1800,31 @@
       "name": "MiMo V2.6 Flash Free",
       "privacy": {
         "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "minimax-m3.1-flash-free",
+      "availableFrom": "2026-11-10",
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1000000,
+      "provider": "MiniMax",
+      "fullId": "opencode-go/minimax-m3.1-flash-free",
+      "name": "MiniMax M3.1 Flash Free",
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
         "validUntil": null
       }
     },
