@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-10T02:50:14.616Z",
+  "fetchedAt": "2026-11-16T05:07:44.543Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -829,6 +829,45 @@
       "contextWindow": 1048576,
       "id": "opencode-go/muse-spark-1.2-contributor",
       "provider": "Meta"
+    },
+    {
+      "name": "Qwen4 Max",
+      "tier": null,
+      "input": 1.5,
+      "output": 4.5,
+      "cachedRead": 0.075,
+      "cachedWrite": 1.875,
+      "usage": {
+        "go": 15,
+        "go-plus": 60,
+        "go-teams": 20
+      },
+      "pattern": {
+        "input": 420,
+        "cachedRead": 66000,
+        "output": 200
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "id": "opencode-go/qwen4-max",
+      "provider": "Alibaba"
     },
     {
       "name": "Qwen3.8 Max",
