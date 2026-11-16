@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-16T05:07:44.543Z",
+  "fetchedAt": "2026-11-16T09:00:28.947Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
   "capabilitiesSourceUrl": "https://models.dev",
@@ -482,6 +482,39 @@
       "contextWindow": 1000000,
       "id": "opencode-go/longcat-2.5-free",
       "provider": "Meituan"
+    },
+    {
+      "name": "Hy4 flash Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": {
+        "go": null,
+        "go-plus": null,
+        "go-teams": null
+      },
+      "pattern": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1048576,
+      "id": "opencode-go/hy4-flash-free",
+      "provider": "Hy"
     },
     {
       "name": "MiMo V2.6 Flash",
@@ -1730,6 +1763,30 @@
       "provider": "Z.ai",
       "fullId": "opencode/glm-5.3-flash-free",
       "name": "GLM-5.3-Flash Free",
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "hy4-flash-free",
+      "availableFrom": "2026-11-16",
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": "Hy",
+      "fullId": "opencode-go/hy4-flash-free",
+      "name": "Hy4 flash Free",
       "privacy": {
         "training": false,
         "retentionDays": true,
