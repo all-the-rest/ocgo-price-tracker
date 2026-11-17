@@ -72,7 +72,6 @@ export default function PeakIndicator(props: PeakIndicatorProps) {
     const timestamp = transition();
     return timestamp === null ? "–" : formatDuration(timestamp - props.now);
   };
-  const phase = () => (active() ? props.t.peak : props.t.offPeak);
   const daily = () => (props.lang === "de" ? "täglich" : "daily");
   const scope = () => {
     const dayScope = formatDayScope(props.rule.peak.days, props.lang);
@@ -95,7 +94,6 @@ export default function PeakIndicator(props: PeakIndicatorProps) {
   const tooltip = () =>
     [
       props.t.peakTooltip
-        .replace("{phase}", phase())
         .replace("{utc}", formatUtcRange(props.rule.peak.windowsUtc))
         .replace("{scope}", scope())
         .replace("{local}", formatLocalRange(props.rule.peak.windowsUtc, props.now))

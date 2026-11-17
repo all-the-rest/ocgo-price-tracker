@@ -10,6 +10,7 @@ import { i18n, type Lang } from "../src/i18n";
 
 export { fieldPrice, formatReqPerMonth, formatTokens, requestCost, requestsPerMonth } from "../src/weighted";
 export { shareRequests, topModels } from "../src/share";
+export { i18n };
 export {
   isPeakAt,
   isBeforeEffectiveFrom,

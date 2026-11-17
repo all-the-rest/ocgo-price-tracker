@@ -124,6 +124,17 @@ test("formatDayScope/formatDayList: aus den Daten generiert", () => {
   assert.equal(peak.formatDayList([6, 7], "en"), "Sat/Sun");
 });
 
+test("Peak-Tooltip: Beschriftung meint die Peak-Fenster, nicht die aktuelle Phase", () => {
+  // Regressionsschutz: Das Tooltip zeigt `rule.peak.windowsUtc`. Früher stand
+  // dort `{phase}` — bei Off-Peak wurde dadurch fälschlich „Off-Peak: 01:00 …
+  // UTC" für die Peak-Zeiten angezeigt.
+  for (const lang of ["de", "en"]) {
+    const template = peak.i18n[lang].peakTooltip;
+    assert.match(template, /^Peak:/, `${lang}: Label muss die Fenster als Peak bezeichnen`);
+    assert.doesNotMatch(template, /\{phase\}/, `${lang}: keine Phasen-Variable im Tooltip`);
+  }
+});
+
 test("peakRuleFor/calendarFor: Zuordnung über die Normalform", () => {
   const rules = { "deepseekv4.1flash": RULE };
   assert.equal(peak.peakRuleFor(rules, "DeepSeek V4.1 Flash"), RULE);
