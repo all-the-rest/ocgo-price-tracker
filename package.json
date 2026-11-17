@@ -20,22 +20,22 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "solid-js": "^1.9.18"
+    "solid-js": "^1.9.19"
   },
   "devDependencies": {
-    "@iconify-json/material-symbols": "^1.2.98",
+    "@iconify-json/material-symbols": "^1.2.100",
     "@iconify/tailwind4": "^1.2.3",
-    "@opencode-ai/models": "^0.0.128",
-    "@playwright/test": "1.65.0",
+    "@opencode-ai/models": "^0.0.137",
+    "@playwright/test": "1.65.1",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.3.5",
     "@types/node": "^26.6.6",
     "cheerio": "^1.0.0",
-    "daisyui": "^5.7.50",
+    "daisyui": "^5.8.1",
     "tailwindcss": "^4.3.5",
     "typescript": "^7.0.2",
-    "vite": "^8.3.6",
-    "vite-plugin-solid": "^2.11.15",
+    "vite": "^8.3.8",
+    "vite-plugin-solid": "^2.11.16",
     "zod": "^4.6.7"
   }
 }
