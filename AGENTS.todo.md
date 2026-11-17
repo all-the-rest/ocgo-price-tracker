@@ -1,5 +1,28 @@
 # AGENTS.todo.md — ocgo-price-tracker
 
+## Entscheidungen 2026-11-17 — Go-Modell-API statt HTML-Preistabellen
+Anlass: Die Go-Doku hat die serverseitigen Preistabellen entfernt (CI rot:
+„Anzahl Preistabellen (0) ≠ Anzahl Pläne (3)“); sie verweist auf
+`https://opencode.ai/inference/go/v1/models`. Issue #19.
+
+- [x] **Quelle:** Modelle, Tokenpreise, Nutzung (`go.monthly_usage`) und Peak-Regeln
+  (`cost.multipliers`) kommen aus der JSON-API; die Go-Seite liefert nur noch
+  Plan-Tabelle, Datenschutz-Aufbewahrung und die ZDR-Fußnoten.
+- [x] **Tier-Erhalt:** Kontext-Overrides → `≤/> N K tokens`; `utc_days`-Multiplikator →
+  `Off-Peak`/`Peak` + `peakRules` (UTC); Datums-Aktion → `<P>% off` vor dem Stichtag,
+  danach `factor × Basis`.
+- [x] **Cached Write:** Zahl oder TTL-Map (kürzester TTL); fehlt → `null`.
+- [x] **Patterns:** Die API dokumentiert keine Muster → `DEFAULT_PATTERN` für alle
+  Preiszeilen; `parsePatterns`/`parseHtml` bleiben Legacy für die HTML-Fixtures.
+- [x] **Privacy:** `training` aus `go.training`, `retentionDays`/`validUntil` weiter aus
+  der Doku-Tabelle/Fußnoten.
+- [x] **Verifikation:** `pnpm test` 311/311, `pnpm scrape` exit 0 (40 Modelle, 3 Pläne),
+  `pnpm build` + `pnpm smoke` grün. Daten-Diff: MiMo V2.5/Pro entfernt, GLM-5.3-Nutzung,
+  Gemini-50%-Preis; alle übrigen Zeilen preis-/nutzungsgleich, aber Pattern auf Default und peakRules.timezone auf UTC.
+- [x] **Smoke-Host-Quirk:** kein Repo-Fix; lokal `NODE_OPTIONS=--dns-result-order=ipv4first`
+  (siehe 2026-10-12), CI unverändert.
+
+
 ## Entscheidungen 2026-10-12 — v2-Migration (`/docs/de/` → `/v2/docs/console/`)
 Anlass: Die alten Docs-URLs (`/docs/de/go/`, `/docs/de/zen/`) liefern HTTP 404 — die Docs
 sind auf v2 umgezogen, CI war rot (`pnpm scrape` brach ab). Vollständige Regeln stehen in

@@ -12,7 +12,11 @@ import {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE_URL = "https://opencode.ai/v2/docs/console/go/";
-// Quelle der kostenlosen Modelle: die Console-Models-Doku. Unter „Endpoints“
+// Seit 2026-11 liefert die Go-Doku keine Preistabellen mehr; die Modelle,
+// Tokenpreise, Nutzung und Peak-Regeln kommen aus dieser JSON-API. Die HTML-
+// Seite bleibt Quelle für Pläne und Datenschutz-Aufbewahrung/Fußnoten.
+const GO_MODELS_URL = "https://opencode.ai/inference/go/v1/models";
+// Quelle der kostenlosen Modelle: die Console-Models-Doku. Unter „Endpoints"
 // stehen die Model-IDs, unter „Pricing“ die kostenlosen („Free“) Zeilen — das
 // ist die autoritative Liste der gratis Modelle.
 const ZEN_DOCS_URL = "https://opencode.ai/v2/docs/console/models/";
@@ -489,6 +493,13 @@ const MODEL_NAME_ALIASES = {
   "mimov2.5pro": "MiMo V2.5 Pro",
   "mimov2.6flash": "MiMo V2.6 Flash",
   "mimov2.6pro": "MiMo V2.6 Pro",
+  // API-Namenwechsel 2026-11: die JSON-API nennt diese Modelle mit
+  // Versionssuffix/anderen Trennzeichen. Ohne Aliase würden sie als
+  // model_added/model_removed diffen statt als Preis-/Nutzungsänderung.
+  "deepseekv4.1flash1017": "DeepSeek V4.1 Flash",
+  "minimaxm3": "MiniMax M3",
+  "gpt6luna": "GPT 6 Luna",
+  "gpt5.6luna": "GPT 5.6 Luna",
 };
 
 /**
@@ -879,18 +890,17 @@ function parseModels($, table, colMap) {
 }
 
 /**
- * Findet die Datenschutz-Tabelle (Model / Model training / Data retention)
- * über die Header-Zeile — NICHT über nth-child-Selektoren.
+ * Findet die Datenschutz-Tabelle über die Header-Zeile — NICHT über
+ * nth-child-Selektoren. Seit 2026-11 hat die Live-Doku nur noch die Spalten
+ * `Model | Data retention` (Model training kommt aus der JSON-API); die alte
+ * 3-Spalten-Form bleibt als Kompatibilität akzeptiert.
  */
 function findPrivacyTable($) {
   const matches = [];
   $("main table").each((_, table) => {
-    const headers = $(table)
-      .find("thead th")
-      .map((_, th) => $(th).text().trim().toLowerCase())
-      .get();
+    const headers = tableHeaders($, table);
     if (
-      headers.some((h) => h.includes("modelltraining") || h.includes("model training")) &&
+      headers.some((h) => h.includes("model") || h.includes("modell")) &&
       headers.some((h) => h.includes("datenaufbewahrung") || h.includes("data retention"))
     ) {
       matches.push(table);
@@ -898,7 +908,7 @@ function findPrivacyTable($) {
   });
   if (matches.length === 0) {
     throw new ScrapeError(
-      "keine Datenschutz-Tabelle gefunden (Header-Zellen mit 'model training/modelltraining' UND 'data retention/datenaufbewahrung' fehlen)"
+      "keine Datenschutz-Tabelle gefunden (Header-Zellen mit 'model/modell' UND 'data retention/datenaufbewahrung' fehlen)"
     );
   }
   if (matches.length > 1) {
@@ -1020,6 +1030,41 @@ export function parsePrivacyTable($, table) {
         training: parseTraining(cells[1]),
         retentionDays: parseRetentionDays(cells[2]),
       });
+    });
+  return map;
+}
+
+/**
+ * Liest die 2-Spalten-Datenschutztabelle der Live-Doku (`Model | Data
+ * retention`). `training` kommt seit der API-Migration aus `go.training`,
+ * hier wird nur die Aufbewahrung gelesen. Rückgabe: normalisierter Modellname
+ * → retentionDays (true = ZDR, false = kein ZDR, Zahl = N Tage, undefined =
+ * unbekannt). Die Spalten werden über die Header gefunden, nicht über Position.
+ */
+export function parsePrivacyRetentionTable($, table) {
+  const headers = tableHeaders($, table);
+  const nameIdx = headers.findIndex((h) => h.includes("model") || h.includes("modell"));
+  const retentionIdx = headers.findIndex(
+    (h) => h.includes("datenaufbewahrung") || h.includes("data retention")
+  );
+  if (nameIdx === -1 || retentionIdx === -1) {
+    throw new ScrapeError(
+      `Datenschutz-Tabelle ohne Modell-/Aufbewahrungs-Spalte (Header: ${JSON.stringify(headers)})`
+    );
+  }
+  const map = new Map();
+  $(table)
+    .find("tbody tr, > tr")
+    .each((_, row) => {
+      const cells = $(row)
+        .find("th, td")
+        .map((_, c) => $(c).text().trim())
+        .get();
+      const first = (cells[0] ?? "").trim().toLowerCase();
+      if (first === "modell" || first === "model") return;
+      const name = cells[nameIdx];
+      if (!name) return;
+      map.set(normalizeName(name), parseRetentionDays(cells[retentionIdx]));
     });
   return map;
 }
@@ -1458,7 +1503,6 @@ function parsePageData($) {
   const planTables = extractPlanTableMap($, plans);
 
   const rowsByPlan = new Map();
-  const goPlan = plans.find((plan) => plan.id === "go");
   for (const plan of plans) {
     const table = planTables.get(plan.id);
     rowsByPlan.set(plan.id, parseModels($, table, mapColumns($, table)));
@@ -1576,9 +1620,22 @@ function parsePageData($) {
     }
   }
 
-  // Go/Go Plus retain their documented 6× monthly credit basis; Go Teams'
-  // SOLL credit is Go's credit plus the documented $5/model uplift ($65).
-  // Other plans remain unknown unless a source-backed rule is added.
+  finalizePlans(plans);
+
+  return { plans, models };
+}
+
+/**
+ * Befüllt `creditsMonthly` (SOLL-Guthaben, 100 %-Bezugspunkt der UI) und
+ * `sourceUrl` aller Pläne. Go/Go Plus behalten die dokumentierte 6×-Basis;
+ * Go Teams ist Go-Guthaben + einmalig $5 ($65). Andere Pläne bleiben `null`,
+ * solange die Quelle keine belegte Regel nennt.
+ *
+ * Bewusst eigenständig exportiert: die Doku hat keine Preistabellen mehr,
+ * `main()` finalisiert die Pläne direkt aus `parsePlanTable()`.
+ */
+export function finalizePlans(plans) {
+  const goPlan = plans.find((plan) => plan.id === "go");
   const goPlanCredits = goPlan ? creditsMonthlyForPlan(goPlan) : null;
   if (goPlan) goPlan.creditsMonthly = goPlanCredits;
   for (const plan of plans) {
@@ -1593,11 +1650,12 @@ function parsePageData($) {
     }
     plan.sourceUrl = SOURCE_URL;
   }
-
-  return { plans, models };
+  return plans;
 }
 
 /**
+ * LEGACY-PFAD (nur noch für die HTML-Fixture-Tests): die Live-Doku liefert
+ * keine Preistabellen mehr. `main()` nutzt `buildModelsFromApi()`.
  * Extrahiert die Modelle aus dem HTML einer OpenCode-Go-Dokumentationsseite.
  * Wirft ScrapeError bei strukturellen Parsing-Fehlern.
  */
@@ -1609,10 +1667,287 @@ export function parseHtml(html) {
 /**
  * Extrahiert die Pläne aus dem HTML einer OpenCode-Go-Dokumentationsseite;
  * only plans with a source-backed total monthly credit get `creditsMonthly`.
+ * Funktioniert auf der Live-Seite (nur Plan-Tabelle nötig) und der Fixture.
  */
 export function parsePlans(html) {
   const $ = cheerio.load(html);
-  return parsePageData($).plans;
+  return finalizePlans(parsePlanTable($));
+}
+
+// ---------------------------------------------------------------------------
+// JSON-API (https://opencode.ai/inference/go/v1/models)
+// ---------------------------------------------------------------------------
+
+/** Lädt die Go-Modell-API. Ein leerer/ungültiger Payload ist ein Parse-Ausfall. */
+export async function fetchGoModels(fetcher = fetch) {
+  const res = await fetcher(GO_MODELS_URL, { headers: { "User-Agent": USER_AGENT } });
+  if (!res.ok) throw new ScrapeError(`HTTP ${res.status} bei ${GO_MODELS_URL}`);
+  let api;
+  try {
+    api = await res.json();
+  } catch (err) {
+    throw new ScrapeError(`ungültiges JSON von ${GO_MODELS_URL}: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  assertGoModelsPayload(api);
+  return api;
+}
+
+function assertGoModelsPayload(api) {
+  if (!api || api.object !== "list" || !Array.isArray(api.data) || api.data.length === 0) {
+    throw new ScrapeError(
+      `Go-Modell-API: erwartet { object: "list", data: [...] }, erhalten ${JSON.stringify(api)?.slice(0, 200)}`
+    );
+  }
+}
+
+const CACHE_TTL_ORDER = ["5m", "30m", "1h", "12h", "24h"];
+
+/** Cached-Write: Zahl, TTL-Map (kürzester TTL gewinnt) oder fehlt → null. */
+function writePriceFromApi(raw, context) {
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw === "number") {
+    if (!Number.isFinite(raw)) throw new ScrapeError(`${context}: ungültiger Cached-Write-Preis`);
+    return raw;
+  }
+  if (typeof raw === "object" && !Array.isArray(raw)) {
+    const ttl = CACHE_TTL_ORDER.find((k) => typeof raw[k] === "number" && Number.isFinite(raw[k]));
+    if (ttl === undefined) {
+      throw new ScrapeError(`${context}: Cached-Write-TTL-Map ohne bekannten TTL (${JSON.stringify(raw)})`);
+    }
+    return raw[ttl];
+  }
+  throw new ScrapeError(`${context}: Cached-Write-Preis unparsebar (${JSON.stringify(raw)})`);
+}
+
+function priceFromApi(value, context) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new ScrapeError(`${context}: Preis fehlt oder unparsebar (${JSON.stringify(value)})`);
+  }
+  return value;
+}
+
+const round9 = (v) => Math.round(v * 1e9) / 1e9;
+
+const API_PRICE_FIELDS = ["input", "output", "cachedRead", "cachedWrite"];
+function scaleApiPrices(prices, factor, context) {
+  if (typeof factor !== "number" || !Number.isFinite(factor) || factor <= 0) {
+    throw new ScrapeError(`${context}: ungültiger Multiplikator ${JSON.stringify(factor)}`);
+  }
+  const scaled = {};
+  for (const field of API_PRICE_FIELDS) {
+    scaled[field] = prices[field] === null ? null : round9(prices[field] * factor);
+  }
+  return scaled;
+}
+
+const API_WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
+
+function peakDaysFromApi(when, context) {
+  const raw = when?.utc_days?.in;
+  if (!Array.isArray(raw) || raw.length === 0) throw new ScrapeError(`${context}: utc_days.in fehlt`);
+  const days = raw.map((d) => {
+    const key = String(d ?? "").slice(0, 3).toLowerCase();
+    const idx = API_WEEKDAYS.indexOf(key);
+    if (idx === -1) throw new ScrapeError(`${context}: unbekannter Wochentag "${d}"`);
+    return idx + 1;
+  });
+  return [...new Set(days)].sort((a, b) => a - b);
+}
+
+function hourFromApi(v) {
+  const m = /^(\d{1,2}):00$/.exec(String(v ?? ""));
+  if (!m) return null;
+  const hour = Number(m[1]);
+  return hour >= 0 && hour <= 24 ? hour : null;
+}
+
+function peakWindowsFromApi(when, context) {
+  const raw = when?.any;
+  if (!Array.isArray(raw) || raw.length === 0) throw new ScrapeError(`${context}: any-Fenster fehlen`);
+  const windows = raw.map((cond) => {
+    const all = cond?.all;
+    if (!Array.isArray(all) || all.length !== 2) {
+      throw new ScrapeError(`${context}: Peak-Fenster ohne gte/lt-Grenzen`);
+    }
+    const start = hourFromApi(all.find((x) => x?.utc_hours?.gte)?.utc_hours?.gte);
+    const end = hourFromApi(all.find((x) => x?.utc_hours?.lt)?.utc_hours?.lt);
+    if (start === null || end === null || start >= end || start > 23 || end > 24) {
+      throw new ScrapeError(`${context}: unparsebares UTC-Fenster [${start}, ${end}]`);
+    }
+    return [start, end];
+  });
+  return windows.sort((a, b) => a[0] - b[0]);
+}
+
+/**
+ * Baut die Modelle (inkl. Preis-Stufen und Peak-Regeln) aus der Go-JSON-API.
+ * Reine Funktion — ohne Netzwerk — damit die Mapping-Regeln unit-testbar sind.
+ *
+ * `today` (YYYY-MM-DD oder Date) steuert die Datums-Aktion (z. B. Gemini
+ * „50% off“ bis zum Wirksamwerden des Faktors).
+ */
+export function buildModelsFromApi(api, plans, today) {
+  assertGoModelsPayload(api);
+  if (!Array.isArray(plans) || plans.length === 0) {
+    throw new ScrapeError("buildModelsFromApi: keine Pläne übergeben");
+  }
+  const day = today instanceof Date ? today.toISOString().slice(0, 10) : String(today ?? "").slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+    throw new ScrapeError(`buildModelsFromApi: ungültiges today "${String(today)}"`);
+  }
+
+  const models = [];
+  const peakRules = {};
+  const trainingByNorm = new Map();
+
+  for (const entry of api.data) {
+    const name = canonicalModelName(entry?.name);
+    if (!name) throw new ScrapeError("Go-Modell-API: Eintrag ohne Namen");
+    const context = `Go-Modell "${name}"`;
+    const text = entry?.cost?.text;
+    if (!text?.input || !text?.output) {
+      throw new ScrapeError(`${context}: cost.text.input/output fehlt`);
+    }
+
+    const base = {
+      input: priceFromApi(text.input.price, context),
+      output: priceFromApi(text.output.price, context),
+      cachedRead:
+        text.input.cache?.read === undefined || text.input.cache?.read === null
+          ? null
+          : priceFromApi(text.input.cache.read, context),
+      cachedWrite: writePriceFromApi(text.input.cache?.write, context),
+    };
+
+    // Nutzung: null/fehlt → in allen Plänen unbegrenzt. Andernfalls muss der
+    // Payload jeden Plan enthalten (die Snapshot-Invariante verlangt exakt die
+    // Plan-Ids als Schlüssel).
+    const rawUsage = entry.go?.monthly_usage;
+    const usage = {};
+    for (const plan of plans) {
+      if (rawUsage === undefined || rawUsage === null) {
+        usage[plan.id] = null;
+        continue;
+      }
+      if (!Object.prototype.hasOwnProperty.call(rawUsage, plan.id)) {
+        throw new ScrapeError(`${context}: monthly_usage hat keinen Schlüssel für Plan "${plan.id}"`);
+      }
+      const value = rawUsage[plan.id];
+      if (value !== null && (typeof value !== "number" || !Number.isFinite(value))) {
+        throw new ScrapeError(`${context}: unparsebare Nutzung für Plan "${plan.id}"`);
+      }
+      usage[plan.id] = value;
+    }
+    const free = Object.values(usage).every((u) => u === null);
+
+    // models.dev liefert `training` nicht; fehlend → Worst-Case.
+    trainingByNorm.set(normalizeName(name), entry.go?.training !== false);
+
+    const multipliers = Array.isArray(entry.cost?.multipliers) ? entry.cost.multipliers : [];
+    const peakMultipliers = multipliers.filter((m) => m?.when?.utc_days);
+    const dateMultipliers = multipliers.filter((m) => m?.when?.date?.gte);
+    // Fail-closed: eine Multiplikator-Bedingung, die weder Zeitfenster noch
+    // Datums-Aktion ist, würde sonst still als Basispreis durchgehen.
+    const unknownMultipliers = multipliers.filter((m) => !m?.when?.utc_days && !m?.when?.date?.gte);
+    if (unknownMultipliers.length > 0) {
+      throw new ScrapeError(
+        `${context}: unbekannte Multiplikator-Bedingung ${JSON.stringify(unknownMultipliers.map((m) => m?.when ?? m))}`
+      );
+    }
+    const inOverrides = text.input.overrides ?? [];
+    const outOverrides = text.output.overrides ?? [];
+    const specialKinds = [
+      inOverrides.length || outOverrides.length ? "context" : null,
+      peakMultipliers.length ? "peak" : null,
+      dateMultipliers.length ? "date" : null,
+    ].filter(Boolean);
+    if (specialKinds.length > 1) {
+      throw new ScrapeError(`${context}: mehrere Sonderregeln nicht unterstützt (${specialKinds.join(", ")})`);
+    }
+    if (peakMultipliers.length > 1 || dateMultipliers.length > 1) {
+      throw new ScrapeError(`${context}: mehr als ein Zeit-Multiplikator`);
+    }
+
+    const variants = [];
+    if (inOverrides.length || outOverrides.length) {
+      if (inOverrides.length !== 1 || outOverrides.length !== 1) {
+        throw new ScrapeError(`${context}: genau ein Input- und Output-Override erwartet`);
+      }
+      const inOverride = inOverrides[0];
+      const outOverride = outOverrides[0];
+      const gt = inOverride?.when?.context?.gt;
+      if (typeof gt !== "number" || gt <= 0 || gt !== outOverride?.when?.context?.gt) {
+        throw new ScrapeError(`${context}: abweichende oder fehlende Kontext-Schwelle in den Overrides`);
+      }
+      const k = gt / 1000;
+      const override = {
+        input: priceFromApi(inOverride.price, context),
+        output: priceFromApi(outOverride.price, context),
+        cachedRead:
+          inOverride.cache?.read === undefined || inOverride.cache?.read === null
+            ? null
+            : priceFromApi(inOverride.cache.read, context),
+        cachedWrite: writePriceFromApi(inOverride.cache?.write, context),
+      };
+      variants.push({ ...base, tier: `≤ ${k}K tokens` });
+      variants.push({ ...override, tier: `> ${k}K tokens` });
+    } else if (peakMultipliers.length) {
+      const mult = peakMultipliers[0];
+      const days = peakDaysFromApi(mult.when, context);
+      const windowsUtc = peakWindowsFromApi(mult.when, context);
+      peakRules[normalizeName(name)] = {
+        timezone: "UTC",
+        peak: { days, windowsUtc },
+        offPeak: { days: [1, 2, 3, 4, 5, 6, 7].filter((d) => !days.includes(d)), allDay: true },
+      };
+      variants.push({ ...base, tier: "Off-Peak" });
+      variants.push({ ...scaleApiPrices(base, mult.factor, context), tier: "Peak" });
+    } else if (dateMultipliers.length) {
+      const mult = dateMultipliers[0];
+      if (typeof mult.factor !== "number" || !Number.isFinite(mult.factor) || mult.factor <= 0) {
+        throw new ScrapeError(`${context}: ungültiger Multiplikator ${JSON.stringify(mult.factor)}`);
+      }
+      const effective = String(mult.when.date.gte);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(effective)) {
+        throw new ScrapeError(`${context}: unparsebares effective date "${effective}"`);
+      }
+      if (day < effective) {
+        variants.push({
+          ...base,
+          tier: `${Math.round((1 - 1 / mult.factor) * 100)}% off`,
+        });
+      } else {
+        variants.push({ ...scaleApiPrices(base, mult.factor, context), tier: null });
+      }
+    } else {
+      variants.push({ ...base, tier: null });
+    }
+
+    for (const variant of variants) {
+      const prices = {
+        input: variant.input,
+        output: variant.output,
+        cachedRead: variant.cachedRead,
+        cachedWrite: variant.cachedWrite,
+      };
+      // Gratis-Zeilen: ein bekannter Preis von 0, kein unbekannter Preis.
+      if (free) {
+        for (const field of API_PRICE_FIELDS) prices[field] ??= 0;
+      }
+      const m = {
+        name,
+        tier: variant.tier,
+        ...prices,
+        usage,
+        // Die API dokumentiert keine Anfragemuster → Default für Preiszeilen.
+        pattern: isPricedRow(prices) ? { ...DEFAULT_PATTERN } : null,
+        capabilities: null,
+      };
+      models.push(m);
+    }
+  }
+
+  return { models, peakRules, trainingByNorm };
 }
 
 export const modelKey = (model) => (model.tier ? `${model.name} (${model.tier})` : model.name);
@@ -2464,6 +2799,9 @@ const SnapshotSchema = z
   .object({
     fetchedAt: z.string(),
     sourceUrl: z.string().url(),
+    // Neue Quelle für Modelle/Preise/Nutzung/Peak (seit 2026-11). Optional,
+    // damit ältere Snapshots weiter validieren.
+    modelsSourceUrl: z.string().url().optional(),
     freeModelsSourceUrl: z.string().url(),
     capabilitiesSourceUrl: z.string().url(),
     sourceLang: z.string(),
@@ -2641,6 +2979,11 @@ export function assertNonEmptyCatalog({ plans, models }) {
 
 async function main() {
   try {
+    const fetchedAt = new Date().toISOString();
+    const date = fetchedAt.slice(0, 10);
+    // git-tag-sicheres `id` (kein `:`), z.B. 2026-08-19T06-00-00Z
+    const runId = fetchedAt.replace(/:/g, "-").replace(/\.\d{3}Z$/, "Z");
+
     const response = await fetch(SOURCE_URL, {
       headers: {
         "User-Agent": USER_AGENT,
@@ -2650,11 +2993,40 @@ async function main() {
     if (!response.ok) throw new ScrapeError(`HTTP ${response.status} beim Abrufen von ${SOURCE_URL}`);
     const html = await response.text();
     const docs$ = cheerio.load(html);
-    // Pläne + Modelle: Tokenpreise aus dem ersten Plan, Nutzung je Plan als Map.
-    const { plans, models } = parsePageData(docs$);
-    const peakRules = parsePeakRules(docs$, models);
-    const docsBonuses = parseDocsUsageBonuses(docs$);
-    const bonusLabels = [...docsBonuses.entries()].map(([n, f]) => `${n}×${f}`).join(", ");
+    // Die Doku liefert nur noch Pläne und Datenschutz; Modelle, Preise,
+    // Nutzung und Peak-Regeln kommen aus der JSON-API.
+    const plans = finalizePlans(parsePlanTable(docs$));
+    const api = await fetchGoModels();
+    const { models, peakRules, trainingByNorm } = buildModelsFromApi(api, plans, date);
+
+    // Datenschutz: Aufbewahrung + ZDR-Fußnoten aus der Doku, `training` aus
+    // der API (`go.training`, fehlend → Worst-Case `.true`).
+    const privacyTable = findPrivacyTable(docs$);
+    const retentionMap = parsePrivacyRetentionTable(docs$, privacyTable);
+    const validUntilMap = parsePrivacyNotes(docs$);
+    for (const m of models) {
+      const norm = normalizeName(m.name);
+      const own = retentionMap.has(norm);
+      const retentionDays = own ? retentionMap.get(norm) : retentionMap.get(PRIVACY_FALLBACKS[norm] ?? "");
+      m.privacy = {
+        training: trainingByNorm.get(norm) ?? true,
+        ...(retentionDays === undefined ? {} : { retentionDays }),
+        validUntil: validUntilFor(norm, validUntilMap),
+        ...(!own && retentionDays !== undefined ? { fallback: true } : {}),
+      };
+    }
+    // Jede ZDR-Notiz muss auf mindestens ein Modell abbildbar sein (exakt oder
+    // als Familien-Präfix). Eine Notiz ohne Modell ist entweder ein
+    // Quell-Layoutwechsel oder ein neues Modell ohne Tabellenzeile.
+    const modelNorms = models.map((m) => normalizeName(m.name));
+    for (const key of validUntilMap.keys()) {
+      if (!modelNorms.some((norm) => validUntilKeyMatches(norm, key))) {
+        const label = validUntilMap.labels?.get(key) ?? key;
+        throw new ScrapeError(
+          `Datenschutz-Notiz "${label}" konnte keinem Modell zugeordnet werden (weder exakt noch als Familien-Präfix)`
+        );
+      }
+    }
 
     const { providers: mdProviders, models: mdModels, source: mdSource } = await loadModelsDev();
     // Reihenfolge: opencode (Zen) → kanonische Metadaten → opencode-go (nur
@@ -2664,12 +3036,8 @@ async function main() {
     const goModels = mdProviders["opencode-go"]?.models ?? {};
     enrichCapabilities(models, zenModels, mdModels, goModels);
 
-    const fetchedAt = new Date().toISOString();
-    const date = fetchedAt.slice(0, 10);
     // Kein Feiertagskalender: die OpenCode-Doku nennt keine Feiertage, und wir
     // erfinden keine (strikt quellenbindend) → `holidayCalendars` bleibt leer.
-    // git-tag-sicheres `id` (kein `:`), z.B. 2026-08-19T06-00-00Z
-    const runId = fetchedAt.replace(/:/g, "-").replace(/\.\d{3}Z$/, "Z");
 
     const prevPath = join(ROOT, "data", "latest.json");
     const prev = existsSync(prevPath) ? JSON.parse(readFileSync(prevPath, "utf8")) : null;
@@ -2722,6 +3090,7 @@ async function main() {
     const latest = {
       fetchedAt,
       sourceUrl: SOURCE_URL,
+      modelsSourceUrl: GO_MODELS_URL,
       freeModelsSourceUrl: ZEN_DOCS_URL,
       capabilitiesSourceUrl: MODELS_DEV_URL,
       sourceLang: SOURCE_LANG,
@@ -2852,7 +3221,7 @@ async function main() {
     const enrichedFree = freeModels.filter((f) => f.capabilities !== null).length;
     const privacyCovered = models.filter((m) => m.privacy !== null).length;
     const planLabel = plans.map((p) => `${p.name} $${p.priceMonthly}/${p.creditsMonthly}`).join(", ");
-    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Pläne: ${planLabel}${plansChanged ? " (still aktualisiert)" : ""}${peakRulesChanged ? " (Peak-Regeln still, keine Events)" : ""}; Nutzungs-Boni: ${bonusLabels || "keine"}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}${contextWindowPopulated ? " (Kontextfenster still befüllt, keine Events)" : ""}${providerPopulated ? " (Hersteller still befüllt, keine Events)" : ""}${fullIdsPopulated ? " (Full-IDs still befüllt, keine Events)" : ""}.`);
+    console.log(`Gescrapt: ${models.length} Modelle, ${freeModels.length} kostenlose Modelle (Zen), ${changes.length} Änderungen (Snapshot ${date}); Pläne: ${planLabel}${plansChanged ? " (still aktualisiert)" : ""}${peakRulesChanged ? " (Peak-Regeln still, keine Events)" : ""}; Fähigkeiten (models.dev: ${mdSource}) für ${enriched} Modelle + ${enrichedFree} Zen-Modelle; Datenschutz für ${privacyCovered}/${models.length} Modelle${privacyPopulated ? " (privacy still befüllt, keine Events)" : ""}${privacySilentUpdate ? " (validUntil still aktualisiert, keine Events)" : ""}${modelIdsPopulated ? " (Modell-IDs still befüllt, keine Events)" : ""}${contextWindowPopulated ? " (Kontextfenster still befüllt, keine Events)" : ""}${providerPopulated ? " (Hersteller still befüllt, keine Events)" : ""}${fullIdsPopulated ? " (Full-IDs still befüllt, keine Events)" : ""}.`);
   } catch (err) {
     console.error(`[scrape] FEHLER: ${err instanceof Error ? err.message : String(err)}`);
     process.exit(1);

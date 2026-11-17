@@ -48,6 +48,9 @@ import {
   parseEnglishDate,
   canonicalModelName,
   canonicalFreeName,
+  buildModelsFromApi,
+  fetchGoModels,
+  finalizePlans,
 } from "../scripts/scrape.mjs";
 
 const fixture = readFileSync(
@@ -2538,4 +2541,144 @@ test("assertNonEmptyCatalog: leere Preis-Kataloge → ScrapeError (stiller Parse
   // `freeModels` ist bewusst NICHT Teil der Invariante: 0 kostenlose Zen-Modelle
   // sind ein legitimer Quellstand und dürfen den Lauf nicht abbrechen.
   assert.doesNotThrow(() => assertNonEmptyCatalog({ ...full, freeModels: [] }));
+});
+
+// ---------------------------------------------------------------------------
+// JSON-API-Migration (Issue #19): Modelle/Preise/Nutzung/Peak aus
+// https://opencode.ai/inference/go/v1/models, Pläne+Datenenschutz aus der Doku.
+// ---------------------------------------------------------------------------
+
+const apiFixture = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), "fixtures", "go-models.json"), "utf8")
+);
+const apiPlans = [{ id: "go" }, { id: "go-plus" }, { id: "go-teams" }];
+const API_TODAY = "2026-11-17";
+const usableApiFixture = {
+  ...apiFixture,
+  data: apiFixture.data.filter((e) => e.name !== "Broken Model"),
+};
+const buildFixture = (api = usableApiFixture, today = API_TODAY) => buildModelsFromApi(api, apiPlans, today);
+
+test("buildModelsFromApi: Basismodell — Preise, kürzester Cached-Write-TTL, Usage, pattern, training", () => {
+  const { models, trainingByNorm } = buildFixture();
+  const m = models.find((x) => x.name === "Plain Model");
+  assert.equal(m.tier, null);
+  assert.equal(m.input, 1);
+  assert.equal(m.output, 3);
+  assert.equal(m.cachedRead, 0.1);
+  assert.equal(m.cachedWrite, 0.25); // TTL-Map: 30m ist kürzer als 12h
+  assert.deepEqual(m.usage, { go: 15, "go-plus": 60, "go-teams": 20 });
+  assert.deepEqual(m.pattern, { input: 800, cachedRead: 50000, output: 162 });
+  assert.equal(m.capabilities, null);
+  assert.equal(trainingByNorm.get("plainmodel"), false);
+});
+
+test("buildModelsFromApi: Kontext-Override → zwei Stufen mit korrekten Preisen", () => {
+  const { models } = buildFixture();
+  const tiers = models.filter((m) => m.name === "Context Model");
+  assert.deepEqual(tiers.map((m) => m.tier), ["≤ 200K tokens", "> 200K tokens"]);
+  assert.deepEqual([tiers[0].input, tiers[0].output, tiers[0].cachedRead, tiers[0].cachedWrite], [2, 6, 0.2, null]);
+  assert.deepEqual([tiers[1].input, tiers[1].output, tiers[1].cachedRead, tiers[1].cachedWrite], [4, 12, 0.4, null]);
+  for (const tier of tiers) {
+    assert.deepEqual(tier.usage, { go: 60, "go-plus": 180, "go-teams": 65 });
+  }
+});
+
+test("buildModelsFromApi: Peak → Off-Peak/Peak-Zeilen und UTC-peakRules", () => {
+  const { models, peakRules } = buildFixture();
+  const rows = models.filter((m) => m.name === "DeepSeek V4.1 Flash"); // Alias aus 1017
+  assert.deepEqual(rows.map((m) => m.tier), ["Off-Peak", "Peak"]);
+  assert.deepEqual([rows[0].input, rows[0].output, rows[0].cachedRead], [0.15, 0.6, 0.003]);
+  assert.deepEqual([rows[1].input, rows[1].output, rows[1].cachedRead], [0.3, 1.2, 0.006]);
+  assert.deepEqual(peakRules["deepseekv4.1flash"], {
+    timezone: "UTC",
+    peak: { days: [1, 2, 3, 4, 5], windowsUtc: [[1, 4], [6, 10]] },
+    offPeak: { days: [6, 7], allDay: true },
+  });
+});
+
+test("buildModelsFromApi: Datum-Aktion in der Zukunft → '50% off', Basischpreise bleiben", () => {
+  const { models } = buildFixture(usableApiFixture, "2026-11-17");
+  const m = models.find((x) => x.name === "Gemini 4 Argon");
+  assert.equal(m.tier, "50% off");
+  assert.deepEqual([m.input, m.output, m.cachedRead, m.cachedWrite], [2, 10, 0.1, null]);
+});
+
+test("buildModelsFromApi: Datum-Aktion in der Vergangenheit → Faktor angewendet, tier null", () => {
+  const { models } = buildFixture(usableApiFixture, "2026-12-01");
+  const m = models.find((x) => x.name === "Gemini 4 Argon");
+  assert.equal(m.tier, null);
+  assert.deepEqual([m.input, m.output, m.cachedRead, m.cachedWrite], [4, 20, 0.2, null]);
+});
+
+test("buildModelsFromApi: Gratismodell → Preise 0, Usage null, pattern null", () => {
+  const { models } = buildFixture();
+  const m = models.find((x) => x.name === "Beam Free");
+  assert.deepEqual([m.input, m.output, m.cachedRead, m.cachedWrite], [0, 0, 0, 0]);
+  assert.deepEqual(m.usage, { go: null, "go-plus": null, "go-teams": null });
+  assert.equal(m.pattern, null);
+});
+
+test("buildModelsFromApi: monthly_usage ohne Plan-Schlüssel → ScrapeError", () => {
+  const onlyBroken = { ...apiFixture, data: apiFixture.data.filter((e) => e.name === "Broken Model") };
+  assert.throws(
+    () => buildFixture(onlyBroken),
+    (err) => err instanceof ScrapeError && /monthly_usage.*go-plus/.test(err.message)
+  );
+});
+
+test("buildModelsFromApi: ungültiger Payload (kein list / leere data) → ScrapeError", () => {
+  assert.throws(() => buildFixture({ object: "list", data: [] }), ScrapeError);
+  assert.throws(() => buildFixture({ object: "other", data: apiFixture.data }), ScrapeError);
+  assert.throws(() => buildFixture(null), ScrapeError);
+});
+
+test("buildModelsFromApi: unbekannte Multiplikator-Bedingung → ScrapeError (fail-closed)", () => {
+  const unknown = JSON.parse(JSON.stringify(usableApiFixture));
+  const entry = unknown.data.find((e) => e.name === "Plain Model");
+  entry.cost.multipliers = [{ when: { region: { in: ["eu"] } }, factor: 3 }];
+  assert.throws(
+    () => buildFixture(unknown),
+    (err) => err instanceof ScrapeError && /unbekannte Multiplikator/.test(err.message)
+  );
+});
+
+test("fetchGoModels: API-URL + User-Agent, Fehler → ScrapeError", async () => {
+  let calledUrl = null;
+  let calledHeaders = null;
+  const ok = async (url, init) => {
+    calledUrl = url;
+    calledHeaders = init.headers;
+    return { ok: true, json: async () => apiFixture };
+  };
+  const api = await fetchGoModels(ok);
+  assert.equal(calledUrl, "https://opencode.ai/inference/go/v1/models");
+  assert.match(calledHeaders["User-Agent"], /^ocgo-price-tracker\//);
+  assert.equal(api.object, "list");
+  await assert.rejects(() => fetchGoModels(async () => ({ ok: false, status: 503 })), ScrapeError);
+  await assert.rejects(
+    () => fetchGoModels(async () => ({ ok: true, json: async () => { throw new Error("bad json"); } })),
+    ScrapeError
+  );
+});
+
+test("parsePlans: 3 Pläne aus Inline-HTML → Guthaben 60/240/65", () => {
+  const html = `<html><body><main>${tableHtml(
+    ["Plan", "Price", "Included usage"],
+    [
+      ["Go", "$10/month", "x"],
+      ["Go Plus", "$40/month", "x"],
+      ["Go Teams", "$20/member/month", "x"],
+    ]
+  )}</main></body></html>`;
+  const plans = parsePlans(html);
+  assert.deepEqual(
+    plans.map((p) => [p.id, p.priceMonthly, p.creditsMonthly]),
+    [
+      ["go", 10, 60],
+      ["go-plus", 40, 240],
+      ["go-teams", 20, 65],
+    ]
+  );
+  for (const p of plans) assert.equal(p.sourceUrl, "https://opencode.ai/v2/docs/console/go/");
 });

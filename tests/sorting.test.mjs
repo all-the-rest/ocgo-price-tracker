@@ -279,18 +279,33 @@ for (const basis of BASES) {
   }
 }
 
-test("paid-Basis input asc: Effektivpreis entscheidet, nicht der rohe Listenpreis (Regression GLM-5.2 vs. GLM-5.3, beide Pläne)", () => {
-  const glm52 = models.find((m) => m.name === "GLM-5.2");
-  const glm53 = models.find((m) => m.name === "GLM-5.3");
-  assert.ok(glm52 && glm53, "GLM-5.2 und GLM-5.3 sind im Datensatz");
-  assert.equal(glm52.input, glm53.input, "rohe Input-Preise sind identisch (1.40)");
+test("paid-Basis input asc: Effektivpreis entscheidet, nicht der rohe Listenpreis (synthetische Zeilen, beide Pläne)", () => {
+  // Der Effektivpreis hängt an der Nutzung. Die konkreten Nutzungswerte der
+  // Live-Daten ändern sich täglich (z. B. GLM-5.3), daher baut der Test zwei
+  // synthetische Zeilen mit identischem Listenpreis, aber unterschiedlicher
+  // Nutzung — die Regression bleibt damit datenunabhängig.
+  const template = models.find((m) => m.usage?.[PLAN.id] !== null);
+  assert.ok(template, "Datensatz enthält ein Modell mit Nutzung als Vorlage");
+  const lowUsage = {
+    ...template,
+    name: "Regression Low Usage",
+    input: 1.4,
+    usage: { go: 15, "go-plus": 60, "go-teams": 20 },
+  };
+  const highUsage = {
+    ...template,
+    name: "Regression High Usage",
+    input: 1.4,
+    usage: { go: 60, "go-plus": 180, "go-teams": 65 },
+  };
+  const pair = [lowUsage, highUsage];
   for (const plan of PLANS) {
     assert.ok(
-      displayedValue(glm52, "input", "paid", plan) < displayedValue(glm53, "input", "paid", plan),
-      `Effektivpreis (paid, ${plan.id}) von GLM-5.2 ist wegen der höheren Nutzung niedriger`
+      displayedValue(highUsage, "input", "paid", plan) < displayedValue(lowUsage, "input", "paid", plan),
+      `Effektivpreis (paid, ${plan.id}) ist bei höherer Nutzung niedriger`
     );
     const names = extractRowNames(
-      ssr.renderPriceTable(models, {
+      ssr.renderPriceTable(pair, {
         basis: "paid",
         sortField: "input",
         sortDir: 1,
@@ -299,8 +314,8 @@ test("paid-Basis input asc: Effektivpreis entscheidet, nicht der rohe Listenprei
       })
     );
     assert.ok(
-      names.indexOf("GLM-5.2") < names.indexOf("GLM-5.3"),
-      `GLM-5.2 muss vor GLM-5.3 stehen (Plan ${plan.id})`
+      names.indexOf("Regression High Usage") < names.indexOf("Regression Low Usage"),
+      ` höhere Nutzung muss zuerst stehen (Plan ${plan.id})`
     );
   }
 });

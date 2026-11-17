@@ -1,0 +1,140 @@
+{
+  "object": "list",
+  "data": [
+    {
+      "id": "plain-model",
+      "object": "model",
+      "name": "Plain Model",
+      "type": "chat",
+      "cost": {
+        "text": {
+          "input": {
+            "price": 1,
+            "cache": { "read": 0.1, "write": { "30m": 0.25, "12h": 0.5 } }
+          },
+          "output": { "price": 3 }
+        },
+        "multipliers": []
+      },
+      "go": {
+        "monthly_usage": { "go": 15, "go-plus": 60, "go-teams": 20 },
+        "training": false
+      }
+    },
+    {
+      "id": "context-model",
+      "object": "model",
+      "name": "Context Model",
+      "type": "chat",
+      "cost": {
+        "text": {
+          "input": {
+            "price": 2,
+            "cache": { "read": 0.2 },
+            "overrides": [
+              { "when": { "context": { "gt": 200000 } }, "price": 4, "cache": { "read": 0.4 } }
+            ]
+          },
+          "output": {
+            "price": 6,
+            "overrides": [{ "when": { "context": { "gt": 200000 } }, "price": 12 }]
+          }
+        },
+        "multipliers": []
+      },
+      "go": {
+        "monthly_usage": { "go": 60, "go-plus": 180, "go-teams": 65 },
+        "training": false
+      }
+    },
+    {
+      "id": "deepseek-v4.1-flash-1017",
+      "object": "model",
+      "name": "DeepSeek V4.1 Flash 1017",
+      "type": "chat",
+      "cost": {
+        "text": {
+          "input": { "price": 0.15, "cache": { "read": 0.003 } },
+          "output": { "price": 0.6 }
+        },
+        "multipliers": [
+          {
+            "when": {
+              "utc_days": { "in": ["mon", "tue", "wed", "thu", "fri"] },
+              "any": [
+                {
+                  "all": [
+                    { "utc_hours": { "gte": "01:00" } },
+                    { "utc_hours": { "lt": "04:00" } }
+                  ]
+                },
+                {
+                  "all": [
+                    { "utc_hours": { "gte": "06:00" } },
+                    { "utc_hours": { "lt": "10:00" } }
+                  ]
+                }
+              ]
+            },
+            "factor": 2
+          }
+        ]
+      },
+      "go": {
+        "monthly_usage": { "go": 100, "go-plus": 200, "go-teams": 105 },
+        "training": false
+      }
+    },
+    {
+      "id": "gemini-4-argon",
+      "object": "model",
+      "name": "Gemini 4 Argon",
+      "type": "chat",
+      "cost": {
+        "text": {
+          "input": { "price": 2, "cache": { "read": 0.1 } },
+          "output": { "price": 10 }
+        },
+        "multipliers": [{ "when": { "date": { "gte": "2026-12-01" } }, "factor": 2 }]
+      },
+      "go": {
+        "monthly_usage": { "go": 30, "go-plus": 120, "go-teams": 35 },
+        "training": false
+      }
+    },
+    {
+      "id": "beam-free",
+      "object": "model",
+      "name": "Beam Free",
+      "type": "chat",
+      "cost": {
+        "text": {
+          "input": { "price": 0, "cache": { "read": 0 } },
+          "output": { "price": 0 }
+        },
+        "multipliers": []
+      },
+      "go": {
+        "monthly_usage": null,
+        "training": true
+      }
+    },
+    {
+      "id": "broken-model",
+      "object": "model",
+      "name": "Broken Model",
+      "type": "chat",
+      "cost": {
+        "text": {
+          "input": { "price": 1 },
+          "output": { "price": 2 }
+        },
+        "multipliers": []
+      },
+      "go": {
+        "monthly_usage": { "go": 15 },
+        "training": false
+      }
+    }
+  ]
+}
