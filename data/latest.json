@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-17T10:44:48.200Z",
+  "fetchedAt": "2026-11-17T19:09:22.690Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -279,9 +279,9 @@
       "cachedRead": 0.26,
       "cachedWrite": null,
       "usage": {
-        "go": 100,
-        "go-plus": 200,
-        "go-teams": 105
+        "go": 200,
+        "go-plus": 400,
+        "go-teams": 205
       },
       "pattern": {
         "input": 800,
@@ -1429,7 +1429,7 @@
       },
       "privacy": {
         "training": false,
-        "retentionDays": true,
+        "retentionDays": 55,
         "validUntil": null
       },
       "contextWindow": 1048576,
@@ -1820,28 +1820,6 @@
       "provider": "Mimo",
       "fullId": "opencode/mimo-v2.6-flash-free",
       "name": "MiMo V2.6 Flash Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "nemotron-3-ultra-free",
-      "availableFrom": "2026-08-05",
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1000000,
-      "provider": "Nemotron",
-      "fullId": "opencode/nemotron-3-ultra-free",
-      "name": "Nemotron 3 Ultra Free",
       "privacy": {
         "training": true,
         "validUntil": null
