@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-17T19:09:22.690Z",
+  "fetchedAt": "2026-11-18T09:09:35.513Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -279,9 +279,9 @@
       "cachedRead": 0.26,
       "cachedWrite": null,
       "usage": {
-        "go": 200,
-        "go-plus": 400,
-        "go-teams": 205
+        "go": 500,
+        "go-plus": 1000,
+        "go-teams": 505
       },
       "pattern": {
         "input": 800,
@@ -1667,31 +1667,6 @@
       "name": "Flint 40B Free",
       "privacy": {
         "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "glm-5.3-flash-free",
-      "availableFrom": "2026-10-16",
-      "capabilities": {
-        "input": [
-          "text",
-          "image",
-          "video"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 200000,
-      "provider": "Z.ai",
-      "fullId": "opencode/glm-5.3-flash-free",
-      "name": "GLM-5.3-Flash Free",
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
         "validUntil": null
       }
     },
