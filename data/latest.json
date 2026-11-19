@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-18T09:09:35.513Z",
+  "fetchedAt": "2026-11-19T09:08:22.153Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -234,42 +234,6 @@
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-pro",
       "provider": "DeepSeek"
-    },
-    {
-      "name": "GLM-5.2",
-      "tier": null,
-      "input": 1.4,
-      "output": 4.4,
-      "cachedRead": 0.26,
-      "cachedWrite": null,
-      "usage": {
-        "go": 60,
-        "go-plus": 180,
-        "go-teams": 65
-      },
-      "pattern": {
-        "input": 800,
-        "cachedRead": 50000,
-        "output": 162
-      },
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/glm-5.2",
-      "provider": "Z.ai"
     },
     {
       "name": "GLM-5.3",
