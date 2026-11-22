@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-21T01:38:40.597Z",
+  "fetchedAt": "2026-11-22T00:33:49.648Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -1681,29 +1681,6 @@
       }
     },
     {
-      "id": "inkling-2-small-free",
-      "availableFrom": "2026-11-07",
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1048576,
-      "provider": "Inkling Small Free",
-      "fullId": "opencode/inkling-2-small-free",
-      "name": "Inkling 2 Small Free",
-      "privacy": {
-        "training": true,
-        "validUntil": null
-      }
-    },
-    {
       "id": "jev-1.13-free",
       "availableFrom": "2026-09-19",
       "capabilities": null,
@@ -1804,6 +1781,28 @@
       "provider": "Nemotron Super Free",
       "fullId": "opencode/nemotron-3.5-super-vl-free",
       "name": "Nemotron 3.5 Super VL Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "tidepool-alpha-free",
+      "availableFrom": "2026-11-22",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": null,
+      "fullId": "opencode/tidepool-alpha-free",
+      "name": "Tidepool Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
