@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-23T01:01:53.993Z",
+  "fetchedAt": "2026-11-23T20:52:57.566Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -1509,6 +1509,210 @@
       "contextWindow": 1000000,
       "id": "opencode-go/longcat-2.5",
       "provider": "Meituan"
+    },
+    {
+      "name": "Jev 1.14",
+      "tier": null,
+      "input": 0.042,
+      "output": 0,
+      "cachedRead": null,
+      "cachedWrite": null,
+      "usage": {
+        "go": 15,
+        "go-plus": 60,
+        "go-teams": 20
+      },
+      "pattern": {
+        "input": 800,
+        "cachedRead": 50000,
+        "output": 162
+      },
+      "capabilities": null,
+      "privacy": {
+        "training": false,
+        "validUntil": null
+      },
+      "contextWindow": null,
+      "id": null,
+      "provider": null
+    },
+    {
+      "name": "Gemini Decision 1",
+      "tier": null,
+      "input": 0.1,
+      "output": 0,
+      "cachedRead": null,
+      "cachedWrite": null,
+      "usage": {
+        "go": 15,
+        "go-plus": 60,
+        "go-teams": 20
+      },
+      "pattern": {
+        "input": 800,
+        "cachedRead": 50000,
+        "output": 162
+      },
+      "capabilities": null,
+      "privacy": {
+        "training": false,
+        "validUntil": null
+      },
+      "contextWindow": null,
+      "id": null,
+      "provider": null
+    },
+    {
+      "name": "GPT-6 Luna Decision",
+      "tier": "≤ 272K tokens",
+      "input": 0.1,
+      "output": 0,
+      "cachedRead": 0.01,
+      "cachedWrite": 0.125,
+      "usage": {
+        "go": 15,
+        "go-plus": 60,
+        "go-teams": 20
+      },
+      "pattern": {
+        "input": 800,
+        "cachedRead": 50000,
+        "output": 162
+      },
+      "capabilities": null,
+      "privacy": {
+        "training": false,
+        "validUntil": null
+      },
+      "contextWindow": null,
+      "id": null,
+      "provider": null
+    },
+    {
+      "name": "GPT-6 Luna Decision",
+      "tier": "> 272K tokens",
+      "input": 0.2,
+      "output": 0,
+      "cachedRead": 0.02,
+      "cachedWrite": 0.25,
+      "usage": {
+        "go": 15,
+        "go-plus": 60,
+        "go-teams": 20
+      },
+      "pattern": {
+        "input": 800,
+        "cachedRead": 50000,
+        "output": 162
+      },
+      "capabilities": null,
+      "privacy": {
+        "training": false,
+        "validUntil": null
+      },
+      "contextWindow": null,
+      "id": null,
+      "provider": null
+    },
+    {
+      "name": "text-embedding-3-small",
+      "tier": null,
+      "input": 0.02,
+      "output": 0,
+      "cachedRead": null,
+      "cachedWrite": null,
+      "usage": {
+        "go": 15,
+        "go-plus": 60,
+        "go-teams": 20
+      },
+      "pattern": {
+        "input": 800,
+        "cachedRead": 50000,
+        "output": 162
+      },
+      "capabilities": null,
+      "privacy": {
+        "training": false,
+        "validUntil": null
+      },
+      "contextWindow": null,
+      "id": null,
+      "provider": null
+    },
+    {
+      "name": "Qwen3 Embedding 8B",
+      "tier": null,
+      "input": 0.01,
+      "output": 0,
+      "cachedRead": null,
+      "cachedWrite": null,
+      "usage": {
+        "go": 15,
+        "go-plus": 60,
+        "go-teams": 20
+      },
+      "pattern": {
+        "input": 800,
+        "cachedRead": 50000,
+        "output": 162
+      },
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": false,
+        "toolCall": false
+      },
+      "privacy": {
+        "training": false,
+        "validUntil": null
+      },
+      "contextWindow": 32768,
+      "id": null,
+      "provider": "Alibaba"
+    },
+    {
+      "name": "Gemini Embedding 2",
+      "tier": null,
+      "input": 0.2,
+      "output": 0,
+      "cachedRead": null,
+      "cachedWrite": null,
+      "usage": {
+        "go": 15,
+        "go-plus": 60,
+        "go-teams": 20
+      },
+      "pattern": {
+        "input": 800,
+        "cachedRead": 50000,
+        "output": 162
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "audio",
+          "video",
+          "pdf"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": false,
+        "toolCall": false
+      },
+      "privacy": {
+        "training": false,
+        "validUntil": null
+      },
+      "contextWindow": 8192,
+      "id": null,
+      "provider": "Google"
     }
   ],
   "freeModels": [
