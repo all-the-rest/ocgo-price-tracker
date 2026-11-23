@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-22T00:33:49.648Z",
+  "fetchedAt": "2026-11-23T01:01:53.993Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -243,9 +243,9 @@
       "cachedRead": 0.26,
       "cachedWrite": null,
       "usage": {
-        "go": 500,
-        "go-plus": 1000,
-        "go-teams": 505
+        "go": 200,
+        "go-plus": 400,
+        "go-teams": 205
       },
       "pattern": {
         "input": 800,
@@ -1034,42 +1034,6 @@
       "provider": "MiniMax"
     },
     {
-      "name": "LongCat-2.0",
-      "tier": null,
-      "input": 0.3,
-      "output": 1.2,
-      "cachedRead": 0.006,
-      "cachedWrite": null,
-      "usage": {
-        "go": 60,
-        "go-plus": 240,
-        "go-teams": 65
-      },
-      "pattern": {
-        "input": 800,
-        "cachedRead": 50000,
-        "output": 162
-      },
-      "capabilities": {
-        "input": [
-          "text"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/longcat-2.0",
-      "provider": "Meituan"
-    },
-    {
       "name": "Step 5 Preview",
       "tier": null,
       "input": 1,
@@ -1438,39 +1402,6 @@
       "provider": "Tencent"
     },
     {
-      "name": "LongCat 2.5 Free",
-      "tier": null,
-      "input": 0,
-      "output": 0,
-      "cachedRead": 0,
-      "cachedWrite": 0,
-      "usage": {
-        "go": null,
-        "go-plus": null,
-        "go-teams": null
-      },
-      "pattern": null,
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
-        "validUntil": null
-      },
-      "contextWindow": 1000000,
-      "id": "opencode-go/longcat-2.5-free",
-      "provider": "Longcat Free"
-    },
-    {
       "name": "Hy4 flash Free",
       "tier": null,
       "input": 0,
@@ -1541,6 +1472,43 @@
       "contextWindow": 1000000,
       "id": "opencode-go/qwen4-max",
       "provider": "Alibaba"
+    },
+    {
+      "name": "LongCat-2.5",
+      "tier": null,
+      "input": 0.3,
+      "output": 1.2,
+      "cachedRead": 0.006,
+      "cachedWrite": 0,
+      "usage": {
+        "go": 60,
+        "go-plus": 240,
+        "go-teams": 65
+      },
+      "pattern": {
+        "input": 800,
+        "cachedRead": 50000,
+        "output": 162
+      },
+      "capabilities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "retentionDays": true,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "id": "opencode-go/longcat-2.5",
+      "provider": "Meituan"
     }
   ],
   "freeModels": [
@@ -1689,30 +1657,6 @@
       "fullId": "opencode/jev-1.13-free",
       "privacy": {
         "training": true,
-        "validUntil": null
-      }
-    },
-    {
-      "id": "longcat-2.5-free",
-      "availableFrom": "2026-11-09",
-      "capabilities": {
-        "input": [
-          "text",
-          "image"
-        ],
-        "output": [
-          "text"
-        ],
-        "reasoning": true,
-        "toolCall": true
-      },
-      "contextWindow": 1000000,
-      "provider": "Longcat Free",
-      "fullId": "opencode-go/longcat-2.5-free",
-      "name": "LongCat 2.5 Free",
-      "privacy": {
-        "training": false,
-        "retentionDays": true,
         "validUntil": null
       }
     },
