@@ -1,43 +1,43 @@
 #!/usr/bin/env node
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { renderReleaseNotesForEntry, loadPlans } from "./release-notes.mjs";
+import { createReleaseWithRetry, ghExec } from "./gh.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-function gh(args) {
-  return execFileSync("gh", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
-}
-
-function releaseInfo(tag) {
+async function releaseInfo(tag) {
   try {
-    return JSON.parse(gh(["release", "view", tag, "--json", "name,body"]));
+    return JSON.parse(await ghExec(["release", "view", tag, "--json", "name,body"]));
   } catch {
     return null;
   }
 }
 
-function ensureRelease(tag, notes, { latest }) {
+async function ensureRelease(tag, notes, { latest }) {
   const title = `Price Update ${tag}`;
-  const existing = releaseInfo(tag);
+  const existing = await releaseInfo(tag);
   if (existing) {
-    if (existing.name === title && existing.body.trimEnd() === notes.trimEnd()) {
+    if (existing.name === title && (existing.body ?? "").trimEnd() === notes.trimEnd()) {
       console.log(`release ${tag} is up to date, nothing to do`);
       return;
     }
-    gh(["release", "edit", tag, "--title", title, "--notes", notes]);
+    await ghExec(["release", "edit", tag, "--title", title, "--notes", notes]);
     console.log(`updated release ${tag}`);
     return;
   }
   const args = ["release", "create", tag, "--title", title, "--notes", notes];
   if (latest === false) args.push("--latest=false");
-  gh(args);
-  console.log(`created release ${tag}${latest === false ? " (not latest)" : ""}`);
+  const created = await createReleaseWithRetry(tag, args, { info: releaseInfo, create: (a) => ghExec(a) });
+  if (created) {
+    console.log(`created release ${tag}${latest === false ? " (not latest)" : ""}`);
+  } else {
+    console.log(`release ${tag} already exists, nothing to do`);
+  }
 }
 
-function main() {
+async function main() {
   const argv = process.argv.slice(2);
   const all = argv.includes("--all");
   const dateIdx = argv.indexOf("--date");
@@ -75,11 +75,16 @@ function main() {
       console.log(`entry ${entry.id}: no changes, skipping release`);
       continue;
     }
-    ensureRelease(entry.id, notes, { latest: entry.id === newestId });
+    await ensureRelease(entry.id, notes, { latest: entry.id === newestId });
   }
 }
 
 const isMain =
   process.argv[1] !== undefined &&
   pathToFileURL(process.argv[1]).href === import.meta.url;
-if (isMain) main();
+if (isMain) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}

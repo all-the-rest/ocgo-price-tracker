@@ -2584,6 +2584,61 @@ test("buildModelsFromApi: Kontext-Override → zwei Stufen mit korrekten Preisen
   }
 });
 
+test("buildModelsFromApi: nur Input-Override → Output bleibt Basis (Decision-Modell)", () => {
+  // Live-Fall: unveränderter Output-Preis (0), nur der Input steigt ab einer Schwelle.
+  const inputOnly = JSON.parse(JSON.stringify(usableApiFixture));
+  const entry = inputOnly.data.find((e) => e.name === "Plain Model");
+  entry.cost.text.input.price = 0.1;
+  entry.cost.text.input.cache = { read: 0.01, write: { "30m": 0.25, "12h": 0.5 } };
+  entry.cost.text.output.price = 0;
+  entry.cost.text.input.overrides = [
+    {
+      when: { context: { gt: 272000 } },
+      price: 0.2,
+      cache: { read: 0.02, write: { "30m": 0.25, "12h": 0.5 } },
+    },
+  ];
+  const { models } = buildFixture({ object: "list", data: [entry] });
+  const tiers = models.filter((m) => m.name === "Plain Model");
+  assert.deepEqual(tiers.map((m) => m.tier), ["≤ 272K tokens", "> 272K tokens"]);
+  assert.deepEqual([tiers[0].input, tiers[0].output, tiers[0].cachedRead, tiers[0].cachedWrite], [0.1, 0, 0.01, 0.25]);
+  assert.deepEqual([tiers[1].input, tiers[1].output, tiers[1].cachedRead, tiers[1].cachedWrite], [0.2, 0, 0.02, 0.25]);
+  for (const tier of tiers) {
+    assert.deepEqual(tier.usage, { go: 15, "go-plus": 60, "go-teams": 20 });
+  }
+});
+
+test("buildModelsFromApi: nur Output-Override → Input/Cached bleiben Basis", () => {
+  const outputOnly = JSON.parse(JSON.stringify(usableApiFixture));
+  const entry = outputOnly.data.find((e) => e.name === "Plain Model");
+  entry.cost.text.output.overrides = [{ when: { context: { gt: 200000 } }, price: 6 }];
+  const { models } = buildFixture({ object: "list", data: [entry] });
+  const tiers = models.filter((m) => m.name === "Plain Model");
+  assert.deepEqual(tiers.map((m) => m.tier), ["≤ 200K tokens", "> 200K tokens"]);
+  assert.deepEqual([tiers[0].input, tiers[0].output, tiers[0].cachedRead, tiers[0].cachedWrite], [1, 3, 0.1, 0.25]);
+  assert.deepEqual([tiers[1].input, tiers[1].output, tiers[1].cachedRead, tiers[1].cachedWrite], [1, 6, 0.1, 0.25]);
+});
+
+test("buildModelsFromApi: zwei Overrides auf einer Seite → ScrapeError", () => {
+  const two = JSON.parse(JSON.stringify(usableApiFixture));
+  const entry = two.data.find((e) => e.name === "Context Model");
+  entry.cost.text.input.overrides.push({ ...entry.cost.text.input.overrides[0] });
+  assert.throws(
+    () => buildFixture({ object: "list", data: [entry] }),
+    (err) => err instanceof ScrapeError && /höchstens ein Input-\/Output-Override/.test(err.message)
+  );
+});
+
+test("buildModelsFromApi: beide Overrides mit unterschiedlicher Schwelle → ScrapeError", () => {
+  const mismatch = JSON.parse(JSON.stringify(usableApiFixture));
+  const entry = mismatch.data.find((e) => e.name === "Context Model");
+  entry.cost.text.output.overrides[0].when.context.gt = 300000;
+  assert.throws(
+    () => buildFixture({ object: "list", data: [entry] }),
+    (err) => err instanceof ScrapeError && /Kontext-Schwelle/.test(err.message)
+  );
+});
+
 test("buildModelsFromApi: Peak → Off-Peak/Peak-Zeilen und UTC-peakRules", () => {
   const { models, peakRules } = buildFixture();
   const rows = models.filter((m) => m.name === "DeepSeek V4.1 Flash"); // Alias aus 1017

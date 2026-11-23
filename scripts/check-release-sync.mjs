@@ -1,28 +1,42 @@
 #!/usr/bin/env node
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { renderReleaseNotesForEntry, loadPlans } from "./release-notes.mjs";
+import { defaultSleep, findReleaseWithRetry, ghExec } from "./gh.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-
-function gh(args) {
-  return execFileSync("gh", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
-}
 
 // Erkennung "unserer" Releases: Tag = Run-`id` (Zeitstempel) oder Vorschema-Datum.
 const OUR_TAG = /^(\d{4}-\d{2}-\d{2}(T\d{2}-\d{2}-\d{2}Z)?)$/;
 
-function releaseBody(tag) {
+async function releaseInfo(tag) {
   try {
-    return JSON.parse(gh(["release", "view", tag, "--json", "body"])).body;
+    return JSON.parse(await ghExec(["release", "view", tag, "--json", "body"]));
   } catch {
     return null;
   }
 }
 
-function main() {
+/**
+ * Ein frisch angelegtes Release ist auf GitHub kurz unsichtbar (Replikation).
+ * `null` (nicht gefunden) daher erst nach mehreren Versuchen mit Backoff als
+ * endgültig fehlend werten — echte Divergenzen bleiben trotzdem rot.
+ */
+export async function releaseBody(
+  tag,
+  {
+    info = releaseInfo,
+    attempts,
+    delayMs,
+    sleep = defaultSleep,
+  } = {}
+) {
+  const found = await findReleaseWithRetry(info, tag, { attempts, delayMs, sleep });
+  return found ? (typeof found.body === "string" ? found.body : "") : null;
+}
+
+async function main() {
   const changelog = JSON.parse(readFileSync(join(ROOT, "CHANGELOG.json"), "utf8"));
   const plans = loadPlans();
   const entries = changelog?.entries ?? [];
@@ -38,7 +52,7 @@ function main() {
     seenTags.add(tag);
     const notes = renderReleaseNotesForEntry(entry, plans);
     if (notes === null) continue; // keine Änderungen → kein Release erwartet
-    const body = releaseBody(tag);
+    const body = await releaseBody(tag);
     if (body === null) {
       errors.push(`missing GitHub release for changelog entry ${tag}`);
       continue;
@@ -51,7 +65,7 @@ function main() {
   // Verwaiste Releases: Tag in unserem Format, aber kein passender Changelog-Eintrag.
   let releases = [];
   try {
-    releases = JSON.parse(gh(["release", "list", "--json", "tagName", "--limit", "1000"]));
+    releases = JSON.parse(await ghExec(["release", "list", "--json", "tagName", "--limit", "1000"]));
   } catch {
     console.error("could not list releases (gh auth?)");
     process.exit(1);
@@ -72,5 +86,11 @@ function main() {
 }
 
 const isMain =
-  process.argv[1] !== undefined && pathToFileURL(process.argv[1]).href === import.meta.url;
-if (isMain) main();
+  process.argv[1] !== undefined &&
+  pathToFileURL(process.argv[1]).href === import.meta.url;
+if (isMain) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
