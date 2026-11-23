@@ -1870,24 +1870,32 @@ export function buildModelsFromApi(api, plans, today) {
 
     const variants = [];
     if (inOverrides.length || outOverrides.length) {
-      if (inOverrides.length !== 1 || outOverrides.length !== 1) {
-        throw new ScrapeError(`${context}: genau ein Input- und Output-Override erwartet`);
+      if (inOverrides.length > 1 || outOverrides.length > 1) {
+        throw new ScrapeError(`${context}: höchstens ein Input-/Output-Override erwartet`);
       }
       const inOverride = inOverrides[0];
       const outOverride = outOverrides[0];
-      const gt = inOverride?.when?.context?.gt;
-      if (typeof gt !== "number" || gt <= 0 || gt !== outOverride?.when?.context?.gt) {
+      // Beide Overrides müssen dieselbe Schwelle tragen; fehlt eine Seite,
+      // gilt die Schwelle der vorhandenen (z. B. Decision-Modelle mit
+      // unverändertem Output-Preis haben nur einen Input-Override).
+      const gt = inOverride ? inOverride?.when?.context?.gt : outOverride?.when?.context?.gt;
+      if (
+        typeof gt !== "number" ||
+        gt <= 0 ||
+        (inOverride && outOverride && gt !== outOverride?.when?.context?.gt)
+      ) {
         throw new ScrapeError(`${context}: abweichende oder fehlende Kontext-Schwelle in den Overrides`);
       }
       const k = gt / 1000;
       const override = {
-        input: priceFromApi(inOverride.price, context),
-        output: priceFromApi(outOverride.price, context),
-        cachedRead:
-          inOverride.cache?.read === undefined || inOverride.cache?.read === null
+        input: inOverride ? priceFromApi(inOverride.price, context) : base.input,
+        output: outOverride ? priceFromApi(outOverride.price, context) : base.output,
+        cachedRead: inOverride
+          ? inOverride.cache?.read === undefined || inOverride.cache?.read === null
             ? null
-            : priceFromApi(inOverride.cache.read, context),
-        cachedWrite: writePriceFromApi(inOverride.cache?.write, context),
+            : priceFromApi(inOverride.cache.read, context)
+          : base.cachedRead,
+        cachedWrite: inOverride ? writePriceFromApi(inOverride.cache?.write, context) : base.cachedWrite,
       };
       variants.push({ ...base, tier: `≤ ${k}K tokens` });
       variants.push({ ...override, tier: `> ${k}K tokens` });

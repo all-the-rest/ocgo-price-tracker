@@ -1,5 +1,26 @@
 # AGENTS.todo.md — ocgo-price-tracker
 
+## Entscheidungen 2026-11-23 — CI-Resilienz (Scraper + Release)
+Anlass: CI rot durch neues API-Modell „GPT-6 Luna Decision“ mit nur einem Input-Override
+(Output-Preis 0, daher kein Output-Override). Zusätzlich: GitHub-API-Latenz beim
+`gh release create` soll einen Lauf nicht unnötig rot machen.
+
+- [x] **Asymmetrische Kontext-Overrides:** `buildModelsFromApi` akzeptiert mindestens einen
+  von Input-/Output-Override (maximal je einen); fehlt eine Seite, übernimmt die Stufe
+  `> N K tokens` den Basispreis dieser Seite (Cached-Write/Read analog). Bei beiden
+  Overrides bleibt die gemeinsame Schwelle Pflicht. Mehr als je ein Override → weiter
+  `ScrapeError`. Grund: decision-Modelle mit Output-Preis 0 haben nichts zu überschreiben.
+- [x] **Release-Retries:** `gh`-Aufrufe in `ensure-release.mjs` und `check-release-sync.mjs`
+  laufen über einen gemeinsamen Helfer mit Timeout + Retry/Backoff (temporäre GitHub-
+  Fehler/Latenz). `release create` vor dem Retry auf bereits existierendes Release prüfen
+  (Idempotenz). Bei echten Divergenzen (Sync-Check, fehlende Releases nach Retry) bleibt
+  der Lauf rot — nur flüchtige Fehler werden abgefedert.
+- [x] **Verifikation:** `pnpm test` 331/331 grün (19 neue `test()`-Blöcke: 4 Scrape,
+  12 gh-retry, 3 release-sync), `pnpm scrape` exit 0 (45 Modelle,
+  7 Änderungen, u. a. GPT-6 Luna Decision), `pnpm build` + `pnpm smoke` grün;
+  Negativtests (zwei Overrides, verschiedene Schwellen) und Positivtest für nur-Input /
+  nur-Output ergänzt. `ratchet check` lokal nicht verfügbar → Gate läuft in CI.
+
 ## Entscheidungen 2026-11-17 — Go-Modell-API statt HTML-Preistabellen
 Anlass: Die Go-Doku hat die serverseitigen Preistabellen entfernt (CI rot:
 „Anzahl Preistabellen (0) ≠ Anzahl Pläne (3)“); sie verweist auf
