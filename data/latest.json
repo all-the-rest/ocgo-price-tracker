@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-23T20:52:57.566Z",
+  "fetchedAt": "2026-11-24T04:54:04.861Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -1509,6 +1509,39 @@
       "contextWindow": 1000000,
       "id": "opencode-go/longcat-2.5",
       "provider": "Meituan"
+    },
+    {
+      "name": "HungerG Free",
+      "tier": null,
+      "input": 0,
+      "output": 0,
+      "cachedRead": 0,
+      "cachedWrite": 0,
+      "usage": {
+        "go": null,
+        "go-plus": null,
+        "go-teams": null
+      },
+      "pattern": null,
+      "capabilities": {
+        "input": [
+          "text",
+          "image",
+          "video"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "privacy": {
+        "training": false,
+        "validUntil": null
+      },
+      "contextWindow": 1000000,
+      "id": "opencode-go/hungerg-free",
+      "provider": null
     },
     {
       "name": "Jev 1.14",
