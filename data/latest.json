@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-24T09:07:43.473Z",
+  "fetchedAt": "2026-11-24T19:09:57.982Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -761,7 +761,7 @@
         "retentionDays": true,
         "validUntil": null
       },
-      "contextWindow": 1024000,
+      "contextWindow": 1048576,
       "id": "opencode-go/hy4-preview",
       "provider": "Tencent"
     },
