@@ -73,18 +73,58 @@ jobs:
           wait-interval: 60
           allowed-conclusions: success,skipped
 
+      # Parallele Dependabot-PRs können dieselben Zeilen in pnpm-lock.yaml
+      # ändern (z. B. #25 vor #26) -> `gh pr merge` scheitert mit "merge
+      # conflicts" und färbt die PR-CI rot. Den Rebase NICHT selbst mit dem
+      # GITHUB_TOKEN pushen: solche pushes erzeugen keine regulär laufenden
+      # pull_request-Checks auf dem neuen Head. Stattdessen Dependabot selbst
+      # per Kommentar zum Rebase auffordern - dessen Push triggert die Checks
+      # normal und der neue AutomERGE-Lauf (actor dependabot[bot]) merged.
+      # Schlägt der Rebase fehl oder bleibt der Merge-Status unklar, wird dieser
+      # Lauf ohne Merge beendet (Skip), statt den PR-Check rot zu machen.
+      - name: Reconcile PR branch with main
+        id: branch
+        if: steps.should-merge.outputs.result == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          refresh() {
+            read -r mergeable state < <(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER" --jq '[.mergeable, .mergeable_state] | @tsv' || echo "null unknown")
+          }
+          refresh
+          for attempt in 1 2 3 4 5 6; do
+            [ "$state" != "unknown" ] && [ -n "$state" ] && break
+            sleep 5
+            refresh
+          done
+          echo "mergeable=$mergeable state=$state"
+          if [ "$state" = "dirty" ] || [ "$state" = "behind" ]; then
+            if gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "@dependabot rebase"; then
+              echo "::notice::Dependabot rebase requested - the fresh run will wait for CI and merge."
+            else
+              echo "::warning::Could not request Dependabot rebase - PR needs manual resolution."
+            fi
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          elif [ "$mergeable" = "true" ] && [ -n "$state" ] && [ "$state" != "unknown" ]; then
+            echo "current=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Merge status not conclusive - skipping merge without failing CI."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+          fi
+
       # pull_request_target checkt per Default KEIN Repo aus -> "gh pr merge"
       # scheitert mit "not a git repository". Daher main auschecken (nur Metadaten/
       # API-Merge, KEIN PR-Code -> weiterhin sicher).
       - name: Checkout main (for gh pr merge)
-        if: steps.should-merge.outputs.result == 'true'
+        if: steps.should-merge.outputs.result == 'true' && steps.branch.outputs.current == 'true'
         uses: actions/checkout@v7
         with:
           ref: main
           sparse-checkout: .github
 
       - name: Merge Dependabot PR
-        if: steps.should-merge.outputs.result == 'true'
+        if: steps.should-merge.outputs.result == 'true' && steps.branch.outputs.current == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh pr merge "${{ github.event.pull_request.number }}" --squash --delete-branch
