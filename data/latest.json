@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-25T03:39:04.192Z",
+  "fetchedAt": "2026-11-25T18:51:01.658Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -120,7 +120,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-11-30"
+        "validUntil": "2026-12-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4.1-flash",
@@ -157,7 +157,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-11-30"
+        "validUntil": "2026-12-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4.1-flash",
@@ -193,7 +193,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-11-30"
+        "validUntil": "2026-12-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-pro",
@@ -229,7 +229,7 @@
       "privacy": {
         "training": false,
         "retentionDays": true,
-        "validUntil": "2026-11-30"
+        "validUntil": "2026-12-31"
       },
       "contextWindow": 1000000,
       "id": "opencode-go/deepseek-v4-pro",
@@ -291,8 +291,7 @@
       "capabilities": {
         "input": [
           "text",
-          "image",
-          "pdf"
+          "image"
         ],
         "output": [
           "text"
@@ -329,8 +328,7 @@
       "capabilities": {
         "input": [
           "text",
-          "image",
-          "pdf"
+          "image"
         ],
         "output": [
           "text"
