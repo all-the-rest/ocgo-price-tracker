@@ -13,14 +13,14 @@ importers:
         version: 1.9.19
     devDependencies:
       '@iconify-json/material-symbols':
-        specifier: ^1.2.100
-        version: 1.2.100
+        specifier: ^1.2.101
+        version: 1.2.101
       '@iconify/tailwind4':
         specifier: ^1.2.3
         version: 1.2.3(tailwindcss@4.3.5)
       '@opencode-ai/models':
-        specifier: ^0.0.137
-        version: 0.0.137
+        specifier: ^0.0.142
+        version: 0.0.142
       '@playwright/test':
         specifier: 1.65.1
         version: 1.65.1
@@ -37,8 +37,8 @@ importers:
         specifier: ^1.0.0
         version: 1.2.0
       daisyui:
-        specifier: ^5.8.1
-        version: 5.8.1
+        specifier: ^5.8.2
+        version: 5.8.2
       tailwindcss:
         specifier: ^4.3.5
         version: 4.3.5
@@ -49,8 +49,8 @@ importers:
         specifier: ^8.3.8
         version: 8.3.8(@types/node@26.6.6)(jiti@2.7.0)
       vite-plugin-solid:
-        specifier: ^2.11.16
-        version: 2.11.16(solid-js@1.9.19)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0))
+        specifier: ^2.11.17
+        version: 2.11.17(solid-js@1.9.19)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0))
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -153,8 +153,8 @@ packages:
   '@emnapi/wasi-threads@2.2.0':
     resolution: {integrity: sha512-JP7OYH38Q7+pyTAe14raZHLQIK7BDKbdwji+Xi3pcd/6QkJYQH3SX4wu6EplGrGJWRepoNzedfm0G3B9Z4e9Rw==}
 
-  '@iconify-json/material-symbols@1.2.100':
-    resolution: {integrity: sha512-lo3JulvaCnCCYVZHfld4kQ2YNkN55xCtLGplVgETx0n6nRR8IknMphknSqIpFhT/4J3upZJmLBTQT6cyQn8ThQ==}
+  '@iconify-json/material-symbols@1.2.101':
+    resolution: {integrity: sha512-k2cOWfrsLM9TpCr34UZ34toSotApzFDxh+DX7tVk4EkqO2XhoiuDPs1oAbiZSJQQ3JHjhkS9kBlMFa36yYda0Q==}
 
   '@iconify/tailwind4@1.2.3':
     resolution: {integrity: sha512-z8SKiMHRASJKF/IY//87MF88lcB7ulxh8vlhQXXLWsBkNtOh6ese9R41MyGpQeqXdRvQVt+/fX2glQtHFjQ+MA==}
@@ -193,8 +193,8 @@ packages:
       '@emnapi/core': ^1.7.1 || 2.0.0-beta.2
       '@emnapi/runtime': ^1.7.1 || 2.0.0-beta.2
 
-  '@opencode-ai/models@0.0.137':
-    resolution: {integrity: sha512-GBeTH9vQTXNK1xBC9L0zFabLFn5gPiIT1kH4mLIoneVP1ylWaNsrBd7uCvswgiaAR3+hU8No+NxPPrRSb5SySg==}
+  '@opencode-ai/models@0.0.142':
+    resolution: {integrity: sha512-j1nlsyZzg0jHvn3xzL/WumZUdxa4rpsNtBg/WtVferipnjDauhGstWr5lo2FvGBk6TiBbmH7dOQ27omYz2GYlg==}
     engines: {node: '>=18'}
     peerDependencies:
       effect: 4.0.0-beta.83
@@ -698,8 +698,8 @@ packages:
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
-  daisyui@5.8.1:
-    resolution: {integrity: sha512-ptP4WHOJ6WltNnA5zwkg3GypOLhsyUM2FHuXCckWVEpWviioInFKsjnShCWYGYHsQ5P9bUCOH1tn45cKLeTUpg==}
+  daisyui@5.8.2:
+    resolution: {integrity: sha512-InScsDXX0pbfgvWyPQ8iTHV4rNMZdfbMo85KqlQUn62/PCIjwczViw5lbotzoXy/nPrn4qjDMmx/fspuUnjBtA==}
 
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
@@ -1035,8 +1035,8 @@ packages:
     peerDependencies:
       browserslist: '>= 4.21.0'
 
-  vite-plugin-solid@2.11.16:
-    resolution: {integrity: sha512-qguFUmqY2ICuoGHrZjm+cWpvKkqVyWDMptipC/BIEGr9q6wEzwTWYOjM9pEWJ+yoTuF6T5OpysI2Okdy7rsVlQ==}
+  vite-plugin-solid@2.11.17:
+    resolution: {integrity: sha512-RBFS1nSdsL+X9zQ6gXdQ6SZJJnGykmQ5GIlFHcX/rD+9wfR69Ip+vhAFyWEgk9ya74VRPLjo544gCTyju4diqw==}
     peerDependencies:
       '@testing-library/jest-dom': ^5.16.6 || ^5.17.0 || ^6.0.0 || ^7.0.0
       solid-js: ^1.7.2
@@ -1249,7 +1249,7 @@ snapshots:
       tslib: 2.9.1
     optional: true
 
-  '@iconify-json/material-symbols@1.2.100':
+  '@iconify-json/material-symbols@1.2.101':
     dependencies:
       '@iconify/types': 2.0.0
 
@@ -1304,7 +1304,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.5
     optional: true
 
-  '@opencode-ai/models@0.0.137': {}
+  '@opencode-ai/models@0.0.142': {}
 
   '@oxc-project/types@0.156.0': {}
 
@@ -1668,7 +1668,7 @@ snapshots:
 
   csstype@3.2.3: {}
 
-  daisyui@5.8.1: {}
+  daisyui@5.8.2: {}
 
   debug@4.4.3:
     dependencies:
@@ -1970,7 +1970,7 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  vite-plugin-solid@2.11.16(solid-js@1.9.19)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0)):
+  vite-plugin-solid@2.11.17(solid-js@1.9.19)(vite@8.3.8(@types/node@26.6.6)(jiti@2.7.0)):
     dependencies:
       '@babel/core': 7.29.13
       '@types/babel__core': 7.20.5
