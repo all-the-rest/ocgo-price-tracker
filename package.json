@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "solid-js": "^1.9.19"
+    "solid-js": "^1.9.20"
   },
   "devDependencies": {
     "@iconify-json/material-symbols": "^1.2.101",
