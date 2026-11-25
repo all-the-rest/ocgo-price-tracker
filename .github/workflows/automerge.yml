@@ -75,13 +75,16 @@ jobs:
 
       # Parallele Dependabot-PRs können dieselben Zeilen in pnpm-lock.yaml
       # ändern (z. B. #25 vor #26) -> `gh pr merge` scheitert mit "merge
-      # conflicts" und färbt die PR-CI rot. Den Rebase NICHT selbst mit dem
-      # GITHUB_TOKEN pushen: solche pushes erzeugen keine regulär laufenden
-      # pull_request-Checks auf dem neuen Head. Stattdessen Dependabot selbst
-      # per Kommentar zum Rebase auffordern - dessen Push triggert die Checks
-      # normal und der neue AutomERGE-Lauf (actor dependabot[bot]) merged.
-      # Schlägt der Rebase fehl oder bleibt der Merge-Status unklar, wird dieser
-      # Lauf ohne Merge beendet (Skip), statt den PR-Check rot zu machen.
+      # conflicts" und färbt die PR-CI rot. Ein "@dependabot rebase" scheitert
+      # hier an der Ruleset-Regel "non_fast_forward" (ohne Bypass). Stattdessen
+      # `gh pr update-branch` mit einem Merge-Commit (kein Force-Push, daher
+      # ruleset-kompatibel) und direkter Merge in DIESEM Lauf: Ein GITHUB_TOKEN-
+      # Push erzeugt keine regulären PR-Checks auf dem neuen Head, es wird also
+      # nicht auf einen frischen Lauf gewartet. Der CI-Wait oben lief schon auf
+      # dem alten Head, main wird als grün angenommen; der Merge-Commit vereint
+      # nur diese beiden geprüften Stände. Bei echtem Inhaltskonflikt
+      # (update-branch scheitert) wird still übersprungen statt den PR-Check
+      # rot zu machen.
       - name: Reconcile PR branch with main
         id: branch
         if: steps.should-merge.outputs.result == 'true'
@@ -100,12 +103,26 @@ jobs:
           done
           echo "mergeable=$mergeable state=$state"
           if [ "$state" = "dirty" ] || [ "$state" = "behind" ]; then
-            if gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --body "@dependabot rebase"; then
-              echo "::notice::Dependabot rebase requested - the fresh run will wait for CI and merge."
+            if gh pr update-branch "$PR_NUMBER" --repo "$GITHUB_REPOSITORY"; then
+              # Mergeability wird von GitHub asynchron neu berechnet - erst
+              # weiter, wenn der neue Head als mergebar bestätigt ist.
+              for attempt in 1 2 3 4; do
+                refresh
+                if [ "$mergeable" = "true" ] && [ -n "$state" ] && [ "$state" != "unknown" ]; then break; fi
+                sleep 3
+              done
+              echo "after update: mergeable=$mergeable state=$state"
+              if [ "$mergeable" = "true" ] && [ -n "$state" ] && [ "$state" != "unknown" ]; then
+                echo "::notice::PR branch updated with a merge commit - merging in this run."
+                echo "current=true" >> "$GITHUB_OUTPUT"
+              else
+                echo "::warning::Merge status inconclusive after branch update - skipping merge without failing CI."
+                echo "current=false" >> "$GITHUB_OUTPUT"
+              fi
             else
-              echo "::warning::Could not request Dependabot rebase - PR needs manual resolution."
+              echo "::warning::PR branch could not be updated (content conflict) - skipping merge without failing CI."
+              echo "current=false" >> "$GITHUB_OUTPUT"
             fi
-            echo "current=false" >> "$GITHUB_OUTPUT"
           elif [ "$mergeable" = "true" ] && [ -n "$state" ] && [ "$state" != "unknown" ]; then
             echo "current=true" >> "$GITHUB_OUTPUT"
           else

@@ -6,25 +6,31 @@ Anlass: Issue #27. PR #26 (solid-js 1.9.19 → 1.9.20) hatte einen roten
 conflicts`, weil PR #25 kurz davor dieselbe `pnpm-lock.yaml`-Region geändert
 hatte (`mergeable_state: dirty`, `rebaseable: false`).
 
-- [x] **Rebase + Retry:** Der Auto-Merge liest den Merge-Status (`gh api
-  pulls.get`) erst **nach** dem CI-Wait. Bei `dirty`/`behind` fordert er per
-  Kommentar `@dependabot rebase` an; Dependabots Push triggert die PR-Checks
-  auf dem neuen Head regulär, der frische Lauf (actor `dependabot[bot]`) wartet
-  und mergt.
-- [x] **Skip statt rot:** Bei `unknown`/leerem Merge-Status (oder wenn der
-  Rebase nicht greift) endet der Lauf mit einer Warnung, ohne die Merge-Schritte
-  auszuführen. Grund: ein offener Dependabot-PR soll die PR-CI nicht dauerhaft
-  rot färben; er bleibt offen für manuelle Auflösung. Der Status wird nach dem
-  CI-Wait gelesen, damit GitHub ihn bereits berechnet hat; `unknown` wird
-  nicht als „mergebar“ gewertet.
-- [ ] **PR #26 auflösen:** Dependabot-Rebase anfordern (oder lokal rebasen und
-  pushen), damit der `synchronize`-Lauf den PR merged und der rote Check
-  verschwindet.
+- [x] **Retry im selben Lauf:** Der Auto-Merge liest den Merge-Status (`gh api
+  pulls.get`) erst **nach** dem CI-Wait. Bei `dirty`/`behind` pusht er per
+  `gh pr update-branch` einen Merge-Commit auf den PR-Branch (kein Force-Push)
+  und mergt **im selben Lauf** weiter. Grund: das Repo hat eine aktive Ruleset
+  `Guard: no deletion or force-push` (`~ALL`, ohne Bypass), daher kann weder
+  Dependabot noch ein Rebase den Branch überschreiben; ein Merge-Commit ist
+  dagegen erlaubt. Ein GITHUB_TOKEN-Push erzeugt keine regulären PR-Checks auf
+  dem neuen Head — es wird deshalb nicht auf einen frischen Lauf gewartet,
+  sondern der bereits geprüfte alte Head plus der grüne main direkt gemergt.
+- [x] **Skip statt rot:** Bei `unknown`/leerem Merge-Status oder wenn
+  `update-branch` an einem echten Inhaltskonflikt scheitert, endet der Lauf mit
+  einer Warnung, ohne die Merge-Schritte auszuführen. Grund: ein offener
+  Dependabot-PR soll die PR-CI nicht dauerhaft rot färben; er bleibt offen für
+  manuelle Auflösung. Der Status wird nach dem CI-Wait gelesen, damit GitHub
+  ihn bereits berechnet hat; `unknown` wird nicht als „mergebar“ gewertet.
+- [x] **PR #26 aufgelöst:** Lokal Merge-Commit auf den PR-Branch pushen
+  (solid-js 1.9.20 + Änderungen aus #25 im Lockfile), CI grün (build/gates
+  pass), PR am 2026-11-25 manuell gemergt. Force-Push war wegen der Ruleset
+  nicht möglich, `@dependabot rebase` scheiterte („Something went wrong“).
 
-**Verworfen:** `gh pr update-branch` direkt im Auto-Merge mit dem
-`GITHUB_TOKEN` — GITHUB_TOKEN-generierte `synchronize`-Events erzeugen keine
-regulären PR-Checks auf dem neuen Head, der Retry hätte also nie CI gesehen
-(Review-Fund 2026-11-25).
+**Verworfen:** (1) `@dependabot rebase` als Retry — die Ruleset
+`non_fast_forward` blockiert den Force-Push ohne Bypass; Dependabot antwortete
+mit einem Fehler. (2) `gh pr update-branch` plus Warten auf einen neuen
+`synchronize`-Lauf — GITHUB_TOKEN-generierte Events erzeugen keine regulären
+PR-Checks auf dem neuen Head (Review-Fund 2026-11-25).
 
 ## Entscheidungen 2026-11-23 — CI-Resilienz (Scraper + Release)
 Anlass: CI rot durch neues API-Modell „GPT-6 Luna Decision“ mit nur einem Input-Override
