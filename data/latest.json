@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-25T18:51:01.658Z",
+  "fetchedAt": "2026-11-26T02:58:17.366Z",
   "sourceUrl": "https://opencode.ai/v2/docs/console/go/",
   "modelsSourceUrl": "https://opencode.ai/inference/go/v1/models",
   "freeModelsSourceUrl": "https://opencode.ai/v2/docs/console/models/",
@@ -1960,6 +1960,28 @@
       "provider": "Nemotron Super Free",
       "fullId": "opencode/nemotron-3.5-super-vl-free",
       "name": "Nemotron 3.5 Super VL Free",
+      "privacy": {
+        "training": true,
+        "validUntil": null
+      }
+    },
+    {
+      "id": "seaglass-alpha-free",
+      "availableFrom": "2026-11-26",
+      "capabilities": {
+        "input": [
+          "text"
+        ],
+        "output": [
+          "text"
+        ],
+        "reasoning": true,
+        "toolCall": true
+      },
+      "contextWindow": 1048576,
+      "provider": null,
+      "fullId": "opencode/seaglass-alpha-free",
+      "name": "Seaglass Alpha Free",
       "privacy": {
         "training": true,
         "validUntil": null
